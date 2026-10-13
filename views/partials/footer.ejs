@@ -30,7 +30,8 @@
 <script id="catalog-data" type="application/json"><%- JSON.stringify(
   Object.fromEntries(Object.entries(catalog.CATEGORIES).map(([k, c]) => [k, { types: c.types, sizes: c.sizes }]))
 ).replace(/</g, '\\u003c') %></script>
-<script src="/js/app.js" defer></script>
-<script src="/js/chat.js" defer></script>
+<script src="/js/app.js?v=<%= assetVersion %>" defer></script>
+<script src="/js/push.js?v=<%= assetVersion %>" defer></script>
+<script src="/js/chat.js?v=<%= assetVersion %>" defer></script>
 </body>
 </html>

@@ -6,7 +6,7 @@ import { canonicalQuery, describe, saveSearch } from '../alerts.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { categoryCovers, countByCategory, getProduct, latestProducts, parseFilters, searchProducts } from '../products.js';
+import { categoryCovers, countByCategory, getProduct, latestProducts, parseFilters, searchProducts, searchSuggestions } from '../products.js';
 import { findConversation, minOffer } from '../chat.js';
 import { isBlockedEither } from '../blocks.js';
 import { paymentConfig, paymentsReady } from '../orders.js';
@@ -72,15 +72,20 @@ router.get('/', (req, res) => {
   });
 });
 
+// Sugerencias mientras se escribe (JSON para la barra de búsqueda).
+const suggestLimit = rateLimit({ windowMs: MIN, max: 120, message: 'Demasiadas búsquedas seguidas.' });
+router.get('/buscar/sugerencias', suggestLimit, (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json(searchSuggestions(String(req.query.q ?? '').slice(0, 60)));
+});
+
 router.get('/buscar', (req, res) => {
   const filters = parseFilters(req.query, req.user?.id);
   const result = searchProducts(filters);
-  // Para los enlaces de paginación: la URL actual sin "pagina".
-  const params = new URLSearchParams();
-  for (const [k, v] of Object.entries(req.query)) {
-    if (k === 'pagina') continue;
-    for (const item of [v].flat()) if (typeof item === 'string' && item) params.append(k, item);
-  }
+  // Para paginación, orden y avisos: solo los filtros válidos (sin "pagina" ni restos de otra
+  // categoría, como una talla de ropa después de cambiar a zapatos).
+  const params = new URLSearchParams(canonicalQuery(req.query));
+  if (filters.sort !== 'recientes') params.set('orden', filters.sort);
   // Filtros activos como etiquetas que se pueden quitar: [{ label, href sin ese filtro }].
   const without = (key, value) => {
     const p = new URLSearchParams(params);

@@ -20,6 +20,30 @@
   <div class="stat stat-accent"><span class="stat-n"><%= money(stats.payoutPending) %></span><span class="muted">Por recibir de CowFace</span></div>
 </div>
 
+<section id="mensajes">
+  <div class="section-head">
+    <h2>Mis mensajes</h2>
+    <a class="btn btn-small btn-ghost" href="/mensajes">Ver todos</a>
+  </div>
+  <% if (!conversations.length) { %>
+    <p class="muted">Todavía no tienes conversaciones. Cuando le escribas a un vendedor o alguien te escriba por una prenda, aparecen aquí.</p>
+  <% } else { %>
+    <div class="inbox">
+      <% for (const c of conversations) { %>
+        <a class="inbox-row <%= c.unread ? 'unread' : '' %>" href="/mensajes/<%= c.id %>">
+          <img src="<%= c.product_id ? imageUrl({ id: c.product_id, category: c.category, image: c.image }) : '/sin-foto/x/0.svg' %>" alt="">
+          <div class="inbox-main">
+            <div class="inbox-top"><strong><%= c.other_name %></strong><span class="muted small"><%= when(c.last_message_at) %></span></div>
+            <div class="muted small"><%= c.role === 'comprador' ? 'Le escribiste al vendedor' : 'Te escribieron' %> · <%= c.product_title %></div>
+            <div class="inbox-last"><%= c.last_text && c.last_text.startsWith('Oferta: ') ? `Oferta: ${money(c.last_text.slice(8))}` : (c.last_text || '') %></div>
+          </div>
+          <% if (c.unread) { %><span class="dot" aria-label="Sin leer"></span><% } %>
+        </a>
+      <% } %>
+    </div>
+  <% } %>
+</section>
+
 <section id="ventas">
   <h2>Mis ventas</h2>
   <% if (!orders.length) { %>
@@ -136,6 +160,40 @@
       <% } %>
     </div>
   <% } %>
+</section>
+
+<section id="celular" class="push-panel" data-push-panel>
+  <h2>Notificaciones en el celular</h2>
+  <p class="muted">Te llega un aviso como el de una app cuando te escriben, te hacen una oferta o cambia un pedido.</p>
+  <div data-state="off">
+    <button class="btn" type="button" data-push-enable>🔔 Activar en este dispositivo</button>
+    <p class="hint">Tu celular te va a preguntar si permites notificaciones: toca <strong>Permitir</strong>. Actívalas en cada celular o computadora donde uses CowFace.</p>
+  </div>
+  <div data-state="on" hidden>
+    <p><strong>✓ Activadas en este dispositivo.</strong></p>
+    <div class="push-actions">
+      <button class="btn btn-small" type="button" data-push-test>Mandarme una de prueba</button>
+      <button class="btn btn-small btn-ghost" type="button" data-push-disable>Desactivar aquí</button>
+    </div>
+  </div>
+  <div data-state="ios" hidden>
+    <p><strong>En iPhone se activan desde el ícono de CowFace:</strong></p>
+    <ol class="push-steps">
+      <li>Abre esta página en <strong>Safari</strong>.</li>
+      <li>Toca el botón <strong>Compartir</strong> (el cuadrito con la flecha hacia arriba).</li>
+      <li>Elige <strong>"Agregar a pantalla de inicio"</strong> y toca <strong>Agregar</strong>.</li>
+      <li>Abre CowFace <strong>desde ese ícono</strong>, entra a Mi cuenta y toca "Activar".</li>
+    </ol>
+    <p class="hint">Necesitas iOS 16.4 o más reciente. Así lo exige Apple para cualquier sitio web.</p>
+  </div>
+  <div data-state="denied" hidden>
+    <p><strong>Las notificaciones están bloqueadas para CowFace en este navegador.</strong></p>
+    <p class="hint">Para activarlas: en Android, toca el candado junto a la dirección → Permisos → Notificaciones → Permitir. En iPhone: Ajustes → Notificaciones → CowFace. Después recarga esta página.</p>
+  </div>
+  <div data-state="unsupported" hidden>
+    <p class="muted">Este navegador no permite notificaciones. Prueba con Chrome en Android o en la computadora. Igual te avisamos por correo.</p>
+  </div>
+  <p class="hint" data-push-msg hidden></p>
 </section>
 
 <section id="avisos-correo">

@@ -1,5 +1,9 @@
 <%- include('../partials/header') %>
 <div class="page-head"><h1>Mensajes</h1></div>
+<div class="push-cta" data-push-cta hidden>
+  <span>🔔 Activa las notificaciones y entérate al instante cuando te escriban.</span>
+  <button class="btn btn-small" type="button" data-push-enable>Activar</button>
+</div>
 <% if (!conversations.length) { %>
   <div class="empty">
     <h2>Todavía no tienes conversaciones</h2>

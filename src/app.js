@@ -7,6 +7,7 @@ import * as catalog from './catalog.js';
 import publicRoutes from './routes/public.js';
 import sellerRoutes from './routes/seller.js';
 import attachmentRoutes from './routes/attachments.js';
+import pushRoutes from './routes/push.js';
 import { MAX_ATTACH_MB, MAX_IMAGES, MAX_PHOTO_MB } from './uploads.js';
 import { UPLOAD_DIR } from './storage.js';
 import adminRoutes from './routes/admin.js';
@@ -75,7 +76,11 @@ export function createApp() {
     }
     next();
   });
-  app.use(express.static(path.join(ROOT, 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
+  app.use(express.static(path.join(ROOT, 'public'), {
+    maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0,
+    // El service worker siempre se revisa (si no, el celular puede quedarse con una versión vieja).
+    setHeaders: (res, file) => { if (file.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache'); },
+  }));
   // Fotos de artículos: nombres aleatorios que nunca cambian, así que se guardan en caché un año.
   // La carpeta temporal de subidas no se sirve.
   app.use('/fotos/tmp', (req, res) => res.status(404).end());
@@ -131,6 +136,8 @@ export function createApp() {
       ...(withDate || !sameDay ? { day: 'numeric', month: 'short' } : {}),
     });
   };
+  // Versión de CSS/JS: cambia en cada publicación para que el navegador no use archivos viejos.
+  app.locals.assetVersion = (process.env.RAILWAY_GIT_COMMIT_SHA || String(Date.now())).slice(0, 10);
   app.locals.money = catalog.formatColones;
   app.locals.imageUrl = (p, filename = p.image) => filename ? `/fotos/${filename}` : `/sin-foto/${p.category}/${p.id}.svg?v=2`;
   app.use((req, res, next) => {
@@ -160,6 +167,7 @@ export function createApp() {
   app.use('/', chatRoutes);
   app.use('/pedidos', orderRoutes);
   app.use('/adjuntos', attachmentRoutes);
+  app.use('/push', pushRoutes);
   app.use('/vendedor', sellerRoutes);
   app.use('/admin', adminRoutes);
 

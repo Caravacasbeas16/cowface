@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 11;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -251,6 +251,22 @@ addColumn('orders', 'dispute_evidence', 'TEXT');       // foto que adjunta el co
 addColumn('users', 'featured_until', 'TEXT');         // tienda destacada hasta esta fecha (ISO); NULL = no destacada
 addColumn('users', 'email_messages', 'INTEGER NOT NULL DEFAULT 1');   // 1 = recibe un correo cuando le escriben y no lo ha leído
 addColumn('conversations', 'seller_notified_at', 'TEXT'); // último correo al vendedor por esta conversación
+addColumn('products', 'search_text', "TEXT NOT NULL DEFAULT ''"); // texto normalizado para buscar (ver search-text.js)
+
+// Notificaciones en el celular/navegador (Web Push): una fila por dispositivo que las activó.
+db.exec(`
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id          INTEGER PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  endpoint    TEXT NOT NULL UNIQUE,
+  p256dh      TEXT NOT NULL,
+  auth        TEXT NOT NULL,
+  device      TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  last_ok_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_push_user ON push_subscriptions (user_id);
+`);
 
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 

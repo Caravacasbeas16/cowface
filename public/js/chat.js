@@ -2,7 +2,7 @@
 (() => {
   if (!document.body.hasAttribute('data-live')) return;
 
-  const badge = document.querySelector('[data-unread]');
+  const badges = document.querySelectorAll('[data-unread]');
   const chat = document.querySelector('[data-chat]');
   const thread = document.querySelector('[data-thread]');
   const errorBox = document.querySelector('[data-chat-error]');
@@ -155,10 +155,11 @@
   // Canal en vivo. EventSource se reconecta solo si se cae.
   const events = new EventSource('/mensajes/eventos');
   events.addEventListener('no-leidos', (e) => {
-    if (!badge) return;
     const { count } = JSON.parse(e.data);
-    badge.textContent = count;
-    badge.hidden = !count;
+    for (const badge of badges) {
+      badge.textContent = count;
+      badge.hidden = !count;
+    }
   });
   events.addEventListener('conversacion', (e) => {
     const { id } = JSON.parse(e.data);

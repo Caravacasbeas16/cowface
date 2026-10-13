@@ -6,12 +6,19 @@
   <title><%= title ? `${title} · ${siteName}` : `${siteName} · Compra, vende y oferta ropa en Costa Rica` %></title>
   <meta name="description" content="Ropa, zapatos y bolsos nuevos y usados en tu talla. Haz ofertas, chatea y compra con pago protegido en Costa Rica.">
   <link rel="icon" href="/img/logo.jpg">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
+  <meta name="theme-color" content="#111111">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="CowFace">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta property="og:image" content="/img/brand/01-drop.jpg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="/css/base.css">
-  <link rel="stylesheet" href="/css/app.css">
+  <link rel="stylesheet" href="/css/base.css?v=<%= assetVersion %>">
+  <link rel="stylesheet" href="/css/app.css?v=<%= assetVersion %>">
 </head>
 <body<% if (user && user.role === 'usuario') { %> data-live<% } %>>
 <header class="topbar">
@@ -19,20 +26,36 @@
     <a class="logo" href="/" aria-label="<%= siteName %>, inicio"><img src="/img/logo.jpg" alt="" width="44" height="44"><span><%= siteName.toUpperCase() %></span></a>
     <form class="topsearch" action="/buscar" method="get" role="search">
       <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="2"/><path d="M20 20l-4-4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input type="search" name="q" placeholder="Buscar marcas, artículos, tallas…" aria-label="Buscar" value="<%= locals.filters?.q || '' %>">
+      <input type="search" name="q" placeholder="Buscar marcas, artículos, tallas…" aria-label="Buscar" value="<%= locals.filters?.q || '' %>"
+        autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="search-suggest" data-suggest-input>
+      <ul class="suggest" id="search-suggest" role="listbox" hidden data-suggest></ul>
     </form>
-    <nav class="topnav">
+    <% if (user && user.role === 'usuario') { %>
+      <a href="/mensajes" class="menu-icon" aria-label="Mensajes">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="24" height="24"><path d="M4 5h16v11H8l-4 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>
+        <span class="badge" data-unread <%= unread ? '' : 'hidden' %>><%= unread %></span>
+      </a>
+    <% } %>
+    <button class="menu-toggle" type="button" aria-label="Menú" aria-expanded="false" aria-controls="main-menu" data-menu-toggle>
+      <span></span><span></span><span></span>
+    </button>
+    <nav class="topnav" id="main-menu" data-menu>
       <% if (user && user.role === 'admin') { %>
         <a href="/admin" class="nav-messages">Admin<span class="badge" <%= locals.adminPending ? '' : 'hidden' %>><%= locals.adminPending || '' %></span></a>
       <% } else if (user) { %>
         <a class="btn btn-small" href="/vendedor/productos/nuevo">Vender</a>
         <a href="/mensajes" class="nav-messages">Mensajes<span class="badge" data-unread <%= unread ? '' : 'hidden' %>><%= unread %></span></a>
         <a href="/vendedor">Mi cuenta</a>
+        <a href="/vendedor#articulos" class="menu-only">Mis artículos</a>
+        <a href="/vendedor#ventas" class="menu-only">Mis ventas</a>
+        <a href="/vendedor#celular" class="menu-only">Notificaciones</a>
       <% } else { %>
         <a class="btn btn-small" href="/vender">Vender</a>
         <a href="/entrar">Entrar</a>
         <a href="/registro" class="nav-strong">Registrarse</a>
       <% } %>
+      <a href="/buscar" class="menu-only">Explorar todo</a>
+      <a href="/como-funciona" class="menu-only">Cómo funciona</a>
       <% if (user) { %>
         <form action="/salir" method="post" class="inline"><button class="linklike" type="submit">Salir</button></form>
       <% } %>

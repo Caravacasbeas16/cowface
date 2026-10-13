@@ -302,3 +302,35 @@ body.no-scroll { overflow: hidden; }
 .empty form { margin: 1rem 0; }
 .empty-suggest-title { margin-top: 1.5rem; }
 .empty-suggest { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+
+/* Sugerencias de la barra de búsqueda */
+.topsearch { position: relative; }
+.suggest { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 30; margin: 0; padding: .3rem 0; list-style: none; background: #fff; border: 1px solid var(--ink); box-shadow: 0 8px 24px rgba(0, 0, 0, .12); }
+.suggest a { display: flex; justify-content: space-between; gap: 1rem; padding: .55rem .9rem; font-size: .92rem; }
+.suggest [aria-selected="true"] a, .suggest a:hover { background: var(--soft); }
+.suggest-hint { color: var(--muted); font-size: .78rem; white-space: nowrap; }
+.suggest-all { border-top: 1px solid var(--line); font-weight: 700; }
+
+/* ---------- Menú hamburguesa (celular) ---------- */
+.menu-toggle, .menu-icon, .menu-only { display: none; }
+@media (max-width: 760px) {
+  .topbar-inner { display: grid; grid-template-columns: 1fr auto auto; align-items: center; column-gap: .4rem; row-gap: .5rem; height: auto; padding-top: .55rem; padding-bottom: .55rem; }
+  .topbar-inner > .logo { grid-column: 1; grid-row: 1; }
+  .menu-icon { grid-column: 2; grid-row: 1; }
+  .menu-toggle { grid-column: 3; grid-row: 1; }
+  .topsearch { grid-column: 1 / -1; grid-row: 2; order: 0; max-width: none; }
+  .menu-icon { display: grid; place-items: center; position: relative; width: 44px; height: 44px; color: var(--ink); }
+  .menu-icon .badge { position: absolute; top: 4px; right: 2px; }
+  .menu-toggle { display: inline-flex; flex-direction: column; justify-content: center; gap: 5px; width: 44px; height: 44px; padding: 0 10px; background: none; border: 0; cursor: pointer; }
+  .menu-toggle span { display: block; height: 2px; background: var(--ink); transition: transform .2s, opacity .2s; }
+  .menu-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+  .menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+  .menu-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+  .topnav { display: none; grid-column: 1 / -1; grid-row: 3; flex-direction: column; align-items: stretch; gap: 0; margin: 0 -16px; padding: .3rem 16px .8rem; border-top: 1px solid var(--line); font-size: .9rem; }
+  .topnav.open { display: flex; }
+  .topnav > a, .topnav > form { padding: .85rem 0; border-bottom: 1px solid var(--line); }
+  .topnav > a.btn { margin: .6rem 0 .3rem; padding: .85rem; text-align: center; border-bottom: 0; }
+  .topnav .menu-only { display: block; }
+  .topnav .nav-messages { justify-content: space-between; }
+  .topnav form .linklike { width: 100%; text-align: left; }
+}

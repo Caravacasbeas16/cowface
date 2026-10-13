@@ -6,7 +6,7 @@
 %>
 <div class="search-layout">
   <details class="filters" open data-filters>
-    <summary class="filters-toggle">Filtros<% if (f.sizes.length || f.category || f.condition || f.province || f.min || f.max) { %> (activos)<% } %></summary>
+    <summary class="filters-toggle">Filtros<% if (chips.length) { %> (<%= chips.length %> <%= chips.length === 1 ? 'activo' : 'activos' %>)<% } %></summary>
     <form action="/buscar" method="get" id="filters-form">
       <div class="filters-head">
         <h2>Filtros</h2>

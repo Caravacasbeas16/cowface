@@ -153,3 +153,85 @@ document.addEventListener('click', async (e) => {
 
 // Gráfico de ganancias: la altura de cada barra (la política de seguridad no permite style="" en el HTML).
 for (const bar of document.querySelectorAll('[data-height]')) bar.style.height = `${Number(bar.dataset.height) || 0}%`;
+
+// Barra de búsqueda: sugerencias de categorías, tipos y marcas mientras se escribe.
+(() => {
+  const input = document.querySelector('[data-suggest-input]');
+  const list = document.querySelector('[data-suggest]');
+  if (!input || !list) return;
+  let timer = null;
+  let active = -1;
+  let lastQuery = '';
+  const items = () => [...list.querySelectorAll('[role="option"]')];
+  const close = () => { list.hidden = true; input.setAttribute('aria-expanded', 'false'); active = -1; };
+  const highlight = (i) => {
+    items().forEach((el, n) => el.setAttribute('aria-selected', String(n === i)));
+    active = i;
+  };
+  const render = (suggestions, query) => {
+    list.replaceChildren();
+    if (!suggestions.length) return close();
+    for (const s of suggestions) {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', 'false');
+      const a = document.createElement('a');
+      a.href = s.url;
+      const label = document.createElement('span');
+      label.textContent = s.label;
+      const hint = document.createElement('span');
+      hint.className = 'suggest-hint';
+      hint.textContent = `${s.hint} · ${s.count}`;
+      a.append(label, hint);
+      li.append(a);
+      list.append(li);
+    }
+    // Última opción: buscar el texto tal cual.
+    const li = document.createElement('li');
+    li.setAttribute('role', 'option');
+    li.setAttribute('aria-selected', 'false');
+    const a = document.createElement('a');
+    a.href = `/buscar?q=${encodeURIComponent(query)}`;
+    a.className = 'suggest-all';
+    a.textContent = `Buscar "${query}"`;
+    li.append(a);
+    list.append(li);
+    list.hidden = false;
+    input.setAttribute('aria-expanded', 'true');
+    active = -1;
+  };
+  input.addEventListener('input', () => {
+    clearTimeout(timer);
+    const q = input.value.trim();
+    if (q.length < 2) { lastQuery = ''; return close(); }
+    timer = setTimeout(async () => {
+      lastQuery = q;
+      try {
+        const res = await fetch(`/buscar/sugerencias?q=${encodeURIComponent(q)}`, { headers: { Accept: 'application/json' } });
+        if (!res.ok || q !== lastQuery) return;
+        render(await res.json(), q);
+      } catch { close(); }
+    }, 180);
+  });
+  input.addEventListener('keydown', (e) => {
+    if (list.hidden) return;
+    const all = items();
+    if (e.key === 'ArrowDown') { e.preventDefault(); highlight((active + 1) % all.length); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); highlight((active - 1 + all.length) % all.length); }
+    else if (e.key === 'Escape') close();
+    else if (e.key === 'Enter' && active >= 0) { e.preventDefault(); window.location.assign(all[active].querySelector('a').href); }
+  });
+  document.addEventListener('click', (e) => { if (!e.target.closest('.topsearch')) close(); });
+  input.addEventListener('blur', () => setTimeout(() => { if (!list.contains(document.activeElement)) close(); }, 150));
+})();
+
+// Menú hamburguesa en el celular.
+(() => {
+  const toggle = document.querySelector('[data-menu-toggle]');
+  const menu = document.querySelector('[data-menu]');
+  if (!toggle || !menu) return;
+  const set = (open) => { menu.classList.toggle('open', open); toggle.setAttribute('aria-expanded', String(open)); };
+  toggle.addEventListener('click', () => set(!menu.classList.contains('open')));
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') set(false); });
+  menu.addEventListener('click', (e) => { if (e.target.closest('a')) set(false); });
+})();

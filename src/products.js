@@ -2,6 +2,9 @@ import { db, transaction } from './db.js';
 import { CATEGORIES, CONDITION_GROUPS, DEPARTMENTS, PROVINCES, SORTS, isValidSize } from './catalog.js';
 import { parsePrice } from './validate.js';
 import { notBlockedSql } from './blocks.js';
+import { buildSearchText, normalize as normalizeText, queryPatterns } from './search-text.js';
+
+const normalizeQuery = (q) => normalizeText(q).split(' ').filter(Boolean).slice(0, 4);
 
 export const PAGE_SIZE = 24;
 
@@ -27,31 +30,51 @@ export function parseFilters(query, viewerId = null) {
     sizes: sizes.slice(0, 20),
     condition: CONDITION_GROUPS[query.estado] ? query.estado : '',
     province: PROVINCES.includes(query.provincia) ? query.provincia : '',
-    min: parsePrice(query.min),
-    max: parsePrice(query.max),
+    ...priceRange(parsePrice(query.min), parsePrice(query.max)),
     sort: SORTS[query.orden] ? query.orden : 'recientes',
     page: Math.max(1, Math.min(500, Number.parseInt(query.pagina, 10) || 1)),
     viewerId,
   };
 }
 
+// Si alguien pone el mínimo mayor que el máximo, se invierten en lugar de no mostrar nada.
+function priceRange(min, max) {
+  return min && max && min > max ? { min: max, max: min } : { min, max };
+}
+
+// Completa el texto de búsqueda de artículos que no lo tienen (los de antes de esta función,
+// o los que se insertan directo en la base, como los de demostración).
+const SEARCH_COLUMNS = 'id, title, brand, item_type, color, size, category, department, condition, description';
+export function fillSearchText() {
+  const rows = db.prepare(`SELECT ${SEARCH_COLUMNS} FROM products WHERE search_text = '' LIMIT 500`).all();
+  const update = db.prepare('UPDATE products SET search_text = ? WHERE id = ?');
+  for (const p of rows) update.run(buildSearchText(p), p.id);
+  return rows.length;
+}
+
+function refreshSearchText(id) {
+  const p = db.prepare(`SELECT ${SEARCH_COLUMNS} FROM products WHERE id = ?`).get(id);
+  if (p) db.prepare('UPDATE products SET search_text = ? WHERE id = ?').run(buildSearchText(p), id);
+}
+
 export function searchProducts(f) {
+  fillSearchText();
   const where = ["p.status = 'disponible'", 'u.active = 1'];
   const params = [];
   if (f.viewerId) { where.push(notBlockedSql('p.seller_id')); params.push(f.viewerId, f.viewerId); }
   if (f.onlyId) { where.push('p.id = ?'); params.push(f.onlyId); }
   if (f.q) {
-    // Cada palabra debe aparecer en título, marca, tipo, color o descripción.
-    for (const word of f.q.split(/\s+/).slice(0, 6)) {
-      where.push("(p.title || ' ' || p.brand || ' ' || p.item_type || ' ' || p.color || ' ' || p.description) LIKE ?");
-      params.push(`%${word.replace(/[%_]/g, '')}%`);
+    // Cada palabra (o su singular, o un sinónimo) debe aparecer en el texto de búsqueda del artículo.
+    for (const alts of queryPatterns(f.q)) {
+      where.push(`(${alts.map(() => 'p.search_text LIKE ?').join(' OR ')})`);
+      params.push(...alts);
     }
   }
   if (f.category) { where.push('p.category = ?'); params.push(f.category); }
   if (f.department) {
-    // Lo unisex aparece tanto para mujer como para hombre.
-    where.push(f.department === 'unisex' ? "p.department = 'unisex'" : "p.department IN (?, 'unisex')");
-    if (f.department !== 'unisex') params.push(f.department);
+    // Lo unisex aparece tanto para mujer como para hombre (no en niños: es ropa de adulto).
+    where.push(['mujer', 'hombre'].includes(f.department) ? "p.department IN (?, 'unisex')" : 'p.department = ?');
+    params.push(f.department);
   }
   if (f.item_type) { where.push('p.item_type = ?'); params.push(f.item_type); }
   if (f.sizes.length) { where.push(`p.size IN (${f.sizes.map(() => '?').join(',')})`); params.push(...f.sizes); }
@@ -64,7 +87,7 @@ export function searchProducts(f) {
   if (f.min) { where.push('p.price >= ?'); params.push(f.min); }
   if (f.max) { where.push('p.price <= ?'); params.push(f.max); }
 
-  const order = { recientes: `${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC`, precio_asc: 'p.price ASC', precio_desc: 'p.price DESC' }[f.sort];
+  const order = { recientes: `${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC' }[f.sort];
   const from = `FROM products p JOIN users u ON u.id = p.seller_id WHERE ${where.join(' AND ')}`;
   const total = db.prepare(`SELECT COUNT(*) AS n ${from}`).get(...params).n;
   const items = db.prepare(`SELECT ${CARD_COLUMNS} ${from} ORDER BY ${order} LIMIT ? OFFSET ?`)
@@ -125,6 +148,7 @@ export function createProduct(sellerId, data, photos = [], status = 'disponible'
       data.item_type, data.size, data.color, data.condition, data.price, data.quantity,
       JSON.stringify(data.measurements || {}), data.shipping_cost || 0, data.meetup ?? 1, status);
     addImages(lastInsertRowid, photos);
+    refreshSearchText(lastInsertRowid);
     return Number(lastInsertRowid);
   });
 }
@@ -143,6 +167,7 @@ export function updateProduct(id, data, photos = [], { publish = false } = {}) {
       data.size, data.color, data.condition, data.price, data.quantity, JSON.stringify(data.measurements || {}),
       data.shipping_cost || 0, data.meetup ?? 1, publish ? 1 : 0, publish ? 1 : 0, id);
     addImages(id, photos);
+    refreshSearchText(id);
   });
 }
 
@@ -211,4 +236,40 @@ export function categoryCovers() {
   const covers = {};
   for (const r of rows) if (!covers[r.category]) covers[r.category] = r;
   return covers;
+}
+
+// Sugerencias mientras se escribe en la barra de búsqueda: categorías, tipos y marcas que existen.
+// Cada una lleva a una búsqueda ya filtrada. Se buscan por inicio de palabra, sin tildes.
+export function searchSuggestions(q) {
+  const words = normalizeQuery(q);
+  if (!words.length || words.join('').length < 2) return [];
+  const matches = (label) => {
+    const text = ` ${normalizeText(label)}`;
+    return words.every((w) => text.includes(` ${w}`));
+  };
+  const out = [];
+  const live = db.prepare(`
+    SELECT p.category, p.item_type, COUNT(*) AS n FROM products p JOIN users u ON u.id = p.seller_id
+    WHERE p.status = 'disponible' AND u.active = 1 GROUP BY p.category, p.item_type
+  `).all();
+  for (const [key, c] of Object.entries(CATEGORIES)) {
+    const n = live.filter((r) => r.category === key).reduce((a, r) => a + r.n, 0);
+    if (n && matches(c.label)) out.push({ label: c.label, hint: 'Categoría', count: n, url: `/buscar?categoria=${key}` });
+  }
+  for (const r of live) {
+    if (r.item_type && r.item_type !== 'Otro' && matches(r.item_type)) {
+      out.push({ label: r.item_type, hint: CATEGORIES[r.category]?.label || '', count: r.n,
+        url: `/buscar?${new URLSearchParams({ categoria: r.category, tipo: r.item_type })}` });
+    }
+  }
+  const brands = db.prepare(`
+    SELECT p.brand, COUNT(*) AS n FROM products p JOIN users u ON u.id = p.seller_id
+    WHERE p.status = 'disponible' AND u.active = 1 AND p.brand != '' GROUP BY lower(p.brand) ORDER BY n DESC LIMIT 400
+  `).all();
+  for (const b of brands) {
+    if (matches(b.brand) || normalizeText(b.brand).replace(/[^a-z0-9]/g, '').startsWith(words.join(''))) {
+      out.push({ label: b.brand, hint: 'Marca', count: b.n, url: `/buscar?${new URLSearchParams({ q: b.brand })}` });
+    }
+  }
+  return out.sort((a, b) => b.count - a.count).slice(0, 8);
 }

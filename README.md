@@ -114,6 +114,30 @@ En una búsqueda (con o sin resultados) el botón **Avísame cuando haya** la gu
 persona). Al publicarse algo que coincide se manda un correo (Brevo), como máximo uno cada 6 horas
 por búsqueda. Se borran desde el panel. `/como-funciona` explica plazos, envíos y reclamos.
 
+## Búsqueda
+
+`src/search-text.js` arma para cada artículo un texto sin tildes ni mayúsculas con título, marca
+(también junta: "rayban"), tipo, color, talla, categoría, para quién y estado. La búsqueda va por
+inicio de palabra, en singular ("camisas" → "camisa") y con sinónimos de Costa Rica (tenis/zapatillas,
+suéter/hoodie/buzo, lentes/gafas, pantalones → también jeans). Una talla de letra ("m", "xl") busca
+esa talla. Lo unisex aparece en mujer y hombre, no en niños. Si el mínimo es mayor que el máximo se
+invierten. La barra de arriba sugiere categorías, tipos y marcas mientras se escribe
+(`/buscar/sugerencias`).
+
+## Notificaciones en el celular (Web Push)
+
+- En Mi cuenta → "Notificaciones en el celular" cada persona las activa en cada dispositivo.
+  Llegan cuando le escriben, le hacen una oferta o cambia un pedido; tocar la notificación abre la
+  conversación. `public/sw.js` las recibe aunque la página esté cerrada.
+- Android y computadora: Chrome, Edge o Firefox. **iPhone (iOS 16.4+)**: solo si se agrega CowFace a
+  la pantalla de inicio (Safari → Compartir → Agregar a pantalla de inicio) y se abre desde ese ícono;
+  la página lo explica paso a paso.
+- Las claves VAPID se crean solas la primera vez y se guardan en la base (no hay que configurar
+  nada). Para fijarlas, `VAPID_PUBLIC_KEY` y `VAPID_PRIVATE_KEY` en Railway. Si cambian, cada quien
+  tiene que volver a activarlas.
+- Solo se aceptan direcciones de los servicios de notificaciones de Google, Apple, Mozilla y Microsoft.
+- El menú en el celular es de hamburguesa (☰), con el ícono de mensajes y su contador a la vista.
+
 ## Herramientas del admin
 
 - **Ganancias** (`/admin/ganancias`): comisión de este mes, del anterior y total; gráfico y tabla

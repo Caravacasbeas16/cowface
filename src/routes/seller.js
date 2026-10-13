@@ -79,7 +79,7 @@ router.get('/', (req, res) => {
   };
   res.render('seller/dashboard', {
     title: 'Mi cuenta', products, orders, purchases, stats, searches: listSearches(req.user.id), PRODUCT_STATUS, ORDER_STATUS,
-    emailWait: WAIT_MINUTES,
+    emailWait: WAIT_MINUTES, conversations: listConversations(req.user.id).slice(0, 6),
   });
 });
 
