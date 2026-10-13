@@ -1,0 +1,58 @@
+<%#
+  Hilo de la conversación + panel del trato. Se renderiza dentro de la página y también
+  solo (GET /mensajes/:id/hilo) para refrescar en vivo. Los botones dependen de quién mira.
+%>
+<% const me = user.id; const isSeller = conv.role === 'vendedor'; const o = conv.order; %>
+<div class="deal-panel" data-deal-state="<%= conv.product_status %>|<%= o ? [o.id, o.status, o.payment_reported_at ? 1 : 0, o.payout_status].join('-') : '' %>">
+  <a class="deal-product" href="<%= conv.product_id ? `/p/${conv.product_id}` : '#' %>">
+    <img src="<%= conv.product_id ? imageUrl({ id: conv.product_id, category: conv.category, image: conv.image }) : '/sin-foto/x/0.svg' %>" alt="">
+    <div>
+      <strong><%= conv.product_title %></strong>
+      <div class="muted small">
+        <% if (conv.price) { %><%= money(conv.price) %> · Talla <%= conv.size %> · <% } %>
+        <%= catalog.PRODUCT_STATUS[conv.product_status] || 'Ya no publicado' %>
+      </div>
+    </div>
+  </a>
+
+  <% if (o) { %><%- include('order-box', { o, conv, isSeller }) %><% } %>
+</div>
+
+<div class="messages" data-messages>
+  <% if (!messages.length) { %><p class="muted center small">Escribe el primer mensaje.</p><% } %>
+  <% for (const m of messages) { %>
+    <% if (m.kind === 'sistema') { %>
+      <div class="msg-system"><%= m.body %><span class="muted small"> · <%= when(m.created_at) %></span></div>
+    <% } else if (m.kind === 'oferta') { %>
+      <% const mine = m.made_by === me; const pending = m.offer_status === 'pendiente'; %>
+      <div class="msg-row <%= mine ? 'mine' : '' %>">
+        <div class="offer-card offer-<%= m.offer_status %>">
+          <div class="offer-label"><%= mine ? (isSeller ? 'Tu contraoferta' : 'Tu oferta') : (isSeller ? 'Oferta del comprador' : 'Contraoferta del vendedor') %></div>
+          <div class="offer-amount"><%= money(m.amount) %></div>
+          <span class="status status-<%= pending ? 'pendiente' : (m.offer_status === 'aceptada' ? 'vendido' : 'cancelado') %>"><%= catalog.OFFER_STATUS[m.offer_status] %></span>
+          <% if (pending) { %>
+            <div class="muted small">Vence <%= when(m.expires_at, true) %></div>
+            <% if (mine) { %>
+              <form action="/ofertas/<%= m.offer_id %>/retirar" method="post" class="inline-actions">
+                <button class="btn btn-small btn-ghost">Retirar</button>
+              </form>
+            <% } else { %>
+              <form action="/ofertas/<%= m.offer_id %>/aceptar" method="post" class="inline-actions"
+                    data-confirm="¿Aceptar <%= money(m.amount) %>? Se registra la venta.">
+                <button class="btn btn-small">Aceptar</button>
+              </form>
+              <form action="/ofertas/<%= m.offer_id %>/rechazar" method="post" class="inline-actions">
+                <button class="btn btn-small btn-ghost">Rechazar</button>
+              </form>
+              <div class="muted small">o envía una contraoferta abajo</div>
+            <% } %>
+          <% } %>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="msg-row <%= m.sender_id === me ? 'mine' : '' %>">
+        <div class="bubble"><%= m.body %><span class="bubble-time"><%= when(m.created_at) %></span></div>
+      </div>
+    <% } %>
+  <% } %>
+</div>

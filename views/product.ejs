@@ -1,0 +1,86 @@
+<%- include('partials/header') %>
+<% const p = product; const isNew = catalog.CONDITION_GROUPS.nuevo.includes(p.condition); %>
+<nav class="crumbs">
+  <a href="/buscar?categoria=<%= p.category %>"><%= catalog.CATEGORIES[p.category]?.label %></a> ›
+  <a href="/buscar?categoria=<%= p.category %>&tipo=<%= encodeURIComponent(p.item_type) %>"><%= p.item_type %></a>
+</nav>
+<div class="product">
+  <div class="gallery" data-gallery>
+    <% if (p.images.length) { %>
+      <img class="gallery-main" src="/fotos/<%= p.images[0].filename %>" alt="<%= p.title %>" data-gallery-main>
+      <% if (p.images.length > 1) { %>
+        <div class="thumbs">
+          <% p.images.forEach((img, i) => { %>
+            <button type="button" class="thumb <%= i === 0 ? 'active' : '' %>" data-src="/fotos/<%= img.filename %>" aria-label="Foto <%= i + 1 %>">
+              <img src="/fotos/<%= img.filename %>" alt="">
+            </button>
+          <% }) %>
+        </div>
+      <% } %>
+    <% } else { %>
+      <img class="gallery-main" src="<%= imageUrl(p, null) %>" alt="Sin foto">
+    <% } %>
+  </div>
+
+  <div class="product-info">
+    <span class="tag <%= isNew ? 'tag-new' : 'tag-used' %> tag-static"><%= catalog.CONDITIONS[p.condition] %></span>
+    <h1><%= p.title %></h1>
+    <div class="price"><%= money(p.price) %></div>
+    <dl class="specs">
+      <div><dt>Talla</dt><dd><strong><%= p.size %></strong></dd></div>
+      <% if (p.brand) { %><div><dt>Marca</dt><dd><%= p.brand %></dd></div><% } %>
+      <% if (p.color) { %><div><dt>Color</dt><dd><%= p.color %></dd></div><% } %>
+      <div><dt>Para</dt><dd><%= catalog.DEPARTMENTS[p.department] %></dd></div>
+      <div><dt>Disponibles</dt><dd><%= p.quantity %></dd></div>
+      <div><dt>Ubicación</dt><dd><%= p.province %></dd></div>
+    </dl>
+    <% if (p.description) { %><p class="description"><%= p.description %></p><% } %>
+
+    <div class="seller-box">
+      <div class="avatar"><%= (p.store_name || '?').charAt(0).toUpperCase() %></div>
+      <div><strong><%= p.store_name %></strong><div class="muted"><%= p.province %></div></div>
+    </div>
+
+    <% if (isOwner) { %>
+      <div class="notice">Este artículo es tuyo. <a href="/vendedor/productos/<%= p.id %>/editar">Editarlo</a></div>
+    <% } else if (p.status !== 'disponible') { %>
+      <div class="notice">Este artículo ya no está disponible.</div>
+      <% if (conversationId) { %><a class="btn btn-ghost btn-block" href="/mensajes/<%= conversationId %>">Ver mi conversación</a><% } %>
+    <% } else if (!user) { %>
+      <div class="deal-box">
+        <a class="btn btn-block" href="/entrar?next=/p/<%= p.id %>">Comprar ahora · <%= money(p.price) %></a>
+        <a class="btn btn-ghost btn-block" href="/entrar?next=/p/<%= p.id %>">Hacer oferta</a>
+        <p class="hint center">Entra o <a href="/registro?next=/p/<%= p.id %>">crea tu cuenta</a> para comprar, ofertar o escribirle al vendedor.</p>
+      </div>
+    <% } else if (user.role === 'usuario') { %>
+      <div class="deal-box">
+        <form action="/p/<%= p.id %>/comprar" method="post" data-confirm="¿Comprar «<%= p.title %>» por <%= money(p.price) %>? Se crea tu pedido y le pagas a CowFace por SINPE Móvil; guardamos el dinero hasta que recibas el artículo.">
+          <button class="btn btn-block" type="submit">Comprar ahora · <%= money(p.price) %></button>
+        </form>
+        <details class="offer-panel">
+          <summary class="btn btn-ghost btn-block">Hacer oferta</summary>
+          <form action="/p/<%= p.id %>/ofertar" method="post" class="offer-form">
+            <label>Tu oferta (₡)
+              <input name="amount" required inputmode="numeric" placeholder="<%= minOffer %>" autocomplete="off">
+            </label>
+            <p class="hint">Mínimo <%= money(minOffer) %>. El vendedor puede aceptar, rechazar o contraofertar; la oferta vence en 48 horas.</p>
+            <button class="btn btn-block" type="submit">Enviar oferta</button>
+          </form>
+        </details>
+        <% if (conversationId) { %>
+          <a class="btn btn-ghost btn-block" href="/mensajes/<%= conversationId %>">Ver mi conversación</a>
+        <% } else { %>
+          <form action="/p/<%= p.id %>/mensaje" method="post" class="ask-form">
+            <label>Pregúntale al vendedor
+              <textarea name="body" rows="2" maxlength="1000" required placeholder="¿Tiene algún detalle? ¿Medidas exactas?"></textarea>
+            </label>
+            <button class="btn btn-ghost btn-block" type="submit">Enviar mensaje</button>
+          </form>
+        <% } %>
+        <div class="protect">🛡️ <strong>Compra protegida:</strong> le pagas a CowFace y le pasamos el dinero al vendedor solo cuando confirmas que recibiste el artículo. Si algo sale mal, abres un reclamo.</div>
+        <p class="hint">Por tu seguridad, el chat no permite teléfonos, redes sociales ni enlaces.</p>
+      </div>
+    <% } %>
+  </div>
+</div>
+<%- include('partials/footer') %>

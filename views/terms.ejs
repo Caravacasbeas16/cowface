@@ -1,0 +1,46 @@
+<%- include('partials/header') %>
+<article class="legal">
+  <h1>Términos de uso</h1>
+  <p class="muted">Última actualización: <%= legalUpdated %></p>
+
+  <h2>1. Qué es <%= siteName %></h2>
+  <p><%= siteName %> es una plataforma que conecta a personas que venden ropa, zapatos, bolsos y accesorios con personas que los quieren comprar en Costa Rica. Una misma cuenta sirve para comprar y vender. <%= siteName %> no es dueño de los artículos publicados, no los vende directamente y no participa en el pago ni en la entrega, que se acuerdan entre comprador y vendedor.</p>
+
+  <h2>2. Vendedores</h2>
+  <ul>
+    <li>Debes ser mayor de edad y dar datos reales de contacto.</li>
+    <li>Eres responsable de que tus artículos existan, coincidan con la descripción, la talla, el estado y las fotos publicadas, y de tener derecho a venderlos.</li>
+    <li>No se permite publicar réplicas o falsificaciones de marcas, artículos robados, ni contenido ofensivo o engañoso.</li>
+    <li>Debes mantener tu inventario al día: pausa o borra lo que ya no tengas.</li>
+    <li>Cuando se registra una venta (compra directa u oferta aceptada), debes marcarla como "Entregado" o "Cancelado" con honestidad.</li>
+  </ul>
+
+  <h2>3. Pagos y comisión</h2>
+  <ul>
+    <li>Publicar es gratis. Por cada venta completada, <%= siteName %> cobra una comisión de <strong><%= ratePercent %> %</strong> sobre el precio acordado, que se descuenta del pago al vendedor.</li>
+    <li>El comprador le paga a <%= siteName %> por SINPE Móvil dentro del plazo indicado en el pedido; si no paga a tiempo, el pedido se cancela.</li>
+    <li><%= siteName %> guarda el dinero y lo transfiere al vendedor (menos la comisión) por SINPE Móvil cuando el comprador confirma que recibió el artículo, o automáticamente si pasan los días indicados después del envío sin que el comprador abra un reclamo.</li>
+    <li>El vendedor solo debe enviar cuando <%= siteName %> confirme el pago en el pedido.</li>
+  </ul>
+
+  <h2>4. Ofertas y compras</h2>
+  <ul>
+    <li>Puedes comprar al precio publicado o enviar una oferta. Las ofertas vencen a las 48 horas y una oferta nueva reemplaza la anterior.</li>
+    <li>Una oferta aceptada o una compra directa es un compromiso de compra: registra la venta y reserva el artículo.</li>
+    <li>Paga siempre a través de <%= siteName %>. Si le pagas directamente al vendedor, no podemos protegerte ni devolverte el dinero.</li>
+    <li>Cuando confirmamos tu pago, el vendedor ve la dirección y el teléfono de entrega que indicaste.</li>
+  </ul>
+
+  <h2>5. Chat</h2>
+  <p>Toda la negociación se hace en el chat de <%= siteName %>. No se permite compartir teléfonos, correos, enlaces ni usuarios de otras aplicaciones o redes sociales (WhatsApp, Facebook, Messenger, Instagram y similares) antes de registrar la venta; el chat los bloquea automáticamente y los intentos quedan registrados. Intentar cerrar ventas fuera de la plataforma para evitar la comisión puede llevar a la suspensión de la cuenta.</p>
+
+  <h2>6. Reclamos y reembolsos</h2>
+  <p>Si el artículo no llega, no corresponde a la publicación (talla, estado, fotos) o resulta ser una réplica, el comprador puede abrir un reclamo antes de confirmar la recepción. El pago queda retenido mientras <%= siteName %> revisa la conversación y la evidencia de ambas partes, y decide si libera el pago al vendedor o reembolsa al comprador. Si el vendedor no puede entregar, se reembolsa al comprador.</p>
+
+  <h2>7. Responsabilidad</h2>
+  <p><%= siteName %> no es el vendedor de los artículos ni garantiza su calidad o autenticidad, pero retiene el pago para proteger al comprador según la sección anterior. Haremos lo razonable para retirar publicaciones y cuentas que incumplan estos términos.</p>
+
+  <h2>8. Cambios y contacto</h2>
+  <p>Podemos actualizar estos términos; la versión vigente siempre está en esta página. Para reportes o consultas escribe a <%- contactEmail ? `<a href="mailto:${contactEmail}">${contactEmail}</a>` : 'nuestro correo de contacto' %>.</p>
+</article>
+<%- include('partials/footer') %>

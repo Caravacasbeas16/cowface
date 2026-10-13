@@ -1,0 +1,107 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <h1><%= user.store_name || user.name %></h1>
+    <p class="muted"><%= user.province %> · <%= user.email %> ·
+      <% if (user.payout_phone) { %>Pagos a SINPE <%= user.payout_phone %> <a href="/vendedor/pagos">cambiar</a><% } else { %><a href="/vendedor/pagos">Agrega dónde recibir tus pagos</a><% } %></p>
+  </div>
+  <a class="btn" href="/vendedor/productos/nuevo">+ Publicar artículo</a>
+</div>
+
+<div class="stats">
+  <div class="stat"><span class="stat-n"><%= stats.available %></span><span class="muted">Publicados</span></div>
+  <a class="stat" href="/mensajes"><span class="stat-n"><%= stats.unreadSelling %></span><span class="muted">Chats de venta sin leer</span></a>
+  <div class="stat <%= stats.toShip ? 'stat-warn' : '' %>"><span class="stat-n"><%= stats.toShip %></span><span class="muted">Pagadas · por enviar</span></div>
+  <div class="stat"><span class="stat-n"><%= money(stats.soldTotal) %></span><span class="muted">Vendido (completado)</span></div>
+  <div class="stat stat-accent"><span class="stat-n"><%= money(stats.payoutPending) %></span><span class="muted">Por recibir de CowFace</span></div>
+</div>
+
+<section id="ventas">
+  <h2>Mis ventas</h2>
+  <% if (!orders.length) { %>
+    <p class="muted">Aún no tienes ventas. Cuando alguien compre o aceptes una oferta, aparece aquí.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pedido</th><th>Artículo</th><th>Comprador</th><th>Precio</th><th>Recibes</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          <% for (const o of orders) { %>
+            <tr>
+              <td><strong><%= o.code %></strong><div class="muted small"><%= when(o.created_at, true) %> · <%= o.source === 'oferta' ? 'oferta' : 'compra' %></div></td>
+              <td><%= o.product_title %></td>
+              <td><%= o.buyer_name %></td>
+              <td><%= money(o.price) %></td>
+              <td><%= money(o.payout_amount) %><% if (o.status === 'completado') { %><div class="muted small"><%= o.payout_status === 'pagado' ? 'transferido' : 'por transferir' %></div><% } %></td>
+              <td><span class="status status-<%= o.status %>"><%= ORDER_STATUS[o.status] %></span></td>
+              <td class="actions"><% if (o.conversation_id) { %><a class="btn btn-small <%= o.status === 'pagado' ? '' : 'btn-ghost' %>" href="/mensajes/<%= o.conversation_id %>"><%= o.status === 'pagado' ? 'Enviar' : 'Ver' %></a><% } %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<section id="articulos">
+  <h2>Mis artículos</h2>
+  <% if (!products.length) { %>
+    <div class="empty">
+      <p>Todavía no has publicado nada.</p>
+      <a class="btn" href="/vendedor/productos/nuevo">Publicar mi primer artículo</a>
+    </div>
+  <% } else { %>
+    <div class="list">
+      <% for (const p of products) { %>
+        <div class="list-row">
+          <img src="<%= imageUrl(p) %>" alt="">
+          <div class="list-main">
+            <a href="/p/<%= p.id %>"><strong><%= p.title %></strong></a>
+            <div class="muted small">Talla <%= p.size %> · <%= money(p.price) %> · <%= p.quantity %> disp.</div>
+            <span class="status status-<%= p.status %>"><%= PRODUCT_STATUS[p.status] %></span>
+          </div>
+          <div class="list-actions">
+            <a class="btn btn-small btn-ghost" href="/vendedor/productos/<%= p.id %>/editar">Editar</a>
+            <% if (p.status === 'disponible' || p.status === 'pausado') { %>
+              <form action="/vendedor/productos/<%= p.id %>/estado" method="post" class="inline">
+                <% if (p.status === 'disponible') { %>
+                  <button class="btn btn-small btn-ghost" name="status" value="pausado">Pausar</button>
+                <% } else { %>
+                  <button class="btn btn-small btn-ghost" name="status" value="disponible">Reactivar</button>
+                <% } %>
+              </form>
+            <% } %>
+            <form action="/vendedor/productos/<%= p.id %>/borrar" method="post" class="inline" data-confirm="¿Borrar este artículo? No se puede deshacer.">
+              <button class="btn btn-small btn-danger">Borrar</button>
+            </form>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</section>
+
+<section id="compras">
+  <h2>Mis compras</h2>
+  <% if (!purchases.length) { %>
+    <p class="muted">Aún no has comprado nada. <a href="/buscar">Explorar artículos</a></p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pedido</th><th>Artículo</th><th>Vendedor</th><th>Precio</th><th>Estado</th><th></th></tr></thead>
+        <tbody>
+          <% for (const o of purchases) { %>
+            <tr>
+              <td><strong><%= o.code %></strong><div class="muted small"><%= when(o.created_at, true) %></div></td>
+              <td><%= o.product_title %></td>
+              <td><%= o.store_name %></td>
+              <td><%= money(o.price) %></td>
+              <td><span class="status status-<%= o.status %>"><%= ORDER_STATUS[o.status] %></span></td>
+              <td><% if (o.conversation_id) { %><a class="btn btn-small btn-ghost" href="/mensajes/<%= o.conversation_id %>">Chat</a><% } %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>

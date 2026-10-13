@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= title ? `${title} · ${siteName}` : `${siteName} · Compra, vende y oferta ropa en Costa Rica` %></title>
+  <meta name="description" content="Ropa, zapatos y bolsos nuevos y usados en tu talla. Haz ofertas y chatea con vendedores de todo Costa Rica.">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐮</text></svg>">
+  <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body<% if (user && user.role === 'usuario') { %> data-live<% } %>>
+<header class="topbar">
+  <div class="wrap topbar-inner">
+    <a class="logo" href="/"><span class="logo-mark">🐮</span><%= siteName %></a>
+    <form class="topsearch" action="/buscar" method="get" role="search">
+      <input type="search" name="q" placeholder="Busca: polo talla M, Jordan 1, bolso…" aria-label="Buscar" value="<%= locals.filters?.q || '' %>">
+      <button type="submit" aria-label="Buscar">Buscar</button>
+    </form>
+    <nav class="topnav">
+      <% if (user && user.role === 'admin') { %>
+        <a href="/admin">Admin</a>
+      <% } else if (user) { %>
+        <a href="/mensajes" class="nav-messages">Mensajes<span class="badge" data-unread <%= unread ? '' : 'hidden' %>><%= unread %></span></a>
+        <a href="/vendedor">Mi cuenta</a>
+        <a class="btn btn-small" href="/vendedor/productos/nuevo">+ Vender</a>
+      <% } else { %>
+        <a href="/entrar">Entrar</a>
+        <a class="btn btn-small" href="/registro">Crear cuenta</a>
+      <% } %>
+      <% if (user) { %>
+        <form action="/salir" method="post" class="inline"><button class="linklike" type="submit">Salir</button></form>
+      <% } %>
+    </nav>
+  </div>
+</header>
+<main class="wrap">
+<% if (flash) { %><div class="alert flash" role="alert"><%= flash %></div><% } %>

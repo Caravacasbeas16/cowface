@@ -1,0 +1,23 @@
+<%- include('../partials/header') %>
+<section class="auth auth-wide">
+  <h1>¿Dónde te pagamos?</h1>
+  <p class="muted">
+    Cuando vendes, el comprador le paga a CowFace y nosotros guardamos el dinero hasta que recibe el artículo.
+    Luego te transferimos por SINPE Móvil el precio de venta menos la comisión de <%= +(commissionRateNow * 100).toFixed(2) %> %.
+  </p>
+  <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <form action="/vendedor/pagos" method="post" class="stack">
+    <input type="hidden" name="next" value="<%= next %>">
+    <div class="row2">
+      <label>Número SINPE Móvil
+        <input name="payout_phone" required inputmode="tel" placeholder="8888-8888" value="<%= form.payout_phone || form.phone || '' %>">
+      </label>
+      <label>Nombre del titular
+        <input name="payout_name" required maxlength="80" value="<%= form.payout_name || form.name || '' %>">
+      </label>
+    </div>
+    <p class="hint">Solo lo ve el equipo de CowFace para enviarte tus pagos. Nunca se muestra a compradores.</p>
+    <button class="btn btn-block"><%= next === 'publicar' ? 'Guardar y publicar mi artículo' : 'Guardar' %></button>
+  </form>
+</section>
+<%- include('../partials/footer') %>

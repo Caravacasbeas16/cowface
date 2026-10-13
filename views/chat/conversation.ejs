@@ -1,0 +1,36 @@
+<%- include('../partials/header') %>
+<% const canOffer = conv.product_status === 'disponible' && !(conv.order && OPEN_STATUSES.includes(conv.order.status)); %>
+<div class="chat" data-chat="<%= conv.id %>">
+  <div class="chat-head">
+    <a href="/mensajes" class="muted">← Mensajes</a>
+    <div><strong><%= conv.otherName %></strong> <span class="muted small"><%= conv.role === 'comprador' ? 'vendedor' : 'comprador' %></span></div>
+  </div>
+
+  <div class="chat-thread" data-thread>
+    <%- include('thread') %>
+  </div>
+
+  <div class="composer">
+    <div class="alert" data-chat-error hidden></div>
+    <form action="/mensajes/<%= conv.id %>" method="post" class="composer-text" data-chat-form>
+      <textarea name="body" rows="1" maxlength="1000" required placeholder="Escribe un mensaje…" aria-label="Mensaje"></textarea>
+      <button class="btn" type="submit">Enviar</button>
+    </form>
+    <% if (canOffer) { %>
+      <details class="composer-offer">
+        <summary><%= conv.role === 'vendedor' ? 'Enviar contraoferta / oferta' : 'Hacer o mejorar mi oferta' %></summary>
+        <form action="/mensajes/<%= conv.id %>/oferta" method="post" class="composer-text" data-chat-form>
+          <input name="amount" required inputmode="numeric" placeholder="Monto en ₡" aria-label="Monto de la oferta" autocomplete="off">
+          <button class="btn btn-ghost" type="submit">Ofertar</button>
+        </form>
+        <p class="hint">
+          Precio publicado <%= money(conv.price) %>.
+          <% if (conv.role === 'comprador') { %>Oferta mínima <%= money(minOffer) %>.<% } %>
+          Una oferta nueva reemplaza la anterior y vence en 48 horas.
+        </p>
+      </details>
+    <% } %>
+    <p class="hint center">🔒 No compartas teléfonos, redes sociales ni enlaces: el chat los bloquea. Paga siempre a CowFace: guardamos tu dinero hasta que recibas el artículo.</p>
+  </div>
+</div>
+<%- include('../partials/footer') %>

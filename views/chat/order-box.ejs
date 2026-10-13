@@ -1,0 +1,113 @@
+<%#
+  Recuadro del pedido dentro de la conversación. Muestra a cada parte lo que le toca hacer.
+  Variables: o (pedido), conv, isSeller.
+%>
+<% const pay = paymentConfig(); const methods = DELIVERY_METHODS; %>
+<div class="order-box order-<%= o.status %>">
+  <div class="order-box-head">
+    <strong>Pedido <%= o.code %></strong>
+    <span class="status status-<%= o.status %>"><%= catalog.ORDER_STATUS[o.status] %></span>
+  </div>
+  <div class="order-price"><%= money(o.price) %><% if (o.price !== o.list_price) { %> <span class="muted small">(oferta; publicado en <%= money(o.list_price) %>)</span><% } %></div>
+
+  <% if (!isSeller) { %>
+    <%# ---------- Comprador ---------- %>
+    <% if (o.status === 'por_pagar' && !o.payment_reported_at) { %>
+      <div class="pay-steps">
+        <p><strong>1. Paga a CowFace por SINPE Móvil</strong></p>
+        <div class="pay-card">
+          <div><span class="muted small">Número</span><strong class="copy" data-copy="<%= pay.phone %>"><%= pay.phone %></strong></div>
+          <div><span class="muted small">A nombre de</span><strong><%= pay.holder %></strong></div>
+          <div><span class="muted small">Monto exacto</span><strong><%= money(o.price) %></strong></div>
+          <div><span class="muted small">Detalle</span><strong class="copy" data-copy="<%= o.code %>"><%= o.code %></strong></div>
+        </div>
+        <p class="hint">🔒 CowFace guarda tu dinero y se lo pasa al vendedor solo cuando confirmes que recibiste el artículo. Plazo para pagar: <%= when(o.payment_due_at, true) %></p>
+        <p><strong>2. Avísanos y dinos cómo recibirlo</strong></p>
+        <form action="/pedidos/<%= o.id %>/pago" method="post" class="stack compact">
+          <label>Número de comprobante del SINPE
+            <input name="reference" required maxlength="40" inputmode="numeric" autocomplete="off">
+          </label>
+          <label>Entrega
+            <select name="method" required>
+              <option value="">Elige…</option>
+              <% for (const [k, label] of Object.entries(methods)) { %><option value="<%= k %>"><%= label %></option><% } %>
+            </select>
+          </label>
+          <label>Dirección o punto de entrega
+            <textarea name="address" rows="2" required maxlength="500" placeholder="Provincia, cantón, distrito y señas. Para entrega en persona: lugar y horario."></textarea>
+          </label>
+          <label>Teléfono para la entrega
+            <input name="phone" required inputmode="tel" value="<%= user.phone || '' %>">
+            <span class="hint">Solo lo ve el vendedor después de confirmar tu pago.</span>
+          </label>
+          <button class="btn btn-block">Ya pagué</button>
+        </form>
+        <form action="/pedidos/<%= o.id %>/cancelar" method="post" data-confirm="¿Cancelar este pedido?">
+          <button class="linklike small">Cancelar pedido</button>
+        </form>
+      </div>
+    <% } else if (o.status === 'por_pagar') { %>
+      <p>⏳ Estamos verificando tu pago (comprobante <%= o.payment_reference %>). Te avisamos aquí apenas lo confirmemos.</p>
+    <% } else if (o.status === 'pagado' || o.status === 'enviado') { %>
+      <% if (o.status === 'pagado') { %>
+        <p>✅ Pago confirmado. CowFace lo tiene guardado mientras el vendedor te envía el artículo.</p>
+      <% } else { %>
+        <p>📦 El vendedor lo marcó como enviado<%= o.shipping_note ? `: «${o.shipping_note}»` : '' %>.</p>
+        <p class="hint">Si no reportas un problema, el pago se libera al vendedor automáticamente (<%= when(o.auto_release_at, true) %>)</p>
+      <% } %>
+      <form action="/pedidos/<%= o.id %>/recibido" method="post" data-confirm="¿Confirmas que recibiste el artículo y está bien? Se libera el pago al vendedor.">
+        <button class="btn btn-small">Lo recibí, todo bien</button>
+      </form>
+      <details class="dispute">
+        <summary class="linklike small">Tengo un problema</summary>
+        <form action="/pedidos/<%= o.id %>/reclamo" method="post" class="stack compact">
+          <textarea name="reason" rows="3" required minlength="10" maxlength="1000" placeholder="¿Qué pasó? No llegó, no es la talla, viene dañado…"></textarea>
+          <button class="btn btn-small btn-danger">Abrir reclamo</button>
+        </form>
+      </details>
+    <% } else if (o.status === 'completado') { %>
+      <p>✅ Compra completada. ¡Que lo disfrutes!</p>
+    <% } else if (o.status === 'en_disputa') { %>
+      <p>⚠️ Reclamo abierto: «<%= o.dispute_reason %>». El pago está retenido y CowFace lo está revisando.</p>
+    <% } else if (o.status === 'reembolso_pendiente') { %>
+      <p>💸 CowFace te devolverá <%= money(o.price) %> al número desde el que pagaste.</p>
+    <% } else if (o.status === 'reembolsado') { %>
+      <p>💸 Te devolvimos <%= money(o.price) %>.</p>
+    <% } %>
+
+  <% } else { %>
+    <%# ---------- Vendedor ---------- %>
+    <% if (o.status === 'por_pagar') { %>
+      <p>⏳ Esperando que el comprador pague a CowFace<%= o.payment_reported_at ? ' (ya avisó; lo estamos verificando)' : ` (hasta el ${when(o.payment_due_at, true)})` %>. <strong>No envíes nada todavía.</strong></p>
+      <% if (!o.payment_reported_at) { %>
+        <form action="/pedidos/<%= o.id %>/cancelar" method="post" data-confirm="¿Cancelar este pedido? El artículo vuelve a estar disponible.">
+          <button class="linklike small">Cancelar pedido</button>
+        </form>
+      <% } %>
+    <% } else if (o.status === 'pagado') { %>
+      <p>✅ <strong>Pago confirmado y guardado por CowFace.</strong> Ya puedes enviar el artículo:</p>
+      <dl class="delivery">
+        <div><dt>Comprador</dt><dd><%= conv.buyer_name %></dd></div>
+        <div><dt>Entrega</dt><dd><%= methods[o.delivery_method] %></dd></div>
+        <div><dt>Dirección</dt><dd><%= o.delivery_address %></dd></div>
+        <div><dt>Teléfono</dt><dd><%= o.delivery_phone %></dd></div>
+      </dl>
+      <form action="/pedidos/<%= o.id %>/enviado" method="post" class="stack compact">
+        <input name="note" maxlength="300" placeholder="Número de guía o cómo lo entregaste (opcional)">
+        <button class="btn btn-small">Marcar como enviado / entregado</button>
+      </form>
+      <form action="/pedidos/<%= o.id %>/no-puedo-entregar" method="post" data-confirm="¿Seguro? CowFace le devolverá el dinero al comprador y el artículo vuelve a estar disponible.">
+        <button class="linklike small">No puedo entregarlo</button>
+      </form>
+    <% } else if (o.status === 'enviado') { %>
+      <p>📦 Enviado. Recibirás <strong><%= money(o.payout_amount) %></strong> cuando el comprador confirme, o automáticamente si no hay reclamo (<%= when(o.auto_release_at, true) %>)</p>
+    <% } else if (o.status === 'completado') { %>
+      <p>✅ Venta completada. <%= o.payout_status === 'pagado' ? `CowFace te transfirió ${money(o.payout_amount)} (${when(o.payout_paid_at, true)})` : `CowFace te transferirá ${money(o.payout_amount)} por SINPE al ${user.payout_phone || 'número que registraste'}.` %></p>
+      <p class="hint"><%= money(o.price) %> − comisión CowFace <%= +(o.commission_rate * 100).toFixed(2) %> % (<%= money(o.commission_amount) %>) = <%= money(o.payout_amount) %></p>
+    <% } else if (o.status === 'en_disputa') { %>
+      <p>⚠️ El comprador abrió un reclamo: «<%= o.dispute_reason %>». El pago queda retenido mientras CowFace lo revisa. Responde por este chat.</p>
+    <% } else if (o.status === 'reembolso_pendiente' || o.status === 'reembolsado') { %>
+      <p>Este pedido se reembolsó al comprador.</p>
+    <% } %>
+  <% } %>
+</div>

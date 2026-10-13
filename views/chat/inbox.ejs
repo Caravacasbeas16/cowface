@@ -1,0 +1,27 @@
+<%- include('../partials/header') %>
+<div class="page-head"><h1>Mensajes</h1></div>
+<% if (!conversations.length) { %>
+  <div class="empty">
+    <h2>Todavía no tienes conversaciones</h2>
+    <p class="muted">Cuando hagas una oferta, compres o le escribas a un vendedor, la conversación aparece aquí.</p>
+    <a class="btn" href="/buscar">Explorar artículos</a>
+  </div>
+<% } else { %>
+  <div class="inbox" data-inbox>
+    <% for (const c of conversations) { %>
+      <a class="inbox-row <%= c.unread ? 'unread' : '' %>" href="/mensajes/<%= c.id %>">
+        <img src="<%= c.product_id ? imageUrl({ id: c.product_id, category: c.category, image: c.image }) : '/sin-foto/x/0.svg' %>" alt="">
+        <div class="inbox-main">
+          <div class="inbox-top">
+            <strong><%= c.other_name %></strong>
+            <span class="muted small"><%= when(c.last_message_at) %></span>
+          </div>
+          <div class="muted small"><%= c.role === 'comprador' ? 'Comprando' : 'Vendiendo' %> · <%= c.product_title %></div>
+          <div class="inbox-last"><%= c.last_text && c.last_text.startsWith('Oferta: ') ? `Oferta: ${money(c.last_text.slice(8))}` : (c.last_text || '') %></div>
+        </div>
+        <% if (c.unread) { %><span class="dot" aria-label="Sin leer"></span><% } %>
+      </a>
+    <% } %>
+  </div>
+<% } %>
+<%- include('../partials/footer') %>

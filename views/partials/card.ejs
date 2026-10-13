@@ -1,0 +1,16 @@
+<a class="card" href="/p/<%= p.id %>">
+  <div class="card-img">
+    <img src="<%= imageUrl(p) %>" alt="<%= p.title %>" loading="lazy">
+    <span class="tag <%= catalog.CONDITION_GROUPS.nuevo.includes(p.condition) ? 'tag-new' : 'tag-used' %>">
+      <%= catalog.CONDITION_GROUPS.nuevo.includes(p.condition) ? 'Nuevo' : 'Usado' %>
+    </span>
+  </div>
+  <div class="card-body">
+    <div class="card-price"><%= money(p.price) %></div>
+    <div class="card-title"><%= p.title %></div>
+    <div class="card-meta">
+      <span class="size">Talla <%= p.size %></span>
+      <span class="muted"><%= p.province %></span>
+    </div>
+  </div>
+</a>

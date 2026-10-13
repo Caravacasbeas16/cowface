@@ -1,0 +1,64 @@
+<%- include('partials/header') %>
+<section class="hero">
+  <h1>Encuentra tu talla<br>sin recorrer mil tiendas.</h1>
+  <p>Ropa, zapatos y bolsos, nuevos y usados, de vendedores de todo Costa Rica. Busca por talla, haz tu oferta y cierra el trato en el chat.</p>
+  <form class="hero-search" action="/buscar" method="get">
+    <input type="search" name="q" placeholder="¿Qué buscas? Ej. camisa polo" aria-label="Qué buscas">
+    <select name="categoria" aria-label="Categoría" data-category-select>
+      <option value="">Todo</option>
+      <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
+        <option value="<%= key %>"><%= c.label %></option>
+      <% } %>
+    </select>
+    <select name="talla" aria-label="Talla" data-size-select data-any-category data-placeholder="Cualquier talla">
+      <option value="">Cualquier talla</option>
+    </select>
+    <button class="btn" type="submit">Buscar</button>
+  </form>
+</section>
+
+<section class="tiles">
+  <% const icons = { ropa: '👕', zapatos: '👟', bolsos: '👜', accesorios: '🧢' }; %>
+  <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
+    <a class="tile" href="/buscar?categoria=<%= key %>">
+      <span class="tile-icon"><%= icons[key] %></span>
+      <span class="tile-label"><%= c.label %></span>
+      <span class="muted"><%= counts[key] || 0 %> artículos</span>
+    </a>
+  <% } %>
+  <a class="tile" href="/buscar?estado=usado">
+    <span class="tile-icon">♻️</span><span class="tile-label">Usado</span><span class="muted">Segunda mano</span>
+  </a>
+  <a class="tile" href="/buscar?estado=nuevo">
+    <span class="tile-icon">🏷️</span><span class="tile-label">Nuevo</span><span class="muted">Con o sin etiqueta</span>
+  </a>
+</section>
+
+<section>
+  <div class="section-head">
+    <h2>Recién publicados</h2>
+    <a href="/buscar">Ver todo →</a>
+  </div>
+  <% if (latest.length) { %>
+    <div class="grid">
+      <% for (const p of latest) { %><%- include('partials/card', { p }) %><% } %>
+    </div>
+  <% } else { %>
+    <p class="empty">Todavía no hay artículos. <a href="/vender">¡Sé el primero en vender!</a></p>
+  <% } %>
+</section>
+
+<section class="how">
+  <div><span class="how-n">1</span><h3>Busca por talla</h3><p>Filtra por categoría, talla, precio, estado y provincia.</p></div>
+  <div><span class="how-n">2</span><h3>Oferta o compra</h3><p>Paga el precio publicado o haz tu oferta. El vendedor acepta, rechaza o contraoferta.</p></div>
+  <div><span class="how-n">3</span><h3>Compra protegida</h3><p>Pagas a CowFace por SINPE. El vendedor recibe el dinero solo cuando confirmas que te llegó.</p></div>
+</section>
+
+<section class="cta">
+  <div>
+    <h2>¿Tienes una tienda o ropa para vender?</h2>
+    <p>Publica gratis. Solo pagas <%= +(commissionRateNow * 100).toFixed(2) %> % de comisión cuando vendes, y cobras seguro por SINPE.</p>
+  </div>
+  <a class="btn btn-light" href="/vender">Empieza a vender</a>
+</section>
+<%- include('partials/footer') %>

@@ -1,0 +1,44 @@
+<%- include('partials/header') %>
+<section class="auth auth-wide">
+  <h1>Crea tu cuenta</h1>
+  <p class="muted">Una sola cuenta para comprar, ofertar y vender ropa, zapatos y bolsos.</p>
+  <form action="/registro" method="post" class="stack">
+    <input type="hidden" name="next" value="<%= next %>">
+    <div class="row2">
+      <label>Tu nombre
+        <input name="name" required value="<%= form.name || '' %>" autocomplete="name">
+        <% if (errors.name) { %><span class="error"><%= errors.name %></span><% } %>
+      </label>
+      <label>Nombre de tienda <span class="muted">(opcional)</span>
+        <input name="store_name" value="<%= form.store_name || '' %>" placeholder="Ej. Closet de Ana">
+        <% if (errors.store_name) { %><span class="error"><%= errors.store_name %></span><% } %>
+      </label>
+    </div>
+    <div class="row2">
+      <label>Teléfono
+        <input name="phone" required inputmode="tel" placeholder="8888-8888" value="<%= form.phone || '' %>" autocomplete="tel">
+        <span class="hint">Privado. Solo lo ve la otra persona cuando ya hay una venta registrada, para coordinar pago y entrega.</span>
+        <% if (errors.phone) { %><span class="error"><%= errors.phone %></span><% } %>
+      </label>
+      <label>Provincia
+        <select name="province" required>
+          <option value="">Elige…</option>
+          <% for (const p of catalog.PROVINCES) { %><option <%= form.province === p ? 'selected' : '' %>><%= p %></option><% } %>
+        </select>
+        <% if (errors.province) { %><span class="error"><%= errors.province %></span><% } %>
+      </label>
+    </div>
+    <label>Correo
+      <input type="email" name="email" required value="<%= form.email || '' %>" autocomplete="email">
+      <% if (errors.email) { %><span class="error"><%= errors.email %></span><% } %>
+    </label>
+    <label>Contraseña
+      <input type="password" name="password" required minlength="8" autocomplete="new-password">
+      <% if (errors.password) { %><span class="error"><%= errors.password %></span><% } %>
+    </label>
+    <p class="hint">Al crear tu cuenta aceptas los <a href="/terminos" target="_blank">términos de uso</a> (incluida la comisión por venta y el chat sin datos de contacto) y la <a href="/privacidad" target="_blank">política de privacidad</a>.</p>
+    <button class="btn btn-block" type="submit">Crear cuenta</button>
+  </form>
+  <p class="muted center">¿Ya tienes cuenta? <a href="/entrar<%= next ? `?next=${encodeURIComponent(next)}` : '' %>">Entrar</a></p>
+</section>
+<%- include('partials/footer') %>

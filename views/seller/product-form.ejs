@@ -1,0 +1,105 @@
+<%- include('../partials/header') %>
+<%
+  const f = form;
+  const action = product ? `/vendedor/productos/${product.id}/editar` : '/vendedor/productos/nuevo';
+  const err = (k) => errors[k] ? `<span class="error">${errors[k]}</span>` : '';
+%>
+<section class="form-page">
+  <% if (welcome) { %>
+    <div class="notice notice-ok">¡Tu tienda está creada! Publica tu primer artículo.</div>
+  <% } %>
+  <h1><%= title %></h1>
+  <% if (Object.keys(errors).length) { %><div class="alert">Revisa los campos marcados.</div><% } %>
+
+  <% if (product && product.images.length) { %>
+    <div class="current-photos">
+      <% for (const img of product.images) { %>
+        <form action="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/borrar" method="post" class="photo-tile">
+          <img src="/fotos/<%= img.filename %>" alt="">
+          <button type="submit" aria-label="Quitar foto" title="Quitar foto">×</button>
+        </form>
+      <% } %>
+    </div>
+  <% } %>
+
+  <form action="<%= action %>" method="post" enctype="multipart/form-data" class="stack">
+    <label>Fotos <span class="muted">(hasta 6, JPG/PNG/WebP, máx. 5 MB c/u)</span>
+      <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple data-photo-input>
+      <div class="photo-preview" data-photo-preview></div>
+      <%- err('photos') %>
+    </label>
+
+    <label>Título
+      <input name="title" required maxlength="100" value="<%= f.title || '' %>" placeholder="Ej. Camisa polo Lacoste azul marino">
+      <%- err('title') %>
+    </label>
+
+    <div class="row3">
+      <label>Categoría
+        <select name="category" required data-category-select>
+          <option value="">Elige…</option>
+          <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
+            <option value="<%= key %>" <%= f.category === key ? 'selected' : '' %>><%= c.label %></option>
+          <% } %>
+        </select>
+        <%- err('category') %>
+      </label>
+      <label>Tipo
+        <select name="item_type" required data-type-select data-selected="<%= f.item_type || '' %>">
+          <option value="">Elige categoría primero</option>
+        </select>
+        <%- err('item_type') %>
+      </label>
+      <label>Talla
+        <select name="size" required data-size-select data-selected="<%= f.size || '' %>" data-placeholder="Elige…">
+          <option value="">Elige categoría primero</option>
+        </select>
+        <%- err('size') %>
+      </label>
+    </div>
+
+    <div class="row3">
+      <label>Para
+        <select name="department" required>
+          <option value="">Elige…</option>
+          <% for (const [key, label] of Object.entries(catalog.DEPARTMENTS)) { %>
+            <option value="<%= key %>" <%= f.department === key ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select>
+        <%- err('department') %>
+      </label>
+      <label>Estado
+        <select name="condition" required>
+          <option value="">Elige…</option>
+          <% for (const [key, label] of Object.entries(catalog.CONDITIONS)) { %>
+            <option value="<%= key %>" <%= f.condition === key ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select>
+        <%- err('condition') %>
+      </label>
+      <label>Precio (₡)
+        <input name="price" required inputmode="numeric" value="<%= f.price || '' %>" placeholder="15000">
+        <%- err('price') %>
+      </label>
+    </div>
+
+    <div class="row3">
+      <label>Marca <span class="muted">(opcional)</span><input name="brand" maxlength="60" value="<%= f.brand || '' %>"></label>
+      <label>Color <span class="muted">(opcional)</span><input name="color" maxlength="40" value="<%= f.color || '' %>"></label>
+      <label>Cantidad
+        <input type="number" name="quantity" min="1" max="999" required value="<%= f.quantity || 1 %>">
+        <%- err('quantity') %>
+      </label>
+    </div>
+
+    <label>Descripción <span class="muted">(opcional)</span>
+      <textarea name="description" rows="4" maxlength="2000" placeholder="Medidas, detalles, si tiene algún defecto…"><%= f.description || '' %></textarea>
+    </label>
+
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="/vendedor">Cancelar</a>
+      <button class="btn" type="submit"><%= product ? 'Guardar cambios' : 'Publicar' %></button>
+    </div>
+  </form>
+</section>
+<%- include('../partials/footer') %>

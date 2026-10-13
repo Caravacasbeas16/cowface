@@ -1,0 +1,31 @@
+<%- include('partials/header') %>
+<article class="legal">
+  <h1>Política de privacidad</h1>
+  <p class="muted">Última actualización: <%= legalUpdated %></p>
+
+  <p>En <%= siteName %> tratamos tus datos personales conforme a la Ley N.º 8968 de Protección de la Persona frente al Tratamiento de sus Datos Personales de Costa Rica.</p>
+
+  <h2>Qué datos recogemos</h2>
+  <ul>
+    <li><strong>Cuenta:</strong> nombre, nombre de tienda (opcional), correo, teléfono, provincia, número SINPE para recibir pagos (vendedores), contraseña (guardada cifrada, nunca en texto) y las fotos y datos de los artículos que publicas.</li>
+    <li><strong>Chat y ofertas:</strong> los mensajes y ofertas que envías, y los mensajes que el filtro bloquea por incluir datos de contacto.</li>
+    <li><strong>Técnicos:</strong> una cookie de sesión para mantenerte conectado y la dirección IP para prevenir abusos. No usamos cookies de publicidad.</li>
+  </ul>
+
+  <h2>Para qué los usamos</h2>
+  <ul>
+    <li>Procesar pagos: el comprobante del SINPE para verificar tu pago, y el número SINPE del vendedor para transferirle lo vendido.</li>
+    <li>Entregas: cuando confirmamos el pago, el vendedor ve el nombre, la dirección y el teléfono de entrega del comprador. Tu teléfono de cuenta no se muestra a nadie.</li>
+    <li>Revisar mensajes bloqueados por el filtro para prevenir fraude y ventas fuera de la plataforma.</li>
+    <li>Llevar el registro de pedidos, ventas y comisiones.</li>
+    <li>Proteger la plataforma contra fraude y abuso.</li>
+  </ul>
+  <p>No vendemos ni alquilamos tus datos a terceros.</p>
+
+  <h2>Dónde se guardan</h2>
+  <p>Los datos se guardan en servidores de nuestro proveedor de hospedaje, que pueden estar fuera de Costa Rica. Los pedidos se conservan mientras sean necesarios para la contabilidad de comisiones.</p>
+
+  <h2>Tus derechos</h2>
+  <p>Puedes pedir acceso, corrección o eliminación de tus datos escribiendo a <%- contactEmail ? `<a href="mailto:${contactEmail}">${contactEmail}</a>` : 'nuestro correo de contacto' %>. Responderemos dentro de los plazos que fija la ley.</p>
+</article>
+<%- include('partials/footer') %>

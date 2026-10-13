@@ -1,0 +1,193 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <h1>Administración</h1>
+    <p class="muted">Pagos, comisiones, usuarios y el filtro del chat.</p>
+  </div>
+</div>
+
+<% if (!pay.phone || !pay.holder) { %>
+  <div class="notice"><strong>Falta configurar el cobro.</strong> Mientras no pongas tu número SINPE Móvil abajo, nadie puede comprar. <a href="#config">Configurar</a></div>
+<% } %>
+
+<div class="stats">
+  <div class="stat stat-warn"><span class="stat-n"><%= money(totals.held) %></span><span class="muted">Dinero retenido (de compradores y vendedores)</span></div>
+  <div class="stat stat-accent"><span class="stat-n"><%= money(totals.commission) %></span><span class="muted">Comisión ganada</span></div>
+  <div class="stat"><span class="stat-n"><%= money(totals.gmv) %></span><span class="muted">Ventas completadas (<%= totals.completed %>)</span></div>
+  <div class="stat"><span class="stat-n"><%= totals.users %></span><span class="muted">Usuarios</span></div>
+  <div class="stat"><span class="stat-n"><%= totals.products %></span><span class="muted">Artículos activos</span></div>
+  <div class="stat"><span class="stat-n"><%= totals.offers %></span><span class="muted">Ofertas</span></div>
+  <div class="stat <%= totals.flagged_week ? 'stat-warn' : '' %>"><span class="stat-n"><%= totals.flagged_week %></span><span class="muted">Intentos bloqueados (7 días)</span></div>
+</div>
+
+<section id="pagos">
+  <h2>Por hacer</h2>
+  <% const empty = !queues.toVerify.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
+  <% if (empty) { %><p class="muted">Todo al día. 🎉</p><% } %>
+
+  <% if (queues.toVerify.length) { %>
+    <h3>1. Pagos por verificar <span class="badge"><%= queues.toVerify.length %></span></h3>
+    <p class="hint">Revisa en tu app del banco que entró el SINPE por el monto exacto con este detalle. Si está, confírmalo y el vendedor recibe aviso para enviar.</p>
+    <div class="task-list">
+      <% for (const o of queues.toVerify) { %>
+        <div class="task">
+          <div class="task-main">
+            <strong><%= o.code %></strong> · <%= money(o.price) %> · comprobante <strong><%= o.payment_reference %></strong>
+            <div class="muted small"><%= o.buyer_name %> compra «<%= o.product_title %>» a <%= o.store_name %> · avisó <%= when(o.payment_reported_at, true) %></div>
+          </div>
+          <form action="/admin/pedidos/<%= o.id %>/confirmar-pago" method="post" data-confirm="¿Confirmas que recibiste <%= money(o.price) %> (<%= o.code %>)?"><button class="btn btn-small">Pago recibido</button></form>
+          <form action="/admin/pedidos/<%= o.id %>/rechazar-pago" method="post" data-confirm="¿Avisar al comprador que no encontraste el pago?"><button class="btn btn-small btn-ghost">No lo encuentro</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (queues.disputes.length) { %>
+    <h3>2. Reclamos <span class="badge"><%= queues.disputes.length %></span></h3>
+    <p class="hint">Lee la conversación con las dos partes antes de decidir. El dinero sigue retenido mientras tanto.</p>
+    <div class="task-list">
+      <% for (const o of queues.disputes) { %>
+        <div class="task">
+          <div class="task-main">
+            <strong><%= o.code %></strong> · <%= money(o.price) %> · <%= o.store_name %> → <%= o.buyer_name %>
+            <div class="flag-body">«<%= o.dispute_reason %>»</div>
+            <div class="muted small"><%= o.shipped_at ? `Enviado ${when(o.shipped_at, true)}${o.shipping_note ? ` · «${o.shipping_note}»` : ''}` : 'Sin marcar como enviado' %></div>
+          </div>
+          <form action="/admin/pedidos/<%= o.id %>/liberar" method="post" data-confirm="¿Resolver a favor del vendedor y liberarle el pago?"><button class="btn btn-small">Pagar al vendedor</button></form>
+          <form action="/admin/pedidos/<%= o.id %>/reembolsar" method="post" data-confirm="¿Resolver a favor del comprador y devolverle el dinero?"><button class="btn btn-small btn-ghost">Reembolsar al comprador</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (queues.refunds.length) { %>
+    <h3>3. Reembolsos por enviar <span class="badge"><%= queues.refunds.length %></span></h3>
+    <p class="hint">Devuelve el monto por SINPE al número desde el que pagó el comprador (lo ves en tu banco con el comprobante) y márcalo aquí.</p>
+    <div class="task-list">
+      <% for (const o of queues.refunds) { %>
+        <div class="task">
+          <div class="task-main"><strong><%= o.code %></strong> · devolver <strong><%= money(o.price) %></strong> a <%= o.buyer_name %> · comprobante original <%= o.payment_reference %></div>
+          <form action="/admin/pedidos/<%= o.id %>/reembolsado" method="post" data-confirm="¿Ya devolviste <%= money(o.price) %>?"><button class="btn btn-small">Ya lo devolví</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (queues.payouts.length) { %>
+    <h3>4. Pagos a vendedores <span class="badge"><%= queues.payouts.length %></span></h3>
+    <p class="hint">Transfiere por SINPE Móvil y márcalo. Tu comisión ya está descontada del monto.</p>
+    <div class="task-list">
+      <% for (const o of queues.payouts) { %>
+        <div class="task">
+          <div class="task-main">
+            Enviar <strong><%= money(o.payout_amount) %></strong> a <strong><%= o.payout_phone || '— sin SINPE registrado —' %></strong> (<%= o.payout_name || o.store_name %>)
+            <div class="muted small"><%= o.code %> · venta <%= money(o.price) %> − comisión <%= money(o.commission_amount) %> · completado <%= when(o.completed_at, true) %></div>
+          </div>
+          <form action="/admin/pedidos/<%= o.id %>/pago-vendedor" method="post" data-confirm="¿Ya le transferiste <%= money(o.payout_amount) %> a <%= o.payout_name || o.store_name %>?"><button class="btn btn-small">Ya le pagué</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</section>
+
+<section id="ventas">
+  <h2>Últimos pedidos</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pedido</th><th>Artículo</th><th>Vendedor → comprador</th><th>Precio</th><th>Comisión</th><th>Estado</th></tr></thead>
+      <tbody>
+        <% for (const o of orders) { %>
+          <tr>
+            <td><strong><%= o.code %></strong><div class="muted small"><%= when(o.created_at, true) %> · <%= o.source === 'oferta' ? 'oferta' : 'compra directa' %></div></td>
+            <td><%= o.product_title %></td>
+            <td><%= o.store_name %> → <%= o.buyer_name %></td>
+            <td><%= money(o.price) %><% if (o.price !== o.list_price) { %><div class="muted small">publicado <%= money(o.list_price) %></div><% } %></td>
+            <td><%= money(o.commission_amount) %></td>
+            <td><span class="status status-<%= o.status %>"><%= ORDER_STATUS[o.status] %></span><% if (o.status === 'completado') { %><div class="muted small">vendedor <%= o.payout_status === 'pagado' ? 'pagado' : 'por pagar' %></div><% } %></td>
+          </tr>
+        <% } %>
+        <% if (!orders.length) { %><tr><td colspan="6" class="muted">Sin pedidos todavía.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="usuarios">
+  <h2>Usuarios</h2>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Usuario</th><th>Contacto</th><th>Recibe pagos en</th><th>Activos</th><th>Ventas</th><th>Problemas</th><th>Bloqueos</th><th></th></tr></thead>
+      <tbody>
+        <% for (const s of sellers) { %>
+          <tr class="<%= s.active ? '' : 'row-off' %>">
+            <td><strong><%= s.store_name %></strong><div class="muted small"><%= s.name %> · <%= s.province %></div></td>
+            <td><%= s.phone %><div class="muted small"><%= s.email %></div></td>
+            <td><%= s.payout_phone || '—' %><div class="muted small"><%= s.payout_name || '' %></div></td>
+            <td><%= s.products %></td>
+            <td><%= s.sales %></td>
+            <td><% if (s.problems) { %><span class="status status-en_disputa"><%= s.problems %></span><% } else { %>0<% } %></td>
+            <td><% if (s.flagged) { %><span class="status status-por_pagar"><%= s.flagged %></span><% } else { %>0<% } %></td>
+            <td class="actions">
+              <form action="/admin/vendedores/<%= s.id %>/activo" method="post" class="inline">
+                <input type="hidden" name="active" value="<%= s.active ? '0' : '1' %>">
+                <button class="btn btn-small btn-ghost"><%= s.active ? 'Suspender' : 'Reactivar' %></button>
+              </form>
+            </td>
+          </tr>
+        <% } %>
+        <% if (!sellers.length) { %><tr><td colspan="8" class="muted">Sin usuarios todavía.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section id="config" class="admin-split">
+  <div>
+    <h2>Cobro</h2>
+    <p class="hint">Los compradores te pagan por SINPE Móvil a esta cuenta (BAC, Wink u otra). Se muestra solo en pedidos por pagar.</p>
+    <form action="/admin/pagos-config" method="post" class="stack">
+      <div class="row2">
+        <label>Número SINPE Móvil<input name="phone" required inputmode="tel" value="<%= pay.phone %>" placeholder="8888-8888"></label>
+        <label>Titular de la cuenta<input name="holder" required maxlength="80" value="<%= pay.holder %>"></label>
+      </div>
+      <div class="row2">
+        <label>Horas para pagar<input type="number" name="window_hours" min="1" max="168" value="<%= pay.windowHours %>"></label>
+        <label>Días para liberar el pago<input type="number" name="release_days" min="1" max="30" value="<%= pay.releaseDays %>"></label>
+      </div>
+      <button class="btn">Guardar cobro</button>
+    </form>
+    <form action="/admin/comision" method="post" class="rate-form commission-form">
+      <label>Comisión por venta
+        <input type="number" name="percent" min="0" max="50" step="0.5" value="<%= +(rate * 100).toFixed(2) %>">%
+      </label>
+      <button class="btn btn-small">Guardar</button>
+    </form>
+    <p class="hint">La comisión queda fija en cada pedido al crearse. Cambiarla no altera pedidos anteriores.</p>
+  </div>
+  <div id="filtro">
+    <h2>Palabras prohibidas en el chat</h2>
+    <p class="hint">Una por línea. Se bloquean aunque las escriban con espacios, tildes o números. Teléfonos, correos y enlaces se bloquean siempre.</p>
+    <form action="/admin/palabras" method="post" class="stack">
+      <textarea name="words" rows="10"><%= words.join('\n') %></textarea>
+      <button class="btn">Guardar lista</button>
+    </form>
+  </div>
+</section>
+
+<section>
+  <h2>Intentos bloqueados</h2>
+  <% if (!flagged.length) { %>
+    <p class="muted">Nadie ha intentado compartir contacto todavía.</p>
+  <% } else { %>
+    <div class="flag-list">
+      <% for (const f of flagged) { %>
+        <div class="flag">
+          <div class="flag-head"><strong><%= f.name %></strong> <span class="muted small"><%= f.email %> · <%= f.context %> · <%= when(f.created_at, true) %></span></div>
+          <div class="flag-body">"<%= f.body %>"</div>
+          <span class="status status-por_pagar">detectó: <%= f.matched %></span>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>

@@ -1,0 +1,18 @@
+</main>
+<footer class="footer">
+  <div class="wrap footer-inner">
+    <div>
+      <strong><%= siteName %></strong> · Ropa, zapatos y bolsos de vendedores de todo Costa Rica.
+    </div>
+    <div class="muted">
+      <a href="/buscar">Explorar</a> · <a href="/vender">Vende con nosotros</a> · <a href="/terminos">Términos</a> · <a href="/privacidad">Privacidad</a>
+    </div>
+  </div>
+</footer>
+<script id="catalog-data" type="application/json"><%- JSON.stringify(
+  Object.fromEntries(Object.entries(catalog.CATEGORIES).map(([k, c]) => [k, { types: c.types, sizes: c.sizes }]))
+).replace(/</g, '\\u003c') %></script>
+<script src="/js/app.js" defer></script>
+<script src="/js/chat.js" defer></script>
+</body>
+</html>

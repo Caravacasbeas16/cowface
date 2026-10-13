@@ -1,0 +1,114 @@
+<%- include('partials/header') %>
+<%
+  const f = filters;
+  const sizeGroups = f.category ? catalog.CATEGORIES[f.category].sizes : { 'Talla': ['XS', 'S', 'M', 'L', 'XL', 'XXL'] };
+  const pageUrl = (n) => `/buscar?${baseQuery}${baseQuery ? '&' : ''}pagina=${n}`;
+%>
+<div class="search-layout">
+  <details class="filters" open data-filters>
+    <summary class="filters-toggle">Filtros<% if (f.sizes.length || f.category || f.condition || f.province || f.min || f.max) { %> (activos)<% } %></summary>
+    <form action="/buscar" method="get" id="filters-form">
+      <div class="filters-head">
+        <h2>Filtros</h2>
+        <a href="/buscar" class="muted">Limpiar</a>
+      </div>
+      <label>Buscar
+        <input type="search" name="q" value="<%= f.q %>" placeholder="Ej. polo, Nike, vestido">
+      </label>
+      <label>Categoría
+        <select name="categoria" data-autosubmit>
+          <option value="">Todas</option>
+          <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
+            <option value="<%= key %>" <%= f.category === key ? 'selected' : '' %>><%= c.label %></option>
+          <% } %>
+        </select>
+      </label>
+      <% if (f.category) { %>
+        <label>Tipo
+          <select name="tipo" data-autosubmit>
+            <option value="">Todos</option>
+            <% for (const t of catalog.CATEGORIES[f.category].types) { %>
+              <option <%= f.item_type === t ? 'selected' : '' %>><%= t %></option>
+            <% } %>
+          </select>
+        </label>
+      <% } %>
+      <label>Para
+        <select name="para" data-autosubmit>
+          <option value="">Todos</option>
+          <% for (const [key, label] of Object.entries(catalog.DEPARTMENTS)) { %>
+            <option value="<%= key %>" <%= f.department === key ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select>
+      </label>
+      <fieldset>
+        <legend>Talla</legend>
+        <% for (const [group, sizes] of Object.entries(sizeGroups)) { %>
+          <% if (Object.keys(sizeGroups).length > 1) { %><div class="size-group-label"><%= group %></div><% } %>
+          <div class="chips">
+            <% for (const s of sizes) { %>
+              <label class="chip"><input type="checkbox" name="talla" value="<%= s %>" data-autosubmit <%= f.sizes.includes(s) ? 'checked' : '' %>><span><%= s.replace(/^(Niño|Cintura|US|EU) /, '') %></span></label>
+            <% } %>
+          </div>
+        <% } %>
+        <% if (!f.category) { %><p class="hint">Elige una categoría para ver tallas de zapatos, niños y pantalón.</p><% } %>
+      </fieldset>
+      <label>Estado
+        <select name="estado" data-autosubmit>
+          <option value="">Nuevo y usado</option>
+          <option value="nuevo" <%= f.condition === 'nuevo' ? 'selected' : '' %>>Solo nuevo</option>
+          <option value="usado" <%= f.condition === 'usado' ? 'selected' : '' %>>Solo usado</option>
+        </select>
+      </label>
+      <div class="row2">
+        <label>Precio mín.<input type="number" name="min" min="0" step="500" value="<%= f.min || '' %>" placeholder="₡"></label>
+        <label>Precio máx.<input type="number" name="max" min="0" step="500" value="<%= f.max || '' %>" placeholder="₡"></label>
+      </div>
+      <label>Provincia
+        <select name="provincia" data-autosubmit>
+          <option value="">Todo el país</option>
+          <% for (const p of catalog.PROVINCES) { %>
+            <option <%= f.province === p ? 'selected' : '' %>><%= p %></option>
+          <% } %>
+        </select>
+      </label>
+      <input type="hidden" name="orden" value="<%= f.sort %>">
+      <button class="btn btn-block" type="submit">Aplicar filtros</button>
+    </form>
+  </details>
+
+  <section class="results">
+    <div class="results-head">
+      <p><strong><%= total %></strong> <%= total === 1 ? 'artículo' : 'artículos' %></p>
+      <form action="/buscar" method="get" class="sort">
+        <% for (const [k, v] of new URLSearchParams(baseQuery)) { if (k !== 'orden') { %>
+          <input type="hidden" name="<%= k %>" value="<%= v %>">
+        <% } } %>
+        <select name="orden" aria-label="Ordenar" data-autosubmit>
+          <% for (const [key, label] of Object.entries(catalog.SORTS)) { %>
+            <option value="<%= key %>" <%= f.sort === key ? 'selected' : '' %>><%= label %></option>
+          <% } %>
+        </select>
+      </form>
+    </div>
+    <% if (items.length) { %>
+      <div class="grid">
+        <% for (const p of items) { %><%- include('partials/card', { p }) %><% } %>
+      </div>
+      <% if (pages > 1) { %>
+        <nav class="pager">
+          <% if (f.page > 1) { %><a class="btn btn-ghost" href="<%= pageUrl(f.page - 1) %>">← Anterior</a><% } %>
+          <span class="muted">Página <%= f.page %> de <%= pages %></span>
+          <% if (f.page < pages) { %><a class="btn btn-ghost" href="<%= pageUrl(f.page + 1) %>">Siguiente →</a><% } %>
+        </nav>
+      <% } %>
+    <% } else { %>
+      <div class="empty">
+        <h2>No encontramos nada con esos filtros</h2>
+        <p>Prueba quitando la talla o el precio, o busca en todo el país.</p>
+        <a class="btn btn-ghost" href="/buscar">Ver todo</a>
+      </div>
+    <% } %>
+  </section>
+</div>
+<%- include('partials/footer') %>
