@@ -44,6 +44,18 @@ export function createApp() {
   const contact = (process.env.CONTACT_EMAIL || '').trim();
   app.locals.contactEmail = /^[w.+-]+@[w-]+(.[w-]+)+$/.test(contact) ? contact : '';
   app.locals.legalUpdated = '12 de octubre de 2026';
+  // "hace 5 min", "hace 3 h", "hace 2 d", como en Grailed.
+  app.locals.timeAgo = (value) => {
+    const v = String(value || '');
+    const d = new Date(v.includes('T') ? v : v.replace(' ', 'T') + 'Z');
+    const mins = Math.max(0, Math.round((Date.now() - d.getTime()) / 60000));
+    if (Number.isNaN(mins)) return '';
+    if (mins < 1) return 'ahora';
+    if (mins < 60) return `hace ${mins} min`;
+    if (mins < 60 * 24) return `hace ${Math.round(mins / 60)} h`;
+    if (mins < 60 * 24 * 30) return `hace ${Math.round(mins / 1440)} d`;
+    return d.toLocaleDateString('es-CR', { day: 'numeric', month: 'short', timeZone: 'America/Costa_Rica' });
+  };
   // Fecha/hora en hora de Costa Rica. Acepta ISO o el formato de SQLite (UTC sin zona).
   app.locals.when = (value, withDate = false) => {
     const s = String(value || '');
@@ -56,7 +68,7 @@ export function createApp() {
     });
   };
   app.locals.money = catalog.formatColones;
-  app.locals.imageUrl = (p, filename = p.image) => filename ? `/fotos/${filename}` : `/sin-foto/${p.category}/${p.id}.svg`;
+  app.locals.imageUrl = (p, filename = p.image) => filename ? `/fotos/${filename}` : `/sin-foto/${p.category}/${p.id}.svg?v=2`;
   app.use((req, res, next) => {
     res.locals.path = req.path;
     // Aviso de una sola vez (lo deja una acción que redirige).

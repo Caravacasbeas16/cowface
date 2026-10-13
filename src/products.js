@@ -147,3 +147,17 @@ export function deleteProduct(id) {
 export function setProductStatus(id, status) {
   db.prepare("UPDATE products SET status = ?, updated_at = datetime('now') WHERE id = ?").run(status, id);
 }
+
+// Una foto real por categoría (el artículo disponible más reciente que tenga foto) para la portada.
+export function categoryCovers() {
+  const rows = db.prepare(`
+    SELECT p.category, p.id, i.filename AS image
+    FROM products p JOIN users u ON u.id = p.seller_id
+    JOIN product_images i ON i.product_id = p.id AND i.position = (SELECT MIN(position) FROM product_images WHERE product_id = p.id)
+    WHERE p.status = 'disponible' AND u.active = 1
+    ORDER BY p.created_at DESC
+  `).all();
+  const covers = {};
+  for (const r of rows) if (!covers[r.category]) covers[r.category] = r;
+  return covers;
+}

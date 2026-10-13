@@ -2,12 +2,25 @@ import { Router } from 'express';
 import { db, commissionRate } from '../db.js';
 import { endSession, hashPassword, startSession, verifyPassword } from '../auth.js';
 import { CATEGORIES } from '../catalog.js';
-import { countByCategory, getProduct, latestProducts, parseFilters, searchProducts } from '../products.js';
+import fs from 'node:fs';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { categoryCovers, countByCategory, getProduct, latestProducts, parseFilters, searchProducts } from '../products.js';
 import { findConversation, minOffer } from '../chat.js';
 import { safeNext, validateSignup } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
 
 const router = Router();
+
+// Fotos de marca para la portada: cualquier .jpg/.png/.webp en public/img/brand, en orden alfabético.
+const BRAND_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../public/img/brand');
+const brandPhotos = (() => {
+  try {
+    return fs.readdirSync(BRAND_DIR).filter((f) => /.(jpe?g|png|webp)$/i.test(f)).sort().map((f) => `/img/brand/${f}`);
+  } catch {
+    return [];
+  }
+})();
 
 const MIN = 60 * 1000;
 const loginLimit = rateLimit({ windowMs: 15 * MIN, max: 10, message: 'Demasiados intentos de entrar. Espera 15 minutos.' });
@@ -23,7 +36,10 @@ router.get('/terminos', (req, res) => res.render('terms', { title: 'Términos de
 router.get('/privacidad', (req, res) => res.render('privacy', { title: 'Política de privacidad' }));
 
 router.get('/', (req, res) => {
-  res.render('home', { title: null, latest: latestProducts(12), counts: countByCategory(), commissionRateNow: commissionRate() });
+  res.render('home', {
+    title: null, latest: latestProducts(15), counts: countByCategory(), covers: categoryCovers(), brandPhotos,
+    commissionRateNow: commissionRate(),
+  });
 });
 
 router.get('/buscar', (req, res) => {
@@ -94,18 +110,15 @@ router.post('/salir', (req, res) => {
   res.redirect('/');
 });
 
-// Imagen de relleno para artículos sin foto: color estable según el id.
+// Imagen de relleno para artículos sin foto: neutra, con el nombre de la categoría.
 router.get('/sin-foto/:category/:id.svg', (req, res) => {
-  const id = Number.parseInt(req.params.id, 10) || 0;
-  const hue = (id * 47) % 360;
-  const label = CATEGORIES[req.params.category]?.label || 'Artículo';
-  const icon = { ropa: '👕', zapatos: '👟', bolsos: '👜', accesorios: '🧢' }[req.params.category] || '🛍️';
+  const label = (CATEGORIES[req.params.category]?.label || 'Artículo').toUpperCase();
   res.type('image/svg+xml').set('Cache-Control', 'public, max-age=86400').send(
-    `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 500">` +
-    `<rect width="400" height="500" fill="hsl(${hue},45%,88%)"/>` +
-    `<text x="200" y="250" font-size="120" text-anchor="middle" dominant-baseline="middle">${icon}</text>` +
-    `<text x="200" y="370" font-size="26" font-family="system-ui,sans-serif" fill="hsl(${hue},35%,30%)" text-anchor="middle">${label}</text>` +
-    `</svg>`,
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500">' +
+    '<rect width="500" height="500" fill="#f1efeb"/>' +
+    '<text x="250" y="238" font-family="Inter,Arial,sans-serif" font-weight="900" font-size="38" letter-spacing="-1" fill="#c9c5bd" text-anchor="middle">COWFACE</text>' +
+    `<text x="250" y="282" font-family="Inter,Arial,sans-serif" font-weight="700" font-size="16" letter-spacing="3" fill="#b3aea4" text-anchor="middle">${label} · SIN FOTO</text>` +
+    '</svg>',
   );
 });
 

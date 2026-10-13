@@ -1,63 +1,77 @@
 <%- include('partials/header') %>
+<%
+  const heroPhoto = brandPhotos[0];
+  const strip = brandPhotos.slice(1, 6);
+  // Portada de cada categoría: foto real de un artículo; si no hay, foto de marca (solo ropa) o recuadro negro con el logo.
+  const fallback = { ropa: brandPhotos.find((p) => p.includes('camisetas')) };
+  const cover = (key) => covers[key] ? imageUrl({ id: covers[key].id, category: key, image: covers[key].image }) : fallback[key] || null;
+%>
 <section class="hero">
-  <h1>Encuentra tu talla<br>sin recorrer mil tiendas.</h1>
-  <p>Ropa, zapatos y bolsos, nuevos y usados, de vendedores de todo Costa Rica. Busca por talla, haz tu oferta y cierra el trato en el chat.</p>
-  <form class="hero-search" action="/buscar" method="get">
-    <input type="search" name="q" placeholder="¿Qué buscas? Ej. camisa polo" aria-label="Qué buscas">
-    <select name="categoria" aria-label="Categoría" data-category-select>
-      <option value="">Todo</option>
-      <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
-        <option value="<%= key %>"><%= c.label %></option>
-      <% } %>
-    </select>
-    <select name="talla" aria-label="Talla" data-size-select data-any-category data-placeholder="Cualquier talla">
-      <option value="">Cualquier talla</option>
-    </select>
-    <button class="btn" type="submit">Buscar</button>
-  </form>
+  <div class="hero-text">
+    <p class="eyebrow">Vintage · Segunda mano · Costa Rica</p>
+    <h1>Prendas con historia.<br>Precio entre personas.</h1>
+    <p class="hero-sub">Compra y vende ropa, zapatos y bolsos curados. Haz tu oferta, chatea con el vendedor y paga protegido: el dinero llega al vendedor solo cuando recibes tu prenda.</p>
+    <div class="hero-actions">
+      <a class="btn" href="/buscar">Explorar</a>
+      <a class="btn btn-ghost" href="/vender">Vender</a>
+    </div>
+  </div>
+  <% if (heroPhoto) { %>
+    <a class="hero-photo" href="/buscar"><img src="<%= heroPhoto %>" alt="Drop de prendas vintage de CowFace"></a>
+  <% } %>
 </section>
 
-<section class="tiles">
-  <% const icons = { ropa: '👕', zapatos: '👟', bolsos: '👜', accesorios: '🧢' }; %>
-  <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
-    <a class="tile" href="/buscar?categoria=<%= key %>">
-      <span class="tile-icon"><%= icons[key] %></span>
-      <span class="tile-label"><%= c.label %></span>
-      <span class="muted"><%= counts[key] || 0 %> artículos</span>
-    </a>
-  <% } %>
-  <a class="tile" href="/buscar?estado=usado">
-    <span class="tile-icon">♻️</span><span class="tile-label">Usado</span><span class="muted">Segunda mano</span>
-  </a>
-  <a class="tile" href="/buscar?estado=nuevo">
-    <span class="tile-icon">🏷️</span><span class="tile-label">Nuevo</span><span class="muted">Con o sin etiqueta</span>
-  </a>
+<% if (strip.length) { %>
+  <section class="strip" aria-label="Drops de la comunidad">
+    <% for (const src of strip) { %>
+      <a href="/buscar"><img src="<%= src %>" alt="" loading="lazy"></a>
+    <% } %>
+  </section>
+<% } %>
+
+<section>
+  <div class="section-head"><h2>Comprar por categoría</h2></div>
+  <div class="cat-grid">
+    <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
+      <% const src = cover(key); %>
+      <a class="cat-tile <%= src ? '' : 'cat-tile-empty' %>" href="/buscar?categoria=<%= key %>">
+        <img src="<%= src || '/img/logo.jpg' %>" alt="" loading="lazy">
+        <span class="cat-label"><%= c.label %><small><%= counts[key] || 0 %> artículos</small></span>
+      </a>
+    <% } %>
+  </div>
 </section>
 
 <section>
   <div class="section-head">
     <h2>Recién publicados</h2>
-    <a href="/buscar">Ver todo →</a>
+    <a href="/buscar" class="link-arrow">Ver todo</a>
   </div>
   <% if (latest.length) { %>
     <div class="grid">
       <% for (const p of latest) { %><%- include('partials/card', { p }) %><% } %>
     </div>
   <% } else { %>
-    <p class="empty">Todavía no hay artículos. <a href="/vender">¡Sé el primero en vender!</a></p>
+    <div class="empty">
+      <h3>El primer drop está por llegar</h3>
+      <p class="muted">Todavía no hay artículos publicados.</p>
+      <a class="btn" href="/vender">Publica el primero</a>
+    </div>
   <% } %>
 </section>
 
-<section class="how">
-  <div><span class="how-n">1</span><h3>Busca por talla</h3><p>Filtra por categoría, talla, precio, estado y provincia.</p></div>
-  <div><span class="how-n">2</span><h3>Oferta o compra</h3><p>Paga el precio publicado o haz tu oferta. El vendedor acepta, rechaza o contraoferta.</p></div>
-  <div><span class="how-n">3</span><h3>Compra protegida</h3><p>Pagas a CowFace por SINPE. El vendedor recibe el dinero solo cuando confirmas que te llegó.</p></div>
+<section class="values">
+  <div><h3>Pago protegido</h3><p>Pagas a CowFace por SINPE. El vendedor recibe el dinero cuando confirmas que te llegó.</p></div>
+  <div><h3>Haz tu oferta</h3><p>Paga el precio publicado o negocia. El vendedor acepta, rechaza o contraoferta.</p></div>
+  <div><h3>Chat seguro</h3><p>Todo el trato queda en CowFace. Si algo sale mal, abres un reclamo.</p></div>
+  <div><h3>Envíos a todo CR</h3><p>Correos de Costa Rica, mensajero o entrega en persona.</p></div>
 </section>
 
 <section class="cta">
+  <img src="/img/logo.jpg" alt="" width="72" height="72">
   <div>
-    <h2>¿Tienes una tienda o ropa para vender?</h2>
-    <p>Publica gratis. Solo pagas <%= +(commissionRateNow * 100).toFixed(2) %> % de comisión cuando vendes, y cobras seguro por SINPE.</p>
+    <h2>¿Tienes ropa que ya no usas?</h2>
+    <p>Publica gratis. Solo <%= +(commissionRateNow * 100).toFixed(2) %> % de comisión cuando vendes, y cobras seguro por SINPE.</p>
   </div>
   <a class="btn btn-light" href="/vender">Empieza a vender</a>
 </section>

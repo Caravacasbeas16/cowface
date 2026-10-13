@@ -1,5 +1,5 @@
 <%- include('partials/header') %>
-<% const p = product; const isNew = catalog.CONDITION_GROUPS.nuevo.includes(p.condition); %>
+<% const p = product; %>
 <nav class="crumbs">
   <a href="/buscar?categoria=<%= p.category %>"><%= catalog.CATEGORIES[p.category]?.label %></a> ›
   <a href="/buscar?categoria=<%= p.category %>&tipo=<%= encodeURIComponent(p.item_type) %>"><%= p.item_type %></a>
@@ -23,23 +23,15 @@
   </div>
 
   <div class="product-info">
-    <span class="tag <%= isNew ? 'tag-new' : 'tag-used' %> tag-static"><%= catalog.CONDITIONS[p.condition] %></span>
+    <% if (p.brand) { %><a class="product-brand" href="/buscar?q=<%= encodeURIComponent(p.brand) %>"><%= p.brand %></a><% } %>
     <h1><%= p.title %></h1>
-    <div class="price"><%= money(p.price) %></div>
-    <dl class="specs">
-      <div><dt>Talla</dt><dd><strong><%= p.size %></strong></dd></div>
-      <% if (p.brand) { %><div><dt>Marca</dt><dd><%= p.brand %></dd></div><% } %>
-      <% if (p.color) { %><div><dt>Color</dt><dd><%= p.color %></dd></div><% } %>
-      <div><dt>Para</dt><dd><%= catalog.DEPARTMENTS[p.department] %></dd></div>
-      <div><dt>Disponibles</dt><dd><%= p.quantity %></dd></div>
-      <div><dt>Ubicación</dt><dd><%= p.province %></dd></div>
-    </dl>
-    <% if (p.description) { %><p class="description"><%= p.description %></p><% } %>
-
-    <div class="seller-box">
-      <div class="avatar"><%= (p.store_name || '?').charAt(0).toUpperCase() %></div>
-      <div><strong><%= p.store_name %></strong><div class="muted"><%= p.province %></div></div>
+    <div class="product-facts">
+      <span>Talla <strong><%= p.size %></strong></span>
+      <span><%= catalog.CONDITIONS[p.condition] %></span>
+      <% if (p.color) { %><span><%= p.color %></span><% } %>
     </div>
+    <div class="price"><%= money(p.price) %></div>
+    <div class="muted small">Publicado <%= timeAgo(p.created_at) %> · <%= p.province %></div>
 
     <% if (isOwner) { %>
       <div class="notice">Este artículo es tuyo. <a href="/vendedor/productos/<%= p.id %>/editar">Editarlo</a></div>
@@ -81,6 +73,23 @@
         <p class="hint">Por tu seguridad, el chat no permite teléfonos, redes sociales ni enlaces.</p>
       </div>
     <% } %>
+
+    <div class="seller-box">
+      <div class="avatar"><%= (p.store_name || '?').charAt(0).toUpperCase() %></div>
+      <div><strong><%= p.store_name %></strong><div class="muted small"><%= p.province %> · Vendedor en <%= siteName %></div></div>
+    </div>
+
+    <h2 class="details-title">Detalles</h2>
+    <dl class="specs">
+      <% if (p.brand) { %><div><dt>Marca</dt><dd><%= p.brand %></dd></div><% } %>
+      <div><dt>Tipo</dt><dd><%= p.item_type %></dd></div>
+      <div><dt>Talla</dt><dd><%= p.size %></dd></div>
+      <div><dt>Estado</dt><dd><%= catalog.CONDITIONS[p.condition] %></dd></div>
+      <% if (p.color) { %><div><dt>Color</dt><dd><%= p.color %></dd></div><% } %>
+      <div><dt>Para</dt><dd><%= catalog.DEPARTMENTS[p.department] %></dd></div>
+      <div><dt>Disponibles</dt><dd><%= p.quantity %></dd></div>
+    </dl>
+    <% if (p.description) { %><p class="description"><%= p.description %></p><% } %>
   </div>
 </div>
 <%- include('partials/footer') %>

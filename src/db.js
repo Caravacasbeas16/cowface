@@ -164,10 +164,16 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO settings (key, value) VALUES ('commission_rate', '0.05');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('commission_rate', '0.02');
 
 PRAGMA user_version = ${SCHEMA_VERSION};
 `);
+
+// Una sola vez: la comisión por defecto bajó de 5 % a 2 %. Si nadie la había cambiado a mano, se ajusta.
+if (db.prepare("SELECT 1 FROM settings WHERE key = 'migration_commission_2pct'").get() == null) {
+  db.prepare("UPDATE settings SET value = '0.02' WHERE key = 'commission_rate' AND value = '0.05'").run();
+  db.prepare("INSERT INTO settings (key, value) VALUES ('migration_commission_2pct', '1')").run();
+}
 
 export function getSetting(key) {
   return db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value;
@@ -180,7 +186,7 @@ export function setSetting(key, value) {
 
 export function commissionRate() {
   const rate = Number(getSetting('commission_rate'));
-  return Number.isFinite(rate) ? rate : 0.05;
+  return Number.isFinite(rate) ? rate : 0.02;
 }
 
 let depth = 0;

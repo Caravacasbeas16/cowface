@@ -1,16 +1,13 @@
+<% const isNew = catalog.CONDITION_GROUPS.nuevo.includes(p.condition); %>
 <a class="card" href="/p/<%= p.id %>">
   <div class="card-img">
     <img src="<%= imageUrl(p) %>" alt="<%= p.title %>" loading="lazy">
-    <span class="tag <%= catalog.CONDITION_GROUPS.nuevo.includes(p.condition) ? 'tag-new' : 'tag-used' %>">
-      <%= catalog.CONDITION_GROUPS.nuevo.includes(p.condition) ? 'Nuevo' : 'Usado' %>
-    </span>
+    <% if (isNew) { %><span class="tag">Nuevo</span><% } %>
   </div>
   <div class="card-body">
-    <div class="card-price"><%= money(p.price) %></div>
+    <div class="card-meta"><span><%= timeAgo(p.created_at) %></span><span class="card-size"><%= p.size %></span></div>
+    <div class="card-brand"><%= p.brand || p.item_type %></div>
     <div class="card-title"><%= p.title %></div>
-    <div class="card-meta">
-      <span class="size">Talla <%= p.size %></span>
-      <span class="muted"><%= p.province %></span>
-    </div>
+    <div class="card-price"><%= money(p.price) %></div>
   </div>
 </a>

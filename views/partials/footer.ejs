@@ -1,13 +1,31 @@
 </main>
 <footer class="footer">
   <div class="wrap footer-inner">
-    <div>
-      <strong><%= siteName %></strong> · Ropa, zapatos y bolsos de vendedores de todo Costa Rica.
+    <div class="footer-brand">
+      <div class="logo"><img src="/img/logo.jpg" alt="" width="40" height="40"><span><%= siteName.toUpperCase() %></span></div>
+      <p class="muted">Vintage y segunda mano. Prendas curadas, no fast fashion. Pago protegido y envíos a todo Costa Rica.</p>
+      <a class="footer-ig" href="https://www.instagram.com/cowface.cr/" target="_blank" rel="noopener">@cowface.cr en Instagram</a>
     </div>
-    <div class="muted">
-      <a href="/buscar">Explorar</a> · <a href="/vender">Vende con nosotros</a> · <a href="/terminos">Términos</a> · <a href="/privacidad">Privacidad</a>
+    <div class="footer-col">
+      <h4>Comprar</h4>
+      <a href="/buscar">Explorar todo</a>
+      <a href="/buscar?para=hombre">Hombre</a>
+      <a href="/buscar?para=mujer">Mujer</a>
+      <a href="/buscar?categoria=zapatos">Zapatos</a>
+    </div>
+    <div class="footer-col">
+      <h4>Vender</h4>
+      <a href="/vender">Publicar un artículo</a>
+      <a href="/terminos">Cómo funciona el pago</a>
+    </div>
+    <div class="footer-col">
+      <h4>Ayuda</h4>
+      <a href="/terminos">Términos</a>
+      <a href="/privacidad">Privacidad</a>
+      <% if (contactEmail) { %><a href="mailto:<%= contactEmail %>">Contacto</a><% } %>
     </div>
   </div>
+  <div class="wrap footer-bottom muted small">© <%= new Date().getFullYear() %> <%= siteName %></div>
 </footer>
 <script id="catalog-data" type="application/json"><%- JSON.stringify(
   Object.fromEntries(Object.entries(catalog.CATEGORIES).map(([k, c]) => [k, { types: c.types, sizes: c.sizes }]))

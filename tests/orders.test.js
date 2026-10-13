@@ -48,8 +48,8 @@ test('flujo completo: oferta aceptada → pago → verificación → envío → 
   let o = lastOrder();
   assert.equal(o.status, 'por_pagar');
   assert.equal(o.price, 20000);
-  assert.equal(o.commission_amount, 1000, '5 % de 20 000');
-  assert.equal(o.payout_amount, 19000);
+  assert.equal(o.commission_amount, 400, '2 % de 20 000');
+  assert.equal(o.payout_amount, 19600);
   assert.deepEqual(product(id), { quantity: 0, status: 'reservado' });
 
   // El comprador ve el SINPE de CowFace, nunca el del vendedor.
@@ -93,7 +93,7 @@ test('flujo completo: oferta aceptada → pago → verificación → envío → 
   assert.equal(o.payout_status, 'pendiente');
   assert.deepEqual(product(id), { quantity: 0, status: 'vendido' });
 
-  assert.match(await (await get('/admin', admin)).text(), /Enviar <strong>₡19\s?000<\/strong> a <strong>88881234/);
+  assert.match(await (await get('/admin', admin)).text(), /Enviar <strong>₡19\s?600<\/strong> a <strong>88881234/);
   await post(`/admin/pedidos/${o.id}/pago-vendedor`, admin);
   assert.equal(order(o.id).payout_status, 'pagado');
 });
@@ -176,6 +176,6 @@ test('cambiar la comisión no altera pedidos anteriores', async () => {
   const id = await publishPolo(seller);
   const o = await buyDirect(id);
   assert.equal(o.commission_amount, 2000, '8 % de 25 000');
-  assert.equal(order(before.id).commission_rate, 0.05);
-  setSetting('commission_rate', '0.05');
+  assert.equal(order(before.id).commission_rate, 0.02);
+  setSetting('commission_rate', '0.02');
 });

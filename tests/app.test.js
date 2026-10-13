@@ -148,7 +148,7 @@ test('páginas de salud, términos y privacidad', async () => {
   assert.equal(await (await get('/salud')).text(), 'ok');
   const terms = await (await get('/terminos')).text();
   assert.match(terms, /WhatsApp, Facebook, Messenger/);
-  assert.match(terms, /<strong>5 %<\/strong>/);
+  assert.match(terms, /<strong>2 %<\/strong>/);
   assert.equal((await get('/privacidad')).status, 200);
 });
 

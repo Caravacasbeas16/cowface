@@ -33,7 +33,7 @@ npm run dev       # abre http://localhost:3100
    vendedor ve la dirección y envía.
 5. El vendedor marca **Enviado**. El comprador toca **Lo recibí**, o pasa el plazo (3 días por defecto)
    sin reclamo y se completa solo.
-6. En `/admin → Pagos a vendedores` ves cuánto transferir (precio − 5 %) y a qué SINPE; al hacerlo,
+6. En `/admin → Pagos a vendedores` ves cuánto transferir (precio − 2 %) y a qué SINPE; al hacerlo,
    tocas **Ya le pagué**.
 7. Si hay problema, el comprador abre un **reclamo** y el dinero queda retenido; tú decides
    **Pagar al vendedor** o **Reembolsar al comprador**.
