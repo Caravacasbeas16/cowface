@@ -5,6 +5,7 @@
 // La dirección de regreso es <PUBLIC_URL>/auth/<proveedor>/callback (PUBLIC_URL es opcional).
 import { db } from './db.js';
 import { UserError } from './messages.js';
+import { publicBaseUrl } from './urls.js';
 
 const env = (k) => (process.env[k] || '').trim();
 
@@ -32,8 +33,7 @@ export function enabledProviders() {
 }
 
 export function redirectUri(req, provider) {
-  const base = env('PUBLIC_URL').replace(/\/+$/, '') || `${req.protocol}://${req.get('host')}`;
-  return `${base}/auth/${provider}/callback`;
+  return `${publicBaseUrl(req)}/auth/${provider}/callback`;
 }
 
 export function authorizeUrl(provider, state, redirect) {
@@ -88,7 +88,11 @@ export function loginWithProvider(provider, profile) {
     // Solo Google garantiza que el correo está verificado; con otros, se entra con la contraseña.
     if (provider !== 'google') throw new UserError('Ya tienes una cuenta con ese correo. Entra con tu correo y contraseña.');
     // Google confirmó que la persona es dueña de ese correo: se vincula a la cuenta que ya existe.
+    // Como el registro con contraseña no verifica el correo, esa cuenta pudo crearla otra persona:
+    // se anula la contraseña y se cierran sus sesiones, así solo entra quien controla el correo.
     db.prepare('INSERT INTO oauth_accounts (provider, subject, user_id, email) VALUES (?, ?, ?, ?)').run(provider, profile.subject, existing.id, email);
+    db.prepare("UPDATE users SET password_hash = '!' WHERE id = ?").run(existing.id);
+    db.prepare('DELETE FROM sessions WHERE user_id = ?').run(existing.id);
     return { userId: existing.id, isNew: false };
   }
 

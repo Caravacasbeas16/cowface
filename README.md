@@ -78,6 +78,31 @@ el chat en vivo, los límites de intentos y las tareas automáticas viven en ese
 - Cualquiera puede **bloquear** a otro desde su perfil o el chat: no pueden escribirse ni hacer
   tratos nuevos y no se ven los artículos. Los pedidos ya pagados siguen. Lista en `/bloqueados`.
 
+## ¿Olvidaste tu contraseña?
+
+En `/olvide` la persona pide un enlace (vence en 1 hora, sirve una vez y cierra sus sesiones).
+Para que el enlace llegue por correo, configura **Brevo** (plan gratis, sirve con un Gmail):
+
+1. Crea una cuenta en brevo.com → **Remitentes** → agrega y verifica el correo que enviará
+   (p. ej. tu Gmail o uno de CowFace).
+2. **SMTP y API → Claves API → Generar** una clave nueva.
+3. En Railway → Variables: `BREVO_API_KEY` = la clave, `MAIL_FROM` = el correo verificado.
+
+Sin eso, o si un correo no llega: en `/admin → Usuarios → Enlace contraseña` generas el enlace
+(vale 24 h) y se lo mandas a la persona, solo al correo de su cuenta.
+Con dominio propio también funciona Resend (`RESEND_API_KEY` + `MAIL_FROM`).
+
+## Seguridad
+
+- Contraseñas con scrypt; sesiones aleatorias en cookie `httpOnly`, `secure` y `SameSite=Lax`.
+- CSP (solo scripts propios), HSTS, `X-Frame-Options`, bloqueo de formularios desde otros sitios (CSRF).
+- Límites: 10 intentos por IP cada 15 min y 10 contraseñas fallidas por cuenta por hora; mensajes,
+  ofertas y publicaciones limitados por persona; máximo 3 pedidos sin pagar por comprador.
+- Un comprobante de SINPE solo respalda un pedido; los artículos con pedido en curso no se editan.
+- Las fotos se validan por su contenido real, no por lo que dice el navegador.
+- Nadie puede registrarse con `ADMIN_EMAIL`; cambiar `ADMIN_PASSWORD` cierra las sesiones de admin.
+- `npm test` incluye pruebas de todas estas protecciones; `npm audit` sin vulnerabilidades.
+
 ## Entrar con Google o Facebook (opcional)
 
 Los botones aparecen solo cuando las variables están en Railway. Pon también

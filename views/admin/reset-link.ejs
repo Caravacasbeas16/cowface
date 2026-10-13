@@ -1,0 +1,11 @@
+<%- include('../partials/header') %>
+<section class="auth auth-wide">
+  <h1>Enlace de contraseña</h1>
+  <p>Enlace para que <strong><%= target.name %></strong> (<%= target.email %>) cree una contraseña nueva. Vence en <%= hours %> horas y sirve una sola vez.</p>
+  <div class="pay-card single">
+    <strong class="copy break" data-copy="<%= link %>"><%= link %></strong>
+  </div>
+  <p class="hint">Toca el enlace para copiarlo. Mándalo solo al correo de esa cuenta: quien lo tenga puede cambiar la contraseña. Si lo generaste por error, genera otro y el anterior deja de servir.</p>
+  <a class="btn btn-ghost btn-block" href="/admin#usuarios">Volver al panel</a>
+</section>
+<%- include('../partials/footer') %>

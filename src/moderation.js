@@ -31,11 +31,14 @@ export function saveBlockedWords(text) {
   return words;
 }
 
+const DIGIT_WORDS = '(?:cero|uno|dos|tres|cuatro|cinco|seis|siete|ocho|nueve)';
 const PATTERNS = [
-  // Teléfonos de Costa Rica: 8888-8888, 8888 8888, +506 88888888 (no después de ₡, para no confundir precios).
-  { label: 'número de teléfono', re: /(?<![\d₡])(?:\+?\s?506[\s.-]?)?[2-8]\d{3}[\s.-]?\d{4}(?!\d)/ },
-  // Dígitos separados uno por uno: 8 8 8 8 8 8 8 8
-  { label: 'número de teléfono', re: /(?<!\d)(?:\d[\s.-]){7}\d(?!\d)/ },
+  // Teléfonos de Costa Rica: 8 dígitos (empieza en 2-8) con o sin separadores entre cualquier dígito:
+  // 8888-8888, 8888 8888, 88 88 88 88, 8888/8888, 8 8 8 8 8 8 8 8, +506 88888888.
+  // No después de ₡, para no confundir precios.
+  { label: 'número de teléfono', re: /(?<![\d₡])(?:\+?\s?506[\s./-]?)?[2-8](?:[\s./-]?\d){7}(?!\d)/ },
+  // Escrito en palabras: "ocho ocho ocho ocho siete siete…" (6 o más seguidos).
+  { label: 'número de teléfono', re: new RegExp(`\\b${DIGIT_WORDS}(?:[\\s,.-]+${DIGIT_WORDS}){5,}\\b`, 'i'), normalized: true },
   { label: 'correo electrónico', re: /[\w.+-]+\s*(?:@|\(at\)|\[at\]|\barroba\b)\s*[\w-]+\s*(?:\.|\bpunto\b)\s*[a-z]{2,}/i },
   { label: 'enlace', re: /(?:https?:\/\/|www\.)\S+/i },
   { label: 'enlace', re: /\b[\w-]+\.(?:com|net|org|cr|me|io|ly|co|app|link)\b/i },
@@ -43,8 +46,10 @@ const PATTERNS = [
 
 // Devuelve lo que encontró (para avisarle al usuario) o null si el texto está limpio.
 export function findBlocked(text, words = blockedWords()) {
-  const raw = String(text ?? '');
-  for (const { label, re } of PATTERNS) if (re.test(raw)) return label;
+  // NFKC convierte trucos tipográficos a su forma normal (p. ej. dígitos de ancho completo "８８８").
+  const raw = String(text ?? '').normalize('NFKC');
+  const plain = raw.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  for (const { label, re, normalized } of PATTERNS) if (re.test(normalized ? plain : raw)) return label;
 
   const norm = normalize(raw);
   const tokens = new Set(norm.split(/[^a-z]+/).filter(Boolean));

@@ -12,7 +12,8 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 // Versiones del esquema. Desde la 3 (la primera publicada) los cambios son migraciones que
 // conservan los datos: solo se agregan tablas o columnas, nunca se borra nada.
 //   3 → 4: reseñas, bloqueos entre usuarios y cuentas de Google/Facebook.
-const SCHEMA_VERSION = 4;
+//   4 → 5: enlaces para restablecer la contraseña.
+const SCHEMA_VERSION = 5;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -202,6 +203,17 @@ CREATE TABLE IF NOT EXISTS oauth_accounts (
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   PRIMARY KEY (provider, subject)
 );
+
+-- Enlaces de un solo uso para restablecer la contraseña. Solo se guarda el hash del token:
+-- si alguien leyera la base, no podría usar los enlaces.
+CREATE TABLE IF NOT EXISTS password_resets (
+  token_hash  TEXT PRIMARY KEY,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  expires_at  TEXT NOT NULL,
+  used_at     TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets (user_id);
 
 PRAGMA user_version = ${SCHEMA_VERSION};
 `);

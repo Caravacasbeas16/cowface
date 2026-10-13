@@ -13,6 +13,7 @@ import { enabledProviders } from '../oauth.js';
 import { ratingSummary } from '../reviews.js';
 import { safeNext, validateSignup } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
+import { adminEmail } from '../admin-account.js';
 
 const router = Router();
 
@@ -28,13 +29,18 @@ const brandPhotos = (() => {
 
 const MIN = 60 * 1000;
 const loginLimit = rateLimit({ windowMs: 15 * MIN, max: 10, message: 'Demasiados intentos de entrar. Espera 15 minutos.' });
+// Además del límite por conexión: 10 contraseñas fallidas por hora para un mismo correo,
+// así no se puede adivinar la del admin (u otra) repartiendo intentos entre muchas IP.
+const loginPerEmail = rateLimit({ windowMs: 60 * MIN, max: 10, message: 'Demasiados intentos para esta cuenta. Espera una hora o recupera tu contraseña.', key: () => null });
+// Hash de relleno: si el correo no existe se verifica igual, para que el tiempo de respuesta no lo delate.
+const DUMMY_HASH = hashPassword('contraseña-de-relleno');
 const signupLimit = rateLimit({ windowMs: 60 * MIN, max: 5, message: 'Demasiados registros desde esta conexión. Intenta en una hora.' });
 
 // Railway la usa para saber si el sitio está vivo.
 router.get('/salud', (req, res) => {
   db.prepare('SELECT 1').get();
-  if (req.query.detalle !== '1') return res.type('text').send('ok');
-  // Diagnóstico sin datos privados: qué versión corre y qué configuración está presente.
+  if (req.query.detalle !== '1' || req.user?.role !== 'admin') return res.type('text').send('ok');
+  // Diagnóstico para el admin: qué versión corre y qué configuración está presente.
   const rawContact = process.env.CONTACT_EMAIL;
   res.json({
     ok: true,
@@ -92,8 +98,8 @@ router.get('/registro', (req, res) => {
 
 router.post('/registro', signupLimit, (req, res) => {
   const { data, errors } = validateSignup(req.body);
-  if (!errors.email && db.prepare('SELECT 1 FROM users WHERE email = ?').get(data.email)) {
-    errors.email = 'Ya existe una cuenta con ese correo. Inicia sesión.';
+  if (!errors.email && (data.email === adminEmail() || db.prepare('SELECT 1 FROM users WHERE email = ?').get(data.email))) {
+    errors.email = 'Ya existe una cuenta con ese correo. Inicia sesión o recupera tu contraseña.';
   }
   if (Object.keys(errors).length) {
     return res.status(400).render('register', {
@@ -113,12 +119,16 @@ router.get('/entrar', (req, res) => {
 
 router.post('/entrar', loginLimit, (req, res) => {
   const email = String(req.body.email ?? '').trim().toLowerCase().slice(0, 120);
+  const password = String(req.body.password ?? '').slice(0, 200);
+  const fail = (status, error) => res.status(status).render('login', { title: 'Entrar', error, email, next: safeNext(req.body.next, '') });
+  if (loginPerEmail.blocked(email)) {
+    return fail(429, 'Demasiados intentos para esta cuenta. Espera una hora o usa “¿Olvidaste tu contraseña?”.');
+  }
   const user = db.prepare('SELECT id, role, password_hash, active FROM users WHERE email = ?').get(email);
-  const ok = user && user.active && verifyPassword(String(req.body.password ?? ''), user.password_hash);
-  if (!ok) {
-    return res.status(401).render('login', {
-      title: 'Entrar', error: 'Correo o contraseña incorrectos.', email, next: safeNext(req.body.next, ''),
-    });
+  const passwordOk = verifyPassword(password, user ? user.password_hash : DUMMY_HASH);
+  if (!user || !user.active || !passwordOk) {
+    loginPerEmail.hit(email);
+    return fail(401, 'Correo o contraseña incorrectos.');
   }
   startSession(res, user.id);
   res.redirect(safeNext(req.body.next, user.role === 'admin' ? '/admin' : '/'));

@@ -177,3 +177,9 @@ label.check a { text-decoration: underline; }
 @media (max-width: 640px) {
   .rating-split { grid-template-columns: 1fr; }
 }
+
+/* Recuperar contraseña */
+.forgot-link { align-self: flex-end; margin-top: -.5rem; text-decoration: underline; text-underline-offset: 3px; }
+.spaced { margin-top: 1.5rem; }
+.pay-card.single { grid-template-columns: 1fr; }
+.break { overflow-wrap: anywhere; }

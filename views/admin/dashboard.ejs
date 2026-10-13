@@ -132,6 +132,11 @@
                 <input type="hidden" name="active" value="<%= s.active ? '0' : '1' %>">
                 <button class="btn btn-small btn-ghost"><%= s.active ? 'Suspender' : 'Reactivar' %></button>
               </form>
+              <% if (s.active) { %>
+                <form action="/admin/vendedores/<%= s.id %>/enlace-contrasena" method="post" class="inline" data-confirm="¿Generar un enlace para que <%= s.store_name %> cambie su contraseña? Mándalo solo a <%= s.email %>.">
+                  <button class="btn btn-small btn-ghost">Enlace contraseña</button>
+                </form>
+              <% } %>
             </td>
           </tr>
         <% } %>

@@ -154,7 +154,8 @@ test('páginas de salud, términos y privacidad', async () => {
   assert.match(terms, /<strong>2 %<\/strong>/);
   assert.match(terms, /mailto:prueba123@gmail\.com/);
   assert.equal((await get('/privacidad')).status, 200);
-  const health = await (await get('/salud?detalle=1')).json();
+  assert.equal(await (await get('/salud?detalle=1')).text(), 'ok', 'el diagnóstico no es público');
+  const health = await (await get('/salud?detalle=1', await adminLogin())).json();
   assert.equal(health.correoContacto, 'ok');
 });
 

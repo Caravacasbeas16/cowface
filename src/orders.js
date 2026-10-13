@@ -8,7 +8,8 @@ import { UserError, addMessage, now, systemNote } from './messages.js';
 import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 
-export const OPEN_STATUSES = ['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
+export const MAX_UNPAID_PER_BUYER = 3;
+export const OPEN_STATUSES =['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
 export const DELIVERY_METHODS = {
   correos: 'Correos de Costa Rica',
   mensajero: 'Mensajero / envío a domicilio',
@@ -85,6 +86,11 @@ export function createOrder(conv, price, source) {
   const open = db.prepare(`SELECT 1 FROM orders WHERE conversation_id = ? AND status IN (${OPEN_STATUSES.map(() => '?').join(',')})`)
     .get(conv.id, ...OPEN_STATUSES);
   if (open) throw new UserError('Ya tienes un pedido en curso para este artículo.');
+  // Nadie puede reservar medio catálogo sin pagar: máximo 3 pedidos sin pagar por comprador.
+  const unpaid = db.prepare("SELECT COUNT(*) AS n FROM orders WHERE buyer_id = ? AND status = 'por_pagar'").get(conv.buyer_id).n;
+  if (unpaid >= MAX_UNPAID_PER_BUYER) {
+    throw new UserError(`Tienes ${unpaid} pedidos sin pagar. Paga o cancela alguno antes de comprar otro artículo.`);
+  }
 
   const left = product.quantity - 1;
   db.prepare("UPDATE products SET quantity = ?, status = ?, updated_at = datetime('now') WHERE id = ?")
@@ -148,6 +154,9 @@ export function reportPayment(orderId, buyerId, body) {
     const address = String(body.address ?? '').trim().slice(0, 500);
     const phone = normalizePhone(body.phone);
     if (!/^[\w-]{4,40}$/.test(reference)) throw new UserError('Escribe el número de comprobante del SINPE.');
+    // Un comprobante solo puede respaldar un pedido (evita pagar una vez y reportarlo en varios).
+    const reused = db.prepare("SELECT 1 FROM orders WHERE payment_reference = ? AND id != ? AND status != 'cancelado'").get(reference, order.id);
+    if (reused) throw new UserError('Ese comprobante ya se usó en otro pedido. Revisa el número; si crees que es un error, escríbenos.');
     if (!method) throw new UserError('Elige cómo quieres recibir el artículo.');
     if (address.length < 5) throw new UserError(method === 'en_persona' ? 'Indica dónde y cuándo te queda bien recibirlo.' : 'Escribe la dirección de entrega.');
     if (!phone) throw new UserError('Teléfono de contacto para la entrega (8 dígitos).');

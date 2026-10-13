@@ -1,0 +1,21 @@
+<%- include('partials/header') %>
+<section class="auth">
+  <h1>Contraseña nueva</h1>
+  <% if (!valid) { %>
+    <div class="alert">Este enlace venció o ya se usó.</div>
+    <a class="btn btn-block" href="/olvide">Pedir un enlace nuevo</a>
+  <% } else { %>
+    <% if (error) { %><div class="alert"><%= error %></div><% } %>
+    <form action="/restablecer/<%= encodeURIComponent(token) %>" method="post" class="stack">
+      <label>Contraseña nueva
+        <input type="password" name="password" required minlength="<%= PASSWORD_MIN %>" maxlength="<%= PASSWORD_MAX %>" autocomplete="new-password">
+      </label>
+      <label>Repítela
+        <input type="password" name="confirm" required minlength="<%= PASSWORD_MIN %>" maxlength="<%= PASSWORD_MAX %>" autocomplete="new-password">
+      </label>
+      <p class="hint">Al cambiarla se cierran todas las sesiones abiertas de tu cuenta.</p>
+      <button class="btn btn-block">Guardar contraseña</button>
+    </form>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

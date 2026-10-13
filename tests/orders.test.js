@@ -17,7 +17,12 @@ let admin;
 const product = (id) => ({ ...db.prepare('SELECT quantity, status FROM products WHERE id = ?').get(id) });
 const order = (id) => db.prepare('SELECT * FROM orders WHERE id = ?').get(id);
 const lastOrder = () => db.prepare('SELECT * FROM orders ORDER BY id DESC LIMIT 1').get();
-const PAYMENT = { reference: '123456789', method: 'correos', address: 'Heredia, San Pablo, 100 m norte de la iglesia', phone: '8777-0000' };
+// Cada aviso de pago lleva un comprobante distinto (un comprobante no puede usarse en dos pedidos).
+let receipt = 123456000;
+const PAYMENT = {
+  get reference() { receipt += 1; return String(receipt); },
+  method: 'correos', address: 'Heredia, San Pablo, 100 m norte de la iglesia', phone: '8777-0000',
+};
 
 async function buyDirect(productId) {
   const res = await post(`/p/${productId}/comprar`, buyer);

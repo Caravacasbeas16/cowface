@@ -11,6 +11,7 @@ import chatRoutes from './routes/chat.js';
 import orderRoutes from './routes/orders.js';
 import oauthRoutes from './routes/oauth.js';
 import profileRoutes from './routes/profile.js';
+import passwordRoutes from './routes/password.js';
 import { enabledProviders } from './oauth.js';
 import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
@@ -25,12 +26,48 @@ export function createApp() {
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
+  const production = process.env.NODE_ENV === 'production';
+  // Encabezados de seguridad. La CSP solo permite scripts del propio sitio: aunque alguien lograra
+  // colar HTML en un mensaje o descripción, el navegador no ejecutaría su código.
+  const csp = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' https://fonts.googleapis.com",
+    'font-src https://fonts.gstatic.com',
+    "img-src 'self' data: blob:",
+    "connect-src 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "object-src 'none'",
+    ...(production ? ['upgrade-insecure-requests'] : []),
+  ].join('; ');
   app.use((req, res, next) => {
     res.set({
+      'Content-Security-Policy': csp,
       'X-Content-Type-Options': 'nosniff',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'X-Frame-Options': 'DENY',
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+      ...(production ? { 'Strict-Transport-Security': 'max-age=31536000' } : {}),
     });
+    next();
+  });
+
+  // Protección CSRF: los navegadores siempre mandan Origin en un POST desde otra página.
+  // Si viene de otro sitio, se rechaza (p. ej. una página que intente confirmar un pago en /admin).
+  const ownHosts = (req) => new Set([
+    req.get('host'), req.get('x-forwarded-host'), process.env.RAILWAY_PUBLIC_DOMAIN,
+    (() => { try { return new URL(process.env.PUBLIC_URL).host; } catch { return null; } })(),
+  ].filter(Boolean).map((h) => h.toLowerCase()));
+  const hostOf = (url) => { try { return new URL(url).host.toLowerCase(); } catch { return null; } };
+  app.use((req, res, next) => {
+    if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+    const source = req.get('origin') || req.get('referer');
+    if (source && !ownHosts(req).has(hostOf(source))) {
+      return res.status(403).type('text').send('Solicitud bloqueada: viene de otro sitio.');
+    }
     next();
   });
   app.use(express.static(path.join(ROOT, 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
@@ -102,6 +139,7 @@ export function createApp() {
   app.use('/', publicRoutes);
   app.use('/auth', oauthRoutes);
   app.use('/', profileRoutes);
+  app.use('/', passwordRoutes);
   app.use('/', chatRoutes);
   app.use('/pedidos', orderRoutes);
   app.use('/vendedor', sellerRoutes);

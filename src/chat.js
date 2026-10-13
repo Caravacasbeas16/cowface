@@ -139,6 +139,16 @@ export function respondOffer(offerId, userId, action) {
   const mine = offer.made_by === userId;
   if (action === 'retirar' && !mine) throw new UserError('Solo quien hizo la oferta puede retirarla.');
   if ((action === 'aceptar' || action === 'rechazar') && mine) throw new UserError('No puedes responder tu propia oferta.');
+  if (action === 'aceptar') {
+    // El precio pudo cambiar desde que se hizo la oferta: se valida contra el precio actual.
+    const product = db.prepare('SELECT price FROM products WHERE id = ?').get(conv.product_id);
+    if (product && offer.amount >= product.price) {
+      throw new UserError(`El precio bajó a ${formatColones(product.price)}, que es menos que esta oferta. Compra al precio publicado.`);
+    }
+    if (product && offer.made_by === conv.buyer_id && offer.amount < minOffer(product.price)) {
+      throw new UserError('Esta oferta quedó por debajo del mínimo para el precio actual.');
+    }
+  }
 
   transaction(() => {
     const status = { aceptar: 'aceptada', rechazar: 'rechazada', retirar: 'retirada' }[action];

@@ -1,0 +1,17 @@
+<%- include('partials/header') %>
+<section class="auth">
+  <h1>Recuperar contraseña</h1>
+  <% if (sent) { %>
+    <div class="notice notice-ok">Si existe una cuenta con <strong><%= email %></strong>, te enviamos un enlace para crear una contraseña nueva. Revisa también la carpeta de spam.</div>
+    <p class="muted small">El enlace vence en 1 hora. <% if (contactEmail) { %>Si no te llega, escríbenos a <a href="mailto:<%= contactEmail %>"><%= contactEmail %></a> desde ese mismo correo y te ayudamos.<% } %></p>
+    <a class="btn btn-ghost btn-block" href="/entrar">Volver a entrar</a>
+  <% } else { %>
+    <p class="muted">Escribe el correo de tu cuenta y te mandamos un enlace para crear una contraseña nueva.</p>
+    <form action="/olvide" method="post" class="stack">
+      <label>Correo<input type="email" name="email" required autocomplete="email" value="<%= email %>"></label>
+      <button class="btn btn-block">Enviar enlace</button>
+    </form>
+    <p class="muted center"><a href="/entrar">Volver a entrar</a></p>
+  <% } %>
+</section>
+<%- include('partials/footer') %>

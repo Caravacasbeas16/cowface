@@ -17,7 +17,11 @@ let buyer;
 let admin;
 let sellerId;
 let buyerId;
-const PAYMENT = { reference: '555666777', method: 'en_persona', address: 'Mall San Pedro, sábado 3 p. m.', phone: '8777-0000' };
+let receipt = 555666000;
+const PAYMENT = {
+  get reference() { receipt += 1; return String(receipt); },
+  method: 'en_persona', address: 'Mall San Pedro, sábado 3 p. m.', phone: '8777-0000',
+};
 const userId = (email) => db.prepare('SELECT id FROM users WHERE email = ?').get(email).id;
 const lastOrder = () => db.prepare('SELECT * FROM orders ORDER BY id DESC LIMIT 1').get();
 

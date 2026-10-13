@@ -3,6 +3,8 @@ import { requireRole } from '../auth.js';
 import { db, commissionRate, setSetting } from '../db.js';
 import { ORDER_STATUS } from '../catalog.js';
 import { blockedWords, saveBlockedWords } from '../moderation.js';
+import { ADMIN_LINK_HOURS, createResetToken } from '../password-reset.js';
+import { publicBaseUrl } from '../urls.js';
 import { DELIVERY_METHODS, admin, adminQueues, paymentConfig, savePaymentConfig } from '../orders.js';
 
 const router = Router();
@@ -85,6 +87,16 @@ router.post('/vendedores/:id/activo', (req, res) => {
   // Al suspender, se cierran sus sesiones abiertas.
   if (req.body.active !== '1') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(Number(req.params.id));
   res.redirect('/admin#usuarios');
+});
+
+// Respaldo de "¿Olvidaste tu contraseña?": el admin genera el enlace y se lo manda a la persona
+// (por ejemplo, después de verificar que te escribe desde el correo de su cuenta).
+router.post('/vendedores/:id/enlace-contrasena', (req, res, next) => {
+  const target = db.prepare("SELECT id, name, email FROM users WHERE id = ? AND role = 'usuario' AND active = 1").get(Number(req.params.id));
+  if (!target) return next();
+  const link = `${publicBaseUrl(req)}/restablecer/${createResetToken(target.id, ADMIN_LINK_HOURS * 60)}`;
+  res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+  res.render('admin/reset-link', { title: 'Enlace de contraseña', target, link, hours: ADMIN_LINK_HOURS });
 });
 
 router.post('/comision', (req, res) => {

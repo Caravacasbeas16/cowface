@@ -8,14 +8,15 @@ import {
 import { blockedMessage, findBlocked, logFlagged } from '../moderation.js';
 import { subscribe } from '../realtime.js';
 import { parsePrice } from '../validate.js';
-import { rateLimit } from '../rate-limit.js';
+import { perUser, rateLimit } from '../rate-limit.js';
 import { hasBlocked, isBlockedEither } from '../blocks.js';
 import { ratingSummary } from '../reviews.js';
 
 const router = Router();
 const signedIn = requireRole('usuario');
-const messageLimit = rateLimit({ windowMs: 60 * 1000, max: 30, message: 'Estás enviando mensajes muy rápido. Espera un momento.' });
-const dealLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 40, message: 'Demasiadas ofertas o compras seguidas. Intenta más tarde.' });
+// Límites por persona (no solo por conexión), para que no se evadan cambiando de IP.
+const messageLimit = rateLimit({ windowMs: 60 * 1000, max: 30, key: perUser, message: 'Estás enviando mensajes muy rápido. Espera un momento.' });
+const dealLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 40, key: perUser, message: 'Demasiadas ofertas o compras seguidas. Intenta más tarde.' });
 
 const wantsJson = (req) => (req.get('Accept') || '').includes('application/json');
 

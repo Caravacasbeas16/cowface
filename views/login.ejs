@@ -7,7 +7,8 @@
   <form action="/entrar" method="post" class="stack">
     <input type="hidden" name="next" value="<%= next %>">
     <label>Correo<input type="email" name="email" required value="<%= email %>" autocomplete="email"></label>
-    <label>Contraseña<input type="password" name="password" required autocomplete="current-password"></label>
+    <label>Contraseña<input type="password" name="password" required maxlength="200" autocomplete="current-password"></label>
+    <a class="forgot-link small" href="/olvide">¿Olvidaste tu contraseña?</a>
     <button class="btn btn-block" type="submit">Entrar</button>
   </form>
   <p class="muted center">¿No tienes cuenta? <a href="/registro<%= next ? `?next=${encodeURIComponent(next)}` : '' %>">Crea una gratis</a></p>

@@ -34,6 +34,7 @@ export function validateSignup(body) {
   if (!data.phone) errors.phone = 'Teléfono de 8 dígitos (ej. 8888-8888).';
   if (!PROVINCES.includes(data.province)) errors.province = 'Elige una provincia.';
   if (data.password.length < 8) errors.password = 'Mínimo 8 caracteres.';
+  else if (data.password.length > 200) errors.password = 'Máximo 200 caracteres.';
   return { data, errors };
 }
 
