@@ -14,3 +14,8 @@ export function publicBaseUrl(req) {
   }
   return `${req.protocol}://${req.get('host')}`;
 }
+
+// Para tareas en segundo plano (sin petición): la misma dirección pública, o localhost fuera de producción.
+export function siteBaseUrl() {
+  return publicBaseUrl({ protocol: 'http', get: () => `localhost:${process.env.PORT || 3100}` });
+}

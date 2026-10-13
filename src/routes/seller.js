@@ -16,6 +16,7 @@ import { UPLOAD_DIR, removeFrom } from '../storage.js';
 import { deleteSearch, listSearches, notifyMatches } from '../alerts.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
+import { WAIT_MINUTES } from '../seller-notify.js';
 
 // Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
 function announce(req, id, title) {
@@ -78,12 +79,20 @@ router.get('/', (req, res) => {
   };
   res.render('seller/dashboard', {
     title: 'Mi cuenta', products, orders, purchases, stats, searches: listSearches(req.user.id), PRODUCT_STATUS, ORDER_STATUS,
+    emailWait: WAIT_MINUTES,
   });
 });
 
 // Datos para recibir los pagos de CowFace (SINPE Móvil). Se piden antes de publicar.
 router.get('/pagos', (req, res) => {
   res.render('seller/payout', { title: 'Datos para recibir pagos', commissionRateNow: commissionRate(), error: null, form: req.user, next: req.query.next === 'publicar' ? 'publicar' : '' });
+});
+
+router.post('/avisos-correo', (req, res) => {
+  const on = req.body.email_messages === '1';
+  db.prepare('UPDATE users SET email_messages = ? WHERE id = ?').run(on ? 1 : 0, req.user.id);
+  flash(res, on ? 'Te avisaremos por correo cuando te escriban.' : 'Ya no te mandaremos correos por mensajes nuevos.');
+  res.redirect('/vendedor#avisos-correo');
 });
 
 router.post('/pagos', (req, res) => {

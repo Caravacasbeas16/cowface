@@ -3,6 +3,7 @@ import { SITE_NAME } from './catalog.js';
 import { db } from './db.js';
 import { adminFromEnv, ensureAdmin } from './admin-account.js';
 import { runOrderTimers } from './orders.js';
+import { runMessageEmails } from './seller-notify.js';
 
 // La cuenta admin sale de ADMIN_EMAIL / ADMIN_PASSWORD (en Railway: pestaña Variables).
 const admin = adminFromEnv();
@@ -17,6 +18,11 @@ const timers = () => {
 };
 timers();
 setInterval(timers, 5 * 60 * 1000).unref();
+
+// Correos a vendedores con mensajes sin leer (revisa cada minuto).
+setInterval(() => {
+  runMessageEmails().catch((err) => console.error('Error en avisos de mensajes:', err));
+}, 60 * 1000).unref();
 
 const port = Number(process.env.PORT) || 3100;
 createApp().listen(port, () => {

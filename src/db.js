@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -249,6 +249,8 @@ addColumn('orders', 'payment_proof', 'TEXT');          // captura del SINPE que 
 addColumn('orders', 'shipping_proof', 'TEXT');         // foto de la guía o del paquete que sube el vendedor
 addColumn('orders', 'dispute_evidence', 'TEXT');       // foto que adjunta el comprador al reclamar
 addColumn('users', 'featured_until', 'TEXT');         // tienda destacada hasta esta fecha (ISO); NULL = no destacada
+addColumn('users', 'email_messages', 'INTEGER NOT NULL DEFAULT 1');   // 1 = recibe un correo cuando le escriben y no lo ha leído
+addColumn('conversations', 'seller_notified_at', 'TEXT'); // último correo al vendedor por esta conversación
 
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 

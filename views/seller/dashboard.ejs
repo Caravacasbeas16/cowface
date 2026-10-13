@@ -137,4 +137,15 @@
     </div>
   <% } %>
 </section>
+
+<section id="avisos-correo">
+  <h2>Avisos por correo</h2>
+  <form action="/vendedor/avisos-correo" method="post" class="stack notify-form">
+    <label class="check">
+      <input type="checkbox" name="email_messages" value="1" <%= user.email_messages ? 'checked' : '' %>>
+      <span>Mandarme un correo a <strong><%= user.email %></strong> cuando un comprador me escriba y no lo haya leído en <%= emailWait %> minutos (máximo uno por conversación cada hora).</span>
+    </label>
+    <button class="btn btn-small">Guardar</button>
+  </form>
+</section>
 <%- include('../partials/footer') %>
