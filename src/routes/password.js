@@ -40,7 +40,9 @@ router.post('/olvide', ipLimit, async (req, res, next) => {
     // Misma respuesta exista o no la cuenta: así nadie averigua qué correos están registrados.
     const user = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
       && db.prepare("SELECT id, name FROM users WHERE email = ? AND role = 'usuario' AND active = 1").get(email);
-    if (user && emailAllowed(email)) {
+    const allowed = user && emailAllowed(email);
+    if (user && !allowed) console.log('Recuperación: límite de 3 correos por hora para esa cuenta; no se envía.');
+    if (allowed) {
       const link = `${publicBaseUrl(req)}/restablecer/${createResetToken(user.id)}`;
       await sendMail({
         to: email,
@@ -51,6 +53,9 @@ router.post('/olvide', ipLimit, async (req, res, next) => {
           + `<p style="color:#666">Si no lo pediste, ignora este correo: tu contraseña no cambia.</p><p>${SITE_NAME}</p>`,
       }).catch((err) => console.error('No se pudo enviar el correo de recuperación:', err.message));
     }
+    // Para diagnosticar en los registros de Railway por qué no llegó un correo (sin anotar la dirección).
+    if (!user) console.log('Recuperación: el correo no corresponde a una cuenta normal activa; no se envía nada.');
+    else if (!mailConfigured()) console.log('Recuperación: el envío de correos no está configurado (BREVO_API_KEY / MAIL_FROM).');
     res.render('forgot', { title: 'Recuperar contraseña', sent: true, email, mailReady: mailConfigured() });
   } catch (err) {
     next(err);

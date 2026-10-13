@@ -45,9 +45,12 @@ export async function sendMail({ to, subject, text, html }) {
     signal: AbortSignal.timeout(10_000),
   });
   if (!res.ok) {
-    // Sin registrar el cuerpo del correo (lleva el enlace secreto); solo el código de error.
-    console.error(`Error enviando correo con ${provider}: HTTP ${res.status}`);
+    // Se registra el motivo que da el proveedor (p. ej. "sender not valid", "IP not authorized"),
+    // nunca el cuerpo del correo, que lleva el enlace secreto.
+    const reason = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 300);
+    console.error(`Error enviando correo con ${provider}: HTTP ${res.status} ${reason}`);
     return false;
   }
+  console.log(`Correo enviado con ${provider}: "${subject}"`);
   return true;
 }
