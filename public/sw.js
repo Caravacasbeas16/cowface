@@ -19,7 +19,8 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const url = new URL(event.notification.data?.url || '/mensajes', self.location.origin);
-  if (url.origin !== self.location.origin) return;
+  // Si el sitio se mudó a otro dominio, se abre la dirección nueva.
+  if (url.origin !== self.location.origin) { event.waitUntil(self.clients.openWindow(url.href)); return; }
   event.waitUntil((async () => {
     const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of windows) {

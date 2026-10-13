@@ -63,6 +63,19 @@ export function createApp() {
     next();
   });
 
+  // Dominio propio: con PUBLIC_URL definida, quien entra por la dirección de Railway o por "www."
+  // termina en el dominio principal (un solo sitio, los enlaces viejos siguen sirviendo).
+  // /salud (revisión de Railway) y sw.js (para que los celulares que activaron notificaciones con la
+  // dirección vieja puedan actualizarse) no se redirigen.
+  const canonical = (() => { try { return new URL(process.env.PUBLIC_URL); } catch { return null; } })();
+  if (production && canonical && /^https?:$/.test(canonical.protocol)) {
+    app.use((req, res, next) => {
+      if (!['GET', 'HEAD'].includes(req.method) || req.path === '/salud' || req.path === '/sw.js') return next();
+      if ((req.get('host') || '').toLowerCase() === canonical.host) return next();
+      res.redirect(301, `${canonical.origin}${req.originalUrl}`);
+    });
+  }
+
   // Protección CSRF: los navegadores siempre mandan Origin en un POST desde otra página.
   // Si viene de otro sitio, se rechaza (p. ej. una página que intente confirmar un pago en /admin).
   const ownHosts = (req) => new Set([
@@ -93,6 +106,8 @@ export function createApp() {
     app.use(`/vendor/pdfjs/${dir}`, express.static(path.join(PDFJS, dir), { maxAge: production ? '7d' : 0, index: false }));
   }
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
+  // Un POST sin datos de formulario deja req.body vacío (y no undefined) para que las rutas no fallen.
+  app.use((req, res, next) => { req.body ??= {}; next(); });
   app.use(cookieParser());
   app.use(loadUser);
 
