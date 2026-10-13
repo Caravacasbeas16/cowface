@@ -70,6 +70,37 @@ Después de publicar, entra a `/admin → Cobro` y pon tu número SINPE Móvil y
 Cada `git push` a `main` vuelve a publicar solo. Corre en **un solo servidor** (réplicas = 1):
 el chat en vivo, los límites de intentos y las tareas automáticas viven en ese proceso.
 
+## Reseñas, perfiles y bloqueos
+
+- Al completarse un pedido, comprador y vendedor se califican (1–5 estrellas + comentario, que pasa
+  por el filtro de contacto). Cada usuario tiene un perfil público en `/u/<id>` con su promedio
+  como vendedor y como comprador, sus reseñas y sus artículos.
+- Cualquiera puede **bloquear** a otro desde su perfil o el chat: no pueden escribirse ni hacer
+  tratos nuevos y no se ven los artículos. Los pedidos ya pagados siguen. Lista en `/bloqueados`.
+
+## Entrar con Google o Facebook (opcional)
+
+Los botones aparecen solo cuando las variables están en Railway. Pon también
+`PUBLIC_URL=https://cowface-production.up.railway.app` (o tu dominio) para que la dirección de
+regreso sea exacta. Quien entra por primera vez completa teléfono y provincia en `/completar-perfil`.
+
+**Google** (console.cloud.google.com):
+1. Crea un proyecto → **APIs y servicios → Pantalla de consentimiento OAuth**: tipo *Externo*,
+   nombre CowFace, tu correo de soporte; al terminar, **Publicar app** (si no, solo entran usuarios de prueba).
+2. **Credenciales → Crear credenciales → ID de cliente OAuth → Aplicación web**.
+   URI de redireccionamiento autorizado: `<PUBLIC_URL>/auth/google/callback`.
+3. Copia el ID y el secreto a las variables `GOOGLE_CLIENT_ID` y `GOOGLE_CLIENT_SECRET`.
+
+**Facebook** (developers.facebook.com):
+1. **Crear app** → caso de uso *Autenticar y solicitar datos con Inicio de sesión con Facebook*.
+2. En la configuración de Inicio de sesión con Facebook, **URI de redireccionamiento de OAuth válidos**:
+   `<PUBLIC_URL>/auth/facebook/callback`. Pide los permisos `email` y `public_profile`.
+3. En **Configuración básica**: URL de política de privacidad `<PUBLIC_URL>/privacidad` y de
+   términos `<PUBLIC_URL>/terminos`. Copia el identificador y la clave secreta de la app a
+   `FACEBOOK_APP_ID` y `FACEBOOK_APP_SECRET`, y pasa la app a modo **En vivo**.
+
+`/salud?detalle=1` muestra qué está configurado (sin valores privados).
+
 ## Dónde está cada cosa
 
 | Qué | Archivo |
@@ -81,6 +112,7 @@ el chat en vivo, los límites de intentos y las tareas automáticas viven en ese
 | Filtro de contacto | `src/moderation.js` |
 | Avisos en vivo (Server-Sent Events) | `src/realtime.js`, `public/js/chat.js` |
 | Búsqueda e inventario | `src/products.js` |
+| Reseñas / bloqueos / Google y Facebook | `src/reviews.js`, `src/blocks.js`, `src/oauth.js` |
 | Rutas | `src/routes/` · Vistas: `views/` · Estilos: `public/css/styles.css` |
 
 Las fotos se guardan en `uploads/`. Ni `data/` ni `uploads/` van a git.

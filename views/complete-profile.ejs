@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<section class="auth auth-wide">
+  <h1>Completa tu perfil</h1>
+  <p class="muted">Ya casi. Necesitamos estos datos para coordinar entregas y pagos.</p>
+  <form action="/completar-perfil" method="post" class="stack">
+    <input type="hidden" name="next" value="<%= next %>">
+    <div class="row2">
+      <label>Teléfono
+        <input name="phone" required inputmode="tel" placeholder="8888-8888" value="<%= form.phone || '' %>" autocomplete="tel">
+        <span class="hint">Privado. Solo se usa para entregas una vez confirmado un pago.</span>
+        <% if (errors.phone) { %><span class="error"><%= errors.phone %></span><% } %>
+      </label>
+      <label>Provincia
+        <select name="province" required>
+          <option value="">Elige…</option>
+          <% for (const p of catalog.PROVINCES) { %><option <%= form.province === p ? 'selected' : '' %>><%= p %></option><% } %>
+        </select>
+        <% if (errors.province) { %><span class="error"><%= errors.province %></span><% } %>
+      </label>
+    </div>
+    <label>Nombre de tienda <span class="muted">(opcional)</span>
+      <input name="store_name" maxlength="80" value="<%= form.store_name || '' %>" placeholder="Ej. Closet de Ana">
+      <% if (errors.store_name) { %><span class="error"><%= errors.store_name %></span><% } %>
+    </label>
+    <label class="check">
+      <input type="checkbox" name="terms" value="1" required>
+      <span>Acepto los <a href="/terminos" target="_blank">términos de uso</a> y la <a href="/privacidad" target="_blank">política de privacidad</a>.</span>
+    </label>
+    <% if (errors.terms) { %><span class="error"><%= errors.terms %></span><% } %>
+    <button class="btn btn-block">Continuar</button>
+  </form>
+</section>
+<%- include('partials/footer') %>

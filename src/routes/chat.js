@@ -9,6 +9,8 @@ import { blockedMessage, findBlocked, logFlagged } from '../moderation.js';
 import { subscribe } from '../realtime.js';
 import { parsePrice } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
+import { hasBlocked, isBlockedEither } from '../blocks.js';
+import { ratingSummary } from '../reviews.js';
 
 const router = Router();
 const signedIn = requireRole('usuario');
@@ -110,8 +112,11 @@ function loadConversation(req, res, next) {
 router.get('/mensajes/:id', signedIn, loadConversation, (req, res) => {
   markRead(req.conv, req.user.id);
   res.locals.unread = unreadCount(req.user.id);
+  const otherId = req.conv.role === 'comprador' ? req.conv.seller_id : req.conv.buyer_id;
   res.render('chat/conversation', {
     title: req.conv.product_title, conv: req.conv, messages: threadMessages(req.conv.id), minOffer: minOffer(req.conv.price || 0),
+    otherId, otherRating: ratingSummary(otherId), blocked: isBlockedEither(req.conv.buyer_id, req.conv.seller_id),
+    iBlocked: hasBlocked(req.user.id, otherId),
   });
 });
 
@@ -127,7 +132,12 @@ router.post('/mensajes/:id', signedIn, messageLimit, loadConversation, (req, res
   if (!text) return fail(req, res, 400, 'Escribe un mensaje.', back);
   const blocked = moderate(req, text, req.conv.id, 'chat');
   if (blocked) return fail(req, res, 422, blocked, back);
-  sendText(req.conv, req.user.id, text);
+  try {
+    sendText(req.conv, req.user.id, text);
+  } catch (err) {
+    if (err instanceof UserError) return fail(req, res, 403, err.message, back);
+    throw err;
+  }
   if (wantsJson(req)) return res.json({ ok: true });
   res.redirect(back);
 });

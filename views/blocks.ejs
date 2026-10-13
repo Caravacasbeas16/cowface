@@ -1,0 +1,24 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <div>
+    <h1>Bloqueados</h1>
+    <p class="muted">No pueden escribirte ni hacer tratos contigo, y no ves sus artículos. Los pedidos ya pagados siguen su curso.</p>
+  </div>
+</div>
+<% if (!blocks.length) { %>
+  <p class="muted" style="margin-top:1.5rem">No has bloqueado a nadie. Puedes bloquear a alguien desde su perfil o desde el chat.</p>
+<% } else { %>
+  <div class="list">
+    <% for (const b of blocks) { %>
+      <div class="list-row">
+        <div class="avatar"><%= b.store_name.charAt(0).toUpperCase() %></div>
+        <div class="list-main">
+          <a href="/u/<%= b.id %>"><%= b.store_name %></a>
+          <div class="muted small">Bloqueado <%= timeAgo(b.created_at) %></div>
+        </div>
+        <form action="/u/<%= b.id %>/desbloquear" method="post"><button class="btn btn-ghost btn-small">Desbloquear</button></form>
+      </div>
+    <% } %>
+  </div>
+<% } %>
+<%- include('partials/footer') %>

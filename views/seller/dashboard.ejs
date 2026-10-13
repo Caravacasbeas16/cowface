@@ -5,8 +5,12 @@
     <p class="muted"><%= user.province %> · <%= user.email %> ·
       <% if (user.payout_phone) { %>Pagos a SINPE <%= user.payout_phone %> <a href="/vendedor/pagos">cambiar</a><% } else { %><a href="/vendedor/pagos">Agrega dónde recibir tus pagos</a><% } %></p>
   </div>
-  <a class="btn" href="/vendedor/productos/nuevo">+ Publicar artículo</a>
+  <div class="head-actions">
+    <a class="btn btn-ghost" href="/u/<%= user.id %>">Ver mi perfil público</a>
+    <a class="btn" href="/vendedor/productos/nuevo">+ Publicar artículo</a>
+  </div>
 </div>
+<p class="small muted account-links"><a href="/bloqueados">Usuarios bloqueados</a> · <a href="/vendedor/pagos">Datos para recibir pagos</a></p>
 
 <div class="stats">
   <div class="stat"><span class="stat-n"><%= stats.available %></span><span class="muted">Publicados</span></div>

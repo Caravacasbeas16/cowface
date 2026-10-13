@@ -7,6 +7,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { categoryCovers, countByCategory, getProduct, latestProducts, parseFilters, searchProducts } from '../products.js';
 import { findConversation, minOffer } from '../chat.js';
+import { isBlockedEither } from '../blocks.js';
+import { paymentsReady } from '../orders.js';
+import { enabledProviders } from '../oauth.js';
+import { ratingSummary } from '../reviews.js';
 import { safeNext, validateSignup } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
 
@@ -16,7 +20,7 @@ const router = Router();
 const BRAND_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../public/img/brand');
 const brandPhotos = (() => {
   try {
-    return fs.readdirSync(BRAND_DIR).filter((f) => /.(jpe?g|png|webp)$/i.test(f)).sort().map((f) => `/img/brand/${f}`);
+    return fs.readdirSync(BRAND_DIR).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).sort().map((f) => `/img/brand/${f}`);
   } catch {
     return [];
   }
@@ -29,7 +33,18 @@ const signupLimit = rateLimit({ windowMs: 60 * MIN, max: 5, message: 'Demasiados
 // Railway la usa para saber si el sitio está vivo.
 router.get('/salud', (req, res) => {
   db.prepare('SELECT 1').get();
-  res.type('text').send('ok');
+  if (req.query.detalle !== '1') return res.type('text').send('ok');
+  // Diagnóstico sin datos privados: qué versión corre y qué configuración está presente.
+  const rawContact = process.env.CONTACT_EMAIL;
+  res.json({
+    ok: true,
+    version: (process.env.RAILWAY_GIT_COMMIT_SHA || 'local').slice(0, 7),
+    modo: process.env.NODE_ENV || 'desarrollo',
+    correoContacto: rawContact == null ? 'falta' : req.app.locals.contactEmail ? 'ok' : 'valor inválido',
+    cobroConfigurado: paymentsReady(),
+    accesoSocial: enabledProviders(),
+    volumen: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH),
+  });
 });
 
 router.get('/terminos', (req, res) => res.render('terms', { title: 'Términos de uso', ratePercent: +(commissionRate() * 100).toFixed(2) }));
@@ -37,13 +52,13 @@ router.get('/privacidad', (req, res) => res.render('privacy', { title: 'Polític
 
 router.get('/', (req, res) => {
   res.render('home', {
-    title: null, latest: latestProducts(15), counts: countByCategory(), covers: categoryCovers(), brandPhotos,
+    title: null, latest: latestProducts(15, req.user?.id), counts: countByCategory(), covers: categoryCovers(), brandPhotos,
     commissionRateNow: commissionRate(),
   });
 });
 
 router.get('/buscar', (req, res) => {
-  const filters = parseFilters(req.query);
+  const filters = parseFilters(req.query, req.user?.id);
   const result = searchProducts(filters);
   // Para los enlaces de paginación: la URL actual sin "pagina".
   const params = new URLSearchParams();
@@ -59,7 +74,11 @@ router.get('/p/:id', (req, res, next) => {
   if (!product || !product.seller_active) return next();
   const isOwner = req.user?.id === product.seller_id;
   const conversationId = req.user && !isOwner ? findConversation(product.id, req.user.id) : null;
-  res.render('product', { title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price) });
+  const blocked = Boolean(req.user && !isOwner && isBlockedEither(req.user.id, product.seller_id));
+  res.render('product', {
+    title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
+    sellerRating: ratingSummary(product.seller_id),
+  });
 });
 
 // ---------- Cuentas (una sola para comprar y vender) ----------

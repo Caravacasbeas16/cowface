@@ -3,6 +3,7 @@
   <h1>Entrar</h1>
   <p class="muted">Para comprar, ofertar, chatear y vender.</p>
   <% if (error) { %><div class="alert"><%= error %></div><% } %>
+  <%- include('partials/social-login') %>
   <form action="/entrar" method="post" class="stack">
     <input type="hidden" name="next" value="<%= next %>">
     <label>Correo<input type="email" name="email" required value="<%= email %>" autocomplete="email"></label>

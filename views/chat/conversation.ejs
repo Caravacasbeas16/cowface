@@ -1,9 +1,20 @@
 <%- include('../partials/header') %>
-<% const canOffer = conv.product_status === 'disponible' && !(conv.order && OPEN_STATUSES.includes(conv.order.status)); %>
+<% const canOffer = !blocked && conv.product_status === 'disponible' && !(conv.order && OPEN_STATUSES.includes(conv.order.status)); %>
 <div class="chat" data-chat="<%= conv.id %>">
   <div class="chat-head">
     <a href="/mensajes" class="muted">← Mensajes</a>
-    <div><strong><%= conv.otherName %></strong> <span class="muted small"><%= conv.role === 'comprador' ? 'vendedor' : 'comprador' %></span></div>
+    <div class="chat-who">
+      <a href="/u/<%= otherId %>"><strong><%= conv.otherName %></strong></a>
+      <span class="muted small"><%= conv.role === 'comprador' ? 'vendedor' : 'comprador' %></span>
+      <% if (otherRating.count) { %><span class="small"><span class="stars"><%= stars(otherRating.avg) %></span> <%= otherRating.avg.toFixed(1) %></span><% } %>
+    </div>
+    <% if (iBlocked) { %>
+      <form action="/u/<%= otherId %>/desbloquear" method="post"><button class="linklike small">Desbloquear</button></form>
+    <% } else { %>
+      <form action="/u/<%= otherId %>/bloquear" method="post" data-confirm="¿Bloquear a <%= conv.otherName %>? No podrán escribirse ni hacer tratos nuevos. Los pedidos ya pagados siguen su curso.">
+        <button class="linklike small">Bloquear</button>
+      </form>
+    <% } %>
   </div>
 
   <div class="chat-thread" data-thread>
@@ -11,11 +22,15 @@
   </div>
 
   <div class="composer">
-    <div class="alert" data-chat-error hidden></div>
-    <form action="/mensajes/<%= conv.id %>" method="post" class="composer-text" data-chat-form>
-      <textarea name="body" rows="1" maxlength="1000" required placeholder="Escribe un mensaje…" aria-label="Mensaje"></textarea>
-      <button class="btn" type="submit">Enviar</button>
-    </form>
+    <% if (blocked) { %>
+      <div class="notice"><%= iBlocked ? 'Bloqueaste a esta persona: no pueden escribirse ni hacer tratos nuevos.' : 'Esta persona te bloqueó: no pueden escribirse ni hacer tratos nuevos.' %> Si hay un pedido en curso, puedes seguir sus pasos desde el recuadro de arriba.</div>
+    <% } else { %>
+      <div class="alert" data-chat-error hidden></div>
+      <form action="/mensajes/<%= conv.id %>" method="post" class="composer-text" data-chat-form>
+        <textarea name="body" rows="1" maxlength="1000" required placeholder="Escribe un mensaje…" aria-label="Mensaje"></textarea>
+        <button class="btn" type="submit">Enviar</button>
+      </form>
+    <% } %>
     <% if (canOffer) { %>
       <details class="composer-offer">
         <summary><%= conv.role === 'vendedor' ? 'Enviar contraoferta / oferta' : 'Hacer o mejorar mi oferta' %></summary>

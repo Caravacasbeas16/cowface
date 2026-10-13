@@ -9,6 +9,10 @@ import sellerRoutes, { UPLOAD_DIR } from './routes/seller.js';
 import adminRoutes from './routes/admin.js';
 import chatRoutes from './routes/chat.js';
 import orderRoutes from './routes/orders.js';
+import oauthRoutes from './routes/oauth.js';
+import profileRoutes from './routes/profile.js';
+import { enabledProviders } from './oauth.js';
+import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
 import { DELIVERY_METHODS, OPEN_STATUSES, paymentConfig } from './orders.js';
 
@@ -39,10 +43,17 @@ export function createApp() {
   app.locals.siteName = catalog.SITE_NAME;
   app.locals.catalog = catalog;
   app.locals.paymentConfig = paymentConfig;
+  app.locals.enabledProviders = enabledProviders;
+  app.locals.reviewTarget = reviewTarget;
+  app.locals.myReview = myReview;
+  app.locals.ratingSummary = ratingSummary;
+  // ★★★★☆ para un promedio o calificación.
+  app.locals.stars = (n) => { const r = Math.round(Number(n) || 0); return '★'.repeat(r) + '☆'.repeat(5 - r); };
   app.locals.DELIVERY_METHODS = DELIVERY_METHODS;
   app.locals.OPEN_STATUSES = OPEN_STATUSES;
   const contact = (process.env.CONTACT_EMAIL || '').trim();
-  app.locals.contactEmail = /^[w.+-]+@[w-]+(.[w-]+)+$/.test(contact) ? contact : '';
+  app.locals.contactEmail = /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(contact) ? contact : '';
+  if (contact && !app.locals.contactEmail) console.warn('Aviso: CONTACT_EMAIL tiene un valor que no parece un correo; no se mostrará.');
   app.locals.legalUpdated = '12 de octubre de 2026';
   // "hace 5 min", "hace 3 h", "hace 2 d", como en Grailed.
   app.locals.timeAgo = (value) => {
@@ -78,7 +89,19 @@ export function createApp() {
     next();
   });
 
+  // Las cuentas creadas con Google/Facebook completan teléfono y provincia antes de usar el sitio.
+  const PROFILE_FREE = /^\/(completar-perfil|salir|terminos|privacidad|salud|sin-foto|auth)(\/|$)/;
+  app.use((req, res, next) => {
+    const u = req.user;
+    if (u?.role === 'usuario' && (!u.phone || !u.province) && !PROFILE_FREE.test(req.path)) {
+      return res.redirect(`/completar-perfil?next=${encodeURIComponent(req.method === 'GET' ? req.originalUrl : '/')}`);
+    }
+    next();
+  });
+
   app.use('/', publicRoutes);
+  app.use('/auth', oauthRoutes);
+  app.use('/', profileRoutes);
   app.use('/', chatRoutes);
   app.use('/pedidos', orderRoutes);
   app.use('/vendedor', sellerRoutes);

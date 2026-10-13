@@ -1,6 +1,7 @@
 import { db, transaction } from './db.js';
 import { CATEGORIES, CONDITION_GROUPS, DEPARTMENTS, PROVINCES, SORTS, isValidSize } from './catalog.js';
 import { parsePrice } from './validate.js';
+import { notBlockedSql } from './blocks.js';
 
 export const PAGE_SIZE = 24;
 
@@ -11,7 +12,7 @@ const CARD_COLUMNS = `
 `;
 
 // Limpia los filtros de la URL: lo que no reconoce, lo ignora.
-export function parseFilters(query) {
+export function parseFilters(query, viewerId = null) {
   const q = String(query.q ?? '').trim().slice(0, 80);
   const category = CATEGORIES[query.categoria] ? query.categoria : '';
   const sizes = [query.talla].flat().filter((s) => typeof s === 'string' && s && (!category || isValidSize(category, s)));
@@ -27,12 +28,14 @@ export function parseFilters(query) {
     max: parsePrice(query.max),
     sort: SORTS[query.orden] ? query.orden : 'recientes',
     page: Math.max(1, Math.min(500, Number.parseInt(query.pagina, 10) || 1)),
+    viewerId,
   };
 }
 
 export function searchProducts(f) {
   const where = ["p.status = 'disponible'", 'u.active = 1'];
   const params = [];
+  if (f.viewerId) { where.push(notBlockedSql('p.seller_id')); params.push(f.viewerId, f.viewerId); }
   if (f.q) {
     // Cada palabra debe aparecer en título, marca, tipo, color o descripción.
     for (const word of f.q.split(/\s+/).slice(0, 6)) {
@@ -65,11 +68,12 @@ export function searchProducts(f) {
   return { items, total, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
 
-export function latestProducts(limit = 12) {
+export function latestProducts(limit = 12, viewerId = null) {
+  const hide = viewerId ? `AND ${notBlockedSql('p.seller_id')}` : '';
   return db.prepare(`
     SELECT ${CARD_COLUMNS} FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND u.active = 1 ORDER BY p.created_at DESC, p.id DESC LIMIT ?
-  `).all(limit);
+    WHERE p.status = 'disponible' AND u.active = 1 ${hide} ORDER BY p.created_at DESC, p.id DESC LIMIT ?
+  `).all(...(viewerId ? [viewerId, viewerId] : []), limit);
 }
 
 export function countByCategory() {

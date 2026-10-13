@@ -2,6 +2,7 @@
 <section class="auth auth-wide">
   <h1>Crea tu cuenta</h1>
   <p class="muted">Una sola cuenta para comprar, ofertar y vender ropa, zapatos y bolsos.</p>
+  <%- include('partials/social-login') %>
   <form action="/registro" method="post" class="stack">
     <input type="hidden" name="next" value="<%= next %>">
     <div class="row2">

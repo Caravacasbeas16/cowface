@@ -5,6 +5,12 @@ import { formatColones } from './catalog.js';
 import { notify } from './realtime.js';
 import { UserError, addMessage, announce, convRow, now, unreadCount } from './messages.js';
 import { createOrder, orderForConversation } from './orders.js';
+import { isBlockedEither } from './blocks.js';
+
+const BLOCKED_MSG = 'No puedes tratar con esta persona: una de las dos cuentas bloqueó a la otra.';
+function assertNotBlocked(a, b) {
+  if (isBlockedEither(a, b)) throw new UserError(BLOCKED_MSG);
+}
 
 export { UserError, unreadCount };
 
@@ -23,6 +29,7 @@ export function minOffer(price) {
 
 export function getOrCreateConversation(product, buyerId) {
   if (product.seller_id === buyerId) throw new UserError('Este artículo es tuyo.');
+  assertNotBlocked(product.seller_id, buyerId);
   const existing = db.prepare('SELECT id FROM conversations WHERE product_id = ? AND buyer_id = ?').get(product.id, buyerId);
   if (existing) return existing.id;
   const { lastInsertRowid } = db.prepare(
@@ -92,6 +99,7 @@ export function threadMessages(conversationId) {
 }
 
 export function sendText(conv, userId, body) {
+  assertNotBlocked(conv.buyer_id, conv.seller_id);
   addMessage(conv, userId, 'texto', body);
   announce(conv);
 }
@@ -100,6 +108,7 @@ export function sendText(conv, userId, body) {
 
 export function makeOffer(conv, userId, amount) {
   expireOffers();
+  assertNotBlocked(conv.buyer_id, conv.seller_id);
   const product = db.prepare('SELECT id, price, status, quantity FROM products WHERE id = ?').get(conv.product_id);
   if (!product || product.status !== 'disponible' || product.quantity < 1) throw new UserError('Este artículo ya no está disponible.');
   if (!Number.isInteger(amount) || amount <= 0) throw new UserError('Escribe un monto válido en colones.');
@@ -126,6 +135,7 @@ export function respondOffer(offerId, userId, action) {
   if (!conv || (conv.buyer_id !== userId && conv.seller_id !== userId)) return null;
   if (offer.status !== 'pendiente') throw new UserError('Esta oferta ya no está activa.');
 
+  if (action === 'aceptar') assertNotBlocked(conv.buyer_id, conv.seller_id);
   const mine = offer.made_by === userId;
   if (action === 'retirar' && !mine) throw new UserError('Solo quien hizo la oferta puede retirarla.');
   if ((action === 'aceptar' || action === 'rechazar') && mine) throw new UserError('No puedes responder tu propia oferta.');

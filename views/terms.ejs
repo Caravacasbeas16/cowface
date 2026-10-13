@@ -37,10 +37,17 @@
   <h2>6. Reclamos y reembolsos</h2>
   <p>Si el artículo no llega, no corresponde a la publicación (talla, estado, fotos) o resulta ser una réplica, el comprador puede abrir un reclamo antes de confirmar la recepción. El pago queda retenido mientras <%= siteName %> revisa la conversación y la evidencia de ambas partes, y decide si libera el pago al vendedor o reembolsa al comprador. Si el vendedor no puede entregar, se reembolsa al comprador.</p>
 
-  <h2>7. Responsabilidad</h2>
+  <h2>7. Reseñas y bloqueos</h2>
+  <ul>
+    <li>Al completarse un pedido, comprador y vendedor pueden calificarse mutuamente (1 a 5 estrellas y un comentario). Las reseñas son públicas, deben ser honestas y no pueden incluir datos de contacto ni insultos. <%= siteName %> puede retirar reseñas que incumplan estas reglas.</li>
+    <li>Puedes bloquear a cualquier usuario. Mientras exista el bloqueo no pueden escribirse ni hacer tratos nuevos, y no verás sus artículos. Los pedidos ya pagados siguen su curso para proteger el dinero de ambas partes.</li>
+    <li>También puedes pedirnos que suspendamos una cuenta que incumpla estos términos.</li>
+  </ul>
+
+  <h2>8. Responsabilidad</h2>
   <p><%= siteName %> no es el vendedor de los artículos ni garantiza su calidad o autenticidad, pero retiene el pago para proteger al comprador según la sección anterior. Haremos lo razonable para retirar publicaciones y cuentas que incumplan estos términos.</p>
 
-  <h2>8. Cambios y contacto</h2>
+  <h2>9. Cambios y contacto</h2>
   <p>Podemos actualizar estos términos; la versión vigente siempre está en esta página. Para reportes o consultas escribe a <%- contactEmail ? `<a href="mailto:${contactEmail}">${contactEmail}</a>` : 'nuestro correo de contacto' %>.</p>
 </article>
 <%- include('partials/footer') %>

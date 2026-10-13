@@ -35,6 +35,8 @@
 
     <% if (isOwner) { %>
       <div class="notice">Este artículo es tuyo. <a href="/vendedor/productos/<%= p.id %>/editar">Editarlo</a></div>
+    <% } else if (blocked) { %>
+      <div class="notice">No puedes comprar ni escribirle a este vendedor porque una de las dos cuentas bloqueó a la otra.</div>
     <% } else if (p.status !== 'disponible') { %>
       <div class="notice">Este artículo ya no está disponible.</div>
       <% if (conversationId) { %><a class="btn btn-ghost btn-block" href="/mensajes/<%= conversationId %>">Ver mi conversación</a><% } %>
@@ -74,10 +76,17 @@
       </div>
     <% } %>
 
-    <div class="seller-box">
+    <a class="seller-box" href="/u/<%= p.seller_id %>">
       <div class="avatar"><%= (p.store_name || '?').charAt(0).toUpperCase() %></div>
-      <div><strong><%= p.store_name %></strong><div class="muted small"><%= p.province %> · Vendedor en <%= siteName %></div></div>
-    </div>
+      <div class="seller-main">
+        <strong><%= p.store_name %></strong>
+        <div class="small">
+          <% if (sellerRating.count) { %><span class="stars"><%= stars(sellerRating.avg) %></span> <%= sellerRating.avg.toFixed(1) %> <span class="muted">(<%= sellerRating.count %>)</span><% } else { %><span class="muted">Sin reseñas todavía</span><% } %>
+        </div>
+        <div class="muted small"><%= p.province %> · Ver perfil</div>
+      </div>
+      <span class="seller-arrow" aria-hidden="true">→</span>
+    </a>
 
     <h2 class="details-title">Detalles</h2>
     <dl class="specs">

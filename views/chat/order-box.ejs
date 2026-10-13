@@ -110,4 +110,22 @@
       <p>Este pedido se reembolsó al comprador.</p>
     <% } %>
   <% } %>
+  <% if (o.status === 'completado') { %>
+    <% const mineReview = myReview(o.id, user.id); const target = reviewTarget(o, user.id); %>
+    <% if (mineReview) { %>
+      <p class="small">Tu reseña: <span class="stars"><%= stars(mineReview.rating) %></span><%= mineReview.comment ? ` «${mineReview.comment}»` : '' %></p>
+    <% } else if (target) { %>
+      <form action="/resenas/<%= o.id %>" method="post" class="review-form stack compact">
+        <p><strong>Califica al <%= target.role %></strong></p>
+        <div class="star-input" role="radiogroup" aria-label="Calificación">
+          <% for (let n = 5; n >= 1; n--) { %>
+            <input type="radio" id="star-<%= o.id %>-<%= n %>" name="rating" value="<%= n %>" required>
+            <label for="star-<%= o.id %>-<%= n %>" title="<%= n %> estrella<%= n === 1 ? '' : 's' %>">★</label>
+          <% } %>
+        </div>
+        <textarea name="comment" rows="2" maxlength="600" placeholder="¿Cómo te fue? (opcional)"></textarea>
+        <button class="btn btn-small">Publicar reseña</button>
+      </form>
+    <% } %>
+  <% } %>
 </div>

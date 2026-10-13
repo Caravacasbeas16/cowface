@@ -8,6 +8,9 @@ import {
 const { parseFilters, searchProducts } = await import('../src/products.js');
 const { findBlocked } = await import('../src/moderation.js');
 
+// Correo con números y gmail, como el real: antes un error de escape lo rechazaba.
+process.env.CONTACT_EMAIL = 'prueba123@gmail.com';
+
 before(startServer);
 after(stopServer);
 
@@ -149,7 +152,10 @@ test('páginas de salud, términos y privacidad', async () => {
   const terms = await (await get('/terminos')).text();
   assert.match(terms, /WhatsApp, Facebook, Messenger/);
   assert.match(terms, /<strong>2 %<\/strong>/);
+  assert.match(terms, /mailto:prueba123@gmail\.com/);
   assert.equal((await get('/privacidad')).status, 200);
+  const health = await (await get('/salud?detalle=1')).json();
+  assert.equal(health.correoContacto, 'ok');
 });
 
 test('login no redirige a sitios externos', async () => {

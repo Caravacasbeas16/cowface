@@ -6,6 +6,7 @@ import { db, commissionRate, getSetting, setSetting, transaction } from './db.js
 import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
 import { normalizePhone } from './validate.js';
+import { isBlockedEither } from './blocks.js';
 
 export const OPEN_STATUSES = ['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
 export const DELIVERY_METHODS = {
@@ -78,6 +79,7 @@ function newOrderCode() {
 // Reserva una unidad y crea el pedido "por pagar". Debe correr dentro de una transacción.
 export function createOrder(conv, price, source) {
   if (!paymentsReady()) throw new UserError('CowFace todavía no está recibiendo pagos. Intenta más tarde.');
+  if (isBlockedEither(conv.buyer_id, conv.seller_id)) throw new UserError('No puedes tratar con esta persona: una de las dos cuentas bloqueó a la otra.');
   const product = db.prepare('SELECT * FROM products WHERE id = ?').get(conv.product_id);
   if (!product || product.status !== 'disponible' || product.quantity < 1) throw new UserError('Este artículo ya no está disponible.');
   const open = db.prepare(`SELECT 1 FROM orders WHERE conversation_id = ? AND status IN (${OPEN_STATUSES.map(() => '?').join(',')})`)

@@ -9,11 +9,15 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'cowface.db'));
 
-const SCHEMA_VERSION = 3;
+// Versiones del esquema. Desde la 3 (la primera publicada) los cambios son migraciones que
+// conservan los datos: solo se agregan tablas o columnas, nunca se borra nada.
+//   3 → 4: reseñas, bloqueos entre usuarios y cuentas de Google/Facebook.
+const SCHEMA_VERSION = 4;
+const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
-if (hasTables && version < SCHEMA_VERSION) {
-  throw new Error('La base de datos es de una versión anterior. Bórrala (carpeta data/) y corre "npm run seed".');
+if (hasTables && version < FIRST_MIGRATABLE) {
+  throw new Error('La base de datos es de una versión de prueba muy anterior. Bórrala (carpeta data/) y corre "npm run seed".');
 }
 
 db.exec(`
@@ -165,6 +169,39 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 INSERT OR IGNORE INTO settings (key, value) VALUES ('commission_rate', '0.02');
+
+-- Reseñas: una por pedido completado y por dirección (comprador → vendedor, vendedor → comprador).
+CREATE TABLE IF NOT EXISTS reviews (
+  id          INTEGER PRIMARY KEY,
+  order_id    INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  author_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  subject_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role        TEXT NOT NULL CHECK (role IN ('comprador', 'vendedor')),  -- papel de quien recibe la reseña
+  rating      INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  comment     TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (order_id, author_id)
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_subject ON reviews (subject_id, created_at);
+
+-- Bloqueos entre usuarios: si cualquiera de los dos bloqueó al otro, no hay chat ni tratos nuevos.
+CREATE TABLE IF NOT EXISTS user_blocks (
+  blocker_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  blocked_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (blocker_id, blocked_id),
+  CHECK (blocker_id != blocked_id)
+);
+
+-- Inicios de sesión con Google o Facebook vinculados a una cuenta.
+CREATE TABLE IF NOT EXISTS oauth_accounts (
+  provider    TEXT NOT NULL CHECK (provider IN ('google', 'facebook')),
+  subject     TEXT NOT NULL,      -- id del usuario en ese proveedor
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  email       TEXT,
+  created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (provider, subject)
+);
 
 PRAGMA user_version = ${SCHEMA_VERSION};
 `);
