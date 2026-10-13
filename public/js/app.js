@@ -58,6 +58,8 @@
   const main = document.querySelector('[data-gallery-main]');
   const thumbs = [...document.querySelectorAll('.thumb')];
   const sources = thumbs.length ? thumbs.map((t) => t.dataset.src) : main ? [main.src] : [];
+  // La pantalla completa muestra la foto original (máxima calidad); la página, la versión liviana.
+  const fulls = thumbs.length ? thumbs.map((t) => t.dataset.full || t.dataset.src) : main ? [main.dataset.full || main.src] : [];
   const show = (i) => {
     main.src = sources[i];
     main.dataset.index = String(i);
@@ -72,7 +74,12 @@
     let current = 0;
     const go = (i) => {
       current = (i + sources.length) % sources.length;
+      // Primero la versión liviana (ya está en caché) y enseguida la original.
       lbImg.src = sources[current];
+      const full = new Image();
+      const target = current;
+      full.onload = () => { if (current === target) lbImg.src = full.src; };
+      full.src = fulls[current];
       lbImg.classList.remove('zoomed');
       if (count) count.textContent = `${current + 1} / ${sources.length}`;
     };
@@ -102,44 +109,29 @@
     });
   }
 
-  // Fotos al publicar: vista previa, y aviso antes de enviar si alguna no sirve (tipo, tamaño, cantidad).
-  const input = document.querySelector('[data-photo-input]');
-  const preview = document.querySelector('[data-photo-preview]');
-  const photoError = document.querySelector('[data-photo-error]');
-  const OK_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
-  input?.addEventListener('change', () => {
-    const files = [...input.files];
-    const max = Number(input.dataset.max) || 8;
-    const maxBytes = (Number(input.dataset.maxMb) || 20) * 1024 * 1024;
-    let problem = '';
-    if (files.length > max) problem = `Puedes subir hasta ${max} fotos más.`;
-    else if (files.some((f) => /\.hei[cf]$/i.test(f.name) || /hei[cf]/i.test(f.type))) problem = 'Las fotos HEIC no se pueden publicar. En iPhone: Ajustes → Cámara → Formatos → "Más compatible".';
-    else if (files.some((f) => !OK_TYPES.includes(f.type))) problem = 'Solo se aceptan fotos JPG, PNG, WebP o AVIF.';
-    else if (files.some((f) => f.size > maxBytes)) problem = `Cada foto debe pesar menos de ${input.dataset.maxMb} MB.`;
-    if (photoError) { photoError.textContent = problem; photoError.hidden = !problem; }
-    if (problem) { input.value = ''; preview.replaceChildren(); return; }
-    preview.replaceChildren(...files.map((file, i) => {
-      const fig = document.createElement('figure');
-      const img = document.createElement('img');
-      img.src = URL.createObjectURL(file);
-      img.alt = '';
-      fig.append(img);
-      if (i === 0 && !document.querySelector('.current-photos')) {
-        const tag = document.createElement('figcaption');
-        tag.textContent = 'Portada';
-        fig.append(tag);
-      }
-      return fig;
-    }));
-  });
+})();
 
-  // Al publicar: el botón muestra que está subiendo y no se puede tocar dos veces.
-  document.querySelector('[data-listing-form]')?.addEventListener('submit', (e) => {
-    const btn = e.target.querySelector('[data-busy-text]');
-    if (!btn) return;
-    btn.disabled = true;
-    btn.textContent = btn.dataset.busyText;
-  });
+// Al pagar: el monto exacto cambia según cómo se recibe el artículo (en persona no se cobra envío).
+document.addEventListener('change', (e) => {
+  const radio = e.target.closest('[data-pay-form] input[name="method"]');
+  if (!radio) return;
+  const form = radio.closest('[data-pay-form]');
+  const total = Number(form.dataset.price) + Number(radio.dataset.methodCost || 0);
+  const cost = Number(radio.dataset.methodCost || 0);
+  form.querySelector('[data-pay-total]').textContent = '₡' + total.toLocaleString('es-CR') + (cost ? ' con envío' : '');
+});
+
+// Volver a los resultados de búsqueda conservando los filtros (si se llegó desde /buscar).
+(() => {
+  const back = document.querySelector('[data-back-results]');
+  if (!back || !document.referrer) return;
+  try {
+    const ref = new URL(document.referrer);
+    if (ref.origin === location.origin && ref.pathname === '/buscar') {
+      back.href = ref.pathname + ref.search;
+      back.hidden = false;
+    }
+  } catch { /* referrer inválido */ }
 })();
 
 // En pantallas angostas, los filtros empiezan plegados para que se vean los resultados.

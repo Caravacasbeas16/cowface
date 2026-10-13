@@ -14,7 +14,9 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   3 → 4: reseñas, bloqueos entre usuarios y cuentas de Google/Facebook.
 //   4 → 5: enlaces para restablecer la contraseña.
 //   5 → 6: miniatura de cada foto (product_images.thumb).
-const SCHEMA_VERSION = 6;
+//   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
+//          en pedidos, búsquedas guardadas ("Avísame").
+const SCHEMA_VERSION = 7;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -216,11 +218,36 @@ CREATE TABLE IF NOT EXISTS password_resets (
 );
 CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets (user_id);
 
+-- "Avísame cuando haya…": búsquedas guardadas que mandan un correo cuando se publica algo que coincide.
+CREATE TABLE IF NOT EXISTS saved_searches (
+  id               INTEGER PRIMARY KEY,
+  user_id          INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  query            TEXT NOT NULL,       -- la búsqueda como querystring (?categoria=ropa&talla=M…)
+  label            TEXT NOT NULL,
+  last_notified_at TEXT,
+  created_at       TEXT NOT NULL DEFAULT (datetime('now')),
+  UNIQUE (user_id, query)
+);
+
 `);
 
 // Columnas nuevas en tablas que ya existen (CREATE TABLE IF NOT EXISTS no las agrega).
 const hasColumn = (table, column) => db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
-if (!hasColumn('product_images', 'thumb')) db.exec('ALTER TABLE product_images ADD COLUMN thumb TEXT');
+const addColumn = (table, column, definition) => {
+  if (!hasColumn(table, column)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${column} ${definition}`);
+};
+addColumn('product_images', 'thumb', 'TEXT');
+addColumn('product_images', 'original', 'TEXT');        // la foto tal como se subió (sin metadatos)
+addColumn('products', 'measurements', "TEXT NOT NULL DEFAULT '{}'"); // JSON: { pecho: 56, largo: 72, … } en cm
+addColumn('products', 'shipping_cost', 'INTEGER NOT NULL DEFAULT 0'); // lo paga el comprador; 0 = envío gratis
+addColumn('products', 'meetup', 'INTEGER NOT NULL DEFAULT 1');      // acepta entrega en persona sin costo
+addColumn('messages', 'attachment', 'TEXT');           // foto o PDF enviado en el chat
+addColumn('messages', 'attachment_type', 'TEXT');      // 'imagen' | 'pdf'
+addColumn('orders', 'shipping_cost', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('orders', 'total', 'INTEGER');               // precio + envío: lo que paga el comprador
+addColumn('orders', 'payment_proof', 'TEXT');          // captura del SINPE que sube el comprador
+addColumn('orders', 'shipping_proof', 'TEXT');         // foto de la guía o del paquete que sube el vendedor
+addColumn('orders', 'dispute_evidence', 'TEXT');       // foto que adjunta el comprador al reclamar
 
 db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 

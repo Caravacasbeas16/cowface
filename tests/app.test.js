@@ -52,7 +52,7 @@ test('un vendedor publica con foto; la descripción tampoco admite contacto', as
   seller = await signupSeller('vendedor@test.cr', 'Vendedor Test', '8888-1234');
   const res = await publish(seller, POLO, [{ data: PNG, type: 'image/png', name: 'polo.png' }]);
   assert.equal(res.status, 302);
-  productId = Number(res.headers.get('location').split('/').pop());
+  productId = Number(res.headers.get('location').match(/\/p\/(\d+)/)[1]);
   assert.equal(db.prepare('SELECT price FROM products WHERE id = ?').get(productId).price, 25000);
   const img = db.prepare('SELECT filename FROM product_images WHERE product_id = ?').get(productId);
   assert.ok(fs.existsSync(`${process.env.UPLOAD_DIR}/${img.filename}`), 'la foto quedó en disco');

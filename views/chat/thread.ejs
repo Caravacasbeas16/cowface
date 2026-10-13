@@ -51,7 +51,17 @@
       </div>
     <% } else { %>
       <div class="msg-row <%= m.sender_id === me ? 'mine' : '' %>">
-        <div class="bubble"><%= m.body %><span class="bubble-time"><%= when(m.created_at) %></span></div>
+        <div class="bubble <%= m.attachment ? 'bubble-file' : '' %>">
+          <% if (m.attachment_type === 'imagen') { %>
+            <a href="/adjuntos/<%= m.attachment %>" target="_blank" rel="noopener" class="chat-photo">
+              <img src="/adjuntos/<%= m.attachment %>" alt="Foto enviada" loading="lazy">
+            </a>
+          <% } else if (m.attachment_type === 'pdf') { %>
+            <a href="/adjuntos/<%= m.attachment %>" class="chat-pdf">📄 Descargar PDF</a>
+          <% } %>
+          <% if (m.body) { %><span class="bubble-text"><%= m.body %></span><% } %>
+          <span class="bubble-time"><%= when(m.created_at) %></span>
+        </div>
       </div>
     <% } %>
   <% } %>

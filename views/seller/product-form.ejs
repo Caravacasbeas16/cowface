@@ -5,119 +5,215 @@
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const err = (k) => errors[k] ? `<span class="error">${esc(errors[k])}</span>` : '';
   const existing = product ? product.images.length : 0;
+  const isDraft = !product || product.status === 'borrador';
+  const ratePct = +(commissionRateNow * 100).toFixed(2);
+  const meetupOn = f.meetup === undefined || f.meetup === 1 || f.meetup === '1';
 %>
-<section class="form-page">
-  <% if (welcome) { %>
-    <div class="notice notice-ok">¡Tu tienda está creada! Publica tu primer artículo.</div>
-  <% } %>
-  <h1><%= title %></h1>
-  <% if (Object.keys(errors).length) { %><div class="alert">Revisa los campos marcados.</div><% } %>
+<div class="listing-page">
+  <div class="listing-head">
+    <% if (welcome) { %><div class="notice notice-ok">¡Tu cuenta está lista! Publica tu primer artículo.</div><% } %>
+    <h1><%= title %></h1>
+    <% if (product && product.status === 'borrador') { %><p class="muted">Este artículo es un borrador: nadie lo ve hasta que lo publiques.</p><% } %>
+    <% if (Object.keys(errors).length) { %><div class="alert">Revisa los campos marcados en rojo.</div><% } %>
+  </div>
 
-  <% if (existing) { %>
-    <p class="small muted">Fotos actuales. La primera es la portada.</p>
-    <div class="current-photos">
-      <% product.images.forEach((img, i) => { %>
-        <div class="photo-tile <%= i === 0 ? 'is-cover' : '' %>">
-          <img src="/fotos/<%= img.thumb %>" alt="Foto <%= i + 1 %>">
-          <% if (i === 0) { %>
-            <span class="cover-badge">Portada</span>
-          <% } else { %>
-            <form action="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/portada" method="post">
-              <button class="cover-btn" type="submit" title="Usar esta foto como portada">Usar de portada</button>
-            </form>
-          <% } %>
-          <% if (existing > 1) { %>
-            <form action="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/borrar" method="post" data-confirm="¿Quitar esta foto?">
-              <button class="remove-btn" type="submit" aria-label="Quitar foto" title="Quitar foto">×</button>
-            </form>
-          <% } %>
+  <form action="<%= action %>" method="post" enctype="multipart/form-data" class="listing-form" data-listing-form novalidate>
+    <div class="listing-main">
+
+      <!-- 1. Fotos -->
+      <section class="listing-step" id="paso-fotos">
+        <h2><span class="step-n">1</span> Fotos</h2>
+        <p class="muted small">Hasta <%= maxImages %> fotos. Se guardan en su calidad original (solo les quitamos la ubicación GPS). La primera es la portada.</p>
+
+        <% if (existing) { %>
+          <div class="current-photos">
+            <% product.images.forEach((img, i) => { %>
+              <div class="photo-tile <%= i === 0 ? 'is-cover' : '' %>">
+                <img src="/fotos/<%= img.thumb %>" alt="Foto <%= i + 1 %>">
+                <% if (i === 0) { %>
+                  <span class="cover-badge">Portada</span>
+                <% } else { %>
+                  <button class="cover-btn" type="submit" formaction="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/portada" formnovalidate title="Usar esta foto como portada">Usar de portada</button>
+                <% } %>
+                <% if (existing > 1 || isDraft) { %>
+                  <button class="remove-btn" type="submit" formaction="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/borrar" formnovalidate aria-label="Quitar foto" title="Quitar foto" data-confirm-click="¿Quitar esta foto?">×</button>
+                <% } %>
+              </div>
+            <% }) %>
+          </div>
+        <% } %>
+
+        <div class="dropzone" data-dropzone>
+          <input type="file" name="photos" id="photos-input" class="visually-hidden-input"
+                 accept="image/jpeg,image/png,image/webp,image/avif" multiple
+                 data-photo-input data-max="<%= maxImages - existing %>" data-max-mb="<%= maxPhotoMb %>" data-existing="<%= existing %>">
+          <div class="dropzone-inner">
+            <strong>Arrastra tus fotos aquí</strong>
+            <span class="muted small">JPG, PNG, WebP o AVIF · hasta <%= maxPhotoMb %> MB cada una</span>
+            <div class="dropzone-actions">
+              <label for="photos-input" class="btn btn-small">Elegir fotos</label>
+              <button type="button" class="btn btn-small btn-ghost" data-pdf-pick hidden>Importar desde PDF</button>
+              <input type="file" accept="application/pdf" data-pdf-input hidden>
+            </div>
+          </div>
         </div>
-      <% }) %>
+        <div class="photo-preview" data-photo-preview></div>
+        <div class="pdf-pages" data-pdf-pages hidden>
+          <div class="pdf-pages-head">
+            <strong data-pdf-title>Páginas del PDF</strong>
+            <span class="muted small">Elige las que quieres usar como fotos.</span>
+          </div>
+          <div class="pdf-grid" data-pdf-grid></div>
+          <div class="pdf-pages-actions">
+            <button type="button" class="btn btn-small" data-pdf-add>Agregar seleccionadas</button>
+            <button type="button" class="btn btn-small btn-ghost" data-pdf-cancel>Cancelar</button>
+          </div>
+        </div>
+        <span class="error" data-photo-error hidden></span>
+        <%- err('photos') %>
+      </section>
+
+      <!-- 2. Detalles -->
+      <section class="listing-step" id="paso-detalles">
+        <h2><span class="step-n">2</span> Detalles</h2>
+        <label>Título
+          <input name="title" required maxlength="100" value="<%= f.title || '' %>" placeholder="Ej. Hoodie Champion Reverse Weave gris, años 90">
+          <%- err('title') %>
+        </label>
+        <div class="row3">
+          <label>Categoría
+            <select name="category" required data-category-select data-measure-switch>
+              <option value="">Elige…</option>
+              <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
+                <option value="<%= key %>" <%= f.category === key ? 'selected' : '' %>><%= c.label %></option>
+              <% } %>
+            </select>
+            <%- err('category') %>
+          </label>
+          <label>Tipo
+            <select name="item_type" required data-type-select data-selected="<%= f.item_type || '' %>">
+              <option value="">Elige categoría primero</option>
+            </select>
+            <%- err('item_type') %>
+          </label>
+          <label>Talla de la etiqueta
+            <select name="size" required data-size-select data-selected="<%= f.size || '' %>" data-placeholder="Elige…">
+              <option value="">Elige categoría primero</option>
+            </select>
+            <%- err('size') %>
+          </label>
+        </div>
+        <div class="row3">
+          <label>Marca <span class="muted">(opcional)</span><input name="brand" maxlength="60" value="<%= f.brand || '' %>" placeholder="Ej. Champion"></label>
+          <label>Para
+            <select name="department" required>
+              <option value="">Elige…</option>
+              <% for (const [key, label] of Object.entries(catalog.DEPARTMENTS)) { %>
+                <option value="<%= key %>" <%= f.department === key ? 'selected' : '' %>><%= label %></option>
+              <% } %>
+            </select>
+            <%- err('department') %>
+          </label>
+          <label>Estado
+            <select name="condition" required>
+              <option value="">Elige…</option>
+              <% for (const [key, label] of Object.entries(catalog.CONDITIONS)) { %>
+                <option value="<%= key %>" <%= f.condition === key ? 'selected' : '' %>><%= label %></option>
+              <% } %>
+            </select>
+            <%- err('condition') %>
+          </label>
+        </div>
+        <label>Color <span class="muted">(opcional)</span><input name="color" maxlength="40" value="<%= f.color || '' %>" placeholder="Ej. Gris jaspeado"></label>
+      </section>
+
+      <!-- 3. Medidas -->
+      <section class="listing-step" id="paso-medidas">
+        <h2><span class="step-n">3</span> Medidas reales <span class="muted small">(en cm, opcionales pero muy recomendadas)</span></h2>
+        <p class="muted small">En ropa usada la talla de la etiqueta no alcanza para decidir. Mide con la prenda plana sobre una mesa.</p>
+        <% for (const [cat, list] of Object.entries(catalog.MEASUREMENTS)) { %>
+          <div class="measure-grid" data-measure-for="<%= cat %>" <%= f.category === cat ? '' : 'hidden' %>>
+            <% for (const m of list) { %>
+              <label><%= m.label %>
+                <input name="m_<%= m.key %>" inputmode="decimal" value="<%= f[`m_${m.key}`] ?? '' %>" placeholder="cm" <%= f.category === cat ? '' : 'disabled' %>>
+                <% if (m.hint) { %><span class="hint"><%= m.hint %></span><% } %>
+              </label>
+            <% } %>
+          </div>
+        <% } %>
+        <p class="muted small" data-measure-empty <%= f.category ? 'hidden' : '' %>>Elige la categoría para ver qué medir.</p>
+        <%- err('measurements') %>
+      </section>
+
+      <!-- 4. Descripción -->
+      <section class="listing-step" id="paso-descripcion">
+        <h2><span class="step-n">4</span> Descripción</h2>
+        <label class="sr-label">Descripción
+          <textarea name="description" rows="5" maxlength="2000" placeholder="Cuenta lo que importa: corte (oversize, regular, slim), tela, año o época, y cualquier detalle o defecto (manchas, hilos, desgaste). La honestidad evita reclamos."><%= f.description || '' %></textarea>
+        </label>
+        <%- err('description') %>
+      </section>
+
+      <!-- 5. Precio y envío -->
+      <section class="listing-step" id="paso-precio">
+        <h2><span class="step-n">5</span> Precio y envío</h2>
+        <div class="row3">
+          <label>Precio (₡)
+            <input name="price" required inputmode="numeric" value="<%= f.price || '' %>" placeholder="15000" data-price>
+            <%- err('price') %>
+          </label>
+          <label>Envío que paga el comprador (₡)
+            <input name="shipping_cost" inputmode="numeric" value="<%= f.shipping_cost ?? '' %>" placeholder="0 = envío gratis" data-shipping>
+            <span class="hint">Por Correos o mensajero a todo el país.</span>
+            <%- err('shipping_cost') %>
+          </label>
+          <label>Cantidad
+            <input type="number" name="quantity" min="1" max="999" required value="<%= f.quantity || 1 %>">
+            <%- err('quantity') %>
+          </label>
+        </div>
+        <label class="check">
+          <input type="checkbox" name="meetup" value="1" <%= meetupOn ? 'checked' : '' %>>
+          <span>También entrego en persona sin costo de envío (en <%= user.province %>, en un lugar público).</span>
+        </label>
+        <div class="earnings" data-earnings data-rate="<%= commissionRateNow %>">
+          <div><span>Precio</span><strong data-e-price>—</strong></div>
+          <div><span>Comisión <%= siteName %> (<%= ratePct %> %)</span><strong data-e-fee>—</strong></div>
+          <div><span>Envío (lo paga el comprador, te llega a ti)</span><strong data-e-ship>—</strong></div>
+          <div class="earnings-total"><span>Recibes por SINPE</span><strong data-e-total>—</strong></div>
+          <p class="hint">Te pagamos cuando el comprador confirma que recibió el artículo (o <%= releaseDays %> días después de enviado, si no hay reclamo).</p>
+        </div>
+      </section>
+
+      <div class="upload-progress" data-progress hidden>
+        <div class="upload-bar"><span data-progress-bar></span></div>
+        <span class="small" data-progress-text>Subiendo…</span>
+      </div>
+
+      <div class="form-actions listing-actions">
+        <a class="btn btn-ghost" href="/vendedor">Cancelar</a>
+        <% if (isDraft) { %>
+          <button class="btn btn-ghost" type="submit" name="action" value="borrador" formnovalidate data-busy-text="Guardando…">Guardar borrador</button>
+        <% } %>
+        <button class="btn" type="submit" name="action" value="publicar" data-busy-text="Subiendo…"><%= isDraft ? 'Publicar' : 'Guardar cambios' %></button>
+      </div>
     </div>
-  <% } %>
 
-  <form action="<%= action %>" method="post" enctype="multipart/form-data" class="stack" data-listing-form>
-    <label><%= existing ? 'Agregar fotos' : 'Fotos' %>
-      <span class="muted">(hasta <%= maxImages - existing %> más · JPG, PNG, WebP o AVIF · máx. <%= maxPhotoMb %> MB cada una)</span>
-      <input type="file" name="photos" accept="image/jpeg,image/png,image/webp,image/avif" multiple
-             data-photo-input data-max="<%= maxImages - existing %>" data-max-mb="<%= maxPhotoMb %>" <%= existing ? '' : 'required' %>>
-      <div class="photo-preview" data-photo-preview></div>
-      <span class="error" data-photo-error hidden></span>
-      <%- err('photos') %>
-      <span class="hint">Se guardan en alta calidad. Quitamos la ubicación GPS de tus fotos para proteger tu privacidad. Tip: luz natural, fondo liso, y fotos de la etiqueta y de cualquier detalle.</span>
-    </label>
-
-    <label>Título
-      <input name="title" required maxlength="100" value="<%= f.title || '' %>" placeholder="Ej. Camisa polo Lacoste azul marino">
-      <%- err('title') %>
-    </label>
-
-    <div class="row3">
-      <label>Categoría
-        <select name="category" required data-category-select>
-          <option value="">Elige…</option>
-          <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
-            <option value="<%= key %>" <%= f.category === key ? 'selected' : '' %>><%= c.label %></option>
-          <% } %>
-        </select>
-        <%- err('category') %>
-      </label>
-      <label>Tipo
-        <select name="item_type" required data-type-select data-selected="<%= f.item_type || '' %>">
-          <option value="">Elige categoría primero</option>
-        </select>
-        <%- err('item_type') %>
-      </label>
-      <label>Talla
-        <select name="size" required data-size-select data-selected="<%= f.size || '' %>" data-placeholder="Elige…">
-          <option value="">Elige categoría primero</option>
-        </select>
-        <%- err('size') %>
-      </label>
-    </div>
-
-    <div class="row3">
-      <label>Para
-        <select name="department" required>
-          <option value="">Elige…</option>
-          <% for (const [key, label] of Object.entries(catalog.DEPARTMENTS)) { %>
-            <option value="<%= key %>" <%= f.department === key ? 'selected' : '' %>><%= label %></option>
-          <% } %>
-        </select>
-        <%- err('department') %>
-      </label>
-      <label>Estado
-        <select name="condition" required>
-          <option value="">Elige…</option>
-          <% for (const [key, label] of Object.entries(catalog.CONDITIONS)) { %>
-            <option value="<%= key %>" <%= f.condition === key ? 'selected' : '' %>><%= label %></option>
-          <% } %>
-        </select>
-        <%- err('condition') %>
-      </label>
-      <label>Precio (₡)
-        <input name="price" required inputmode="numeric" value="<%= f.price || '' %>" placeholder="15000">
-        <%- err('price') %>
-      </label>
-    </div>
-
-    <div class="row3">
-      <label>Marca <span class="muted">(opcional)</span><input name="brand" maxlength="60" value="<%= f.brand || '' %>"></label>
-      <label>Color <span class="muted">(opcional)</span><input name="color" maxlength="40" value="<%= f.color || '' %>"></label>
-      <label>Cantidad
-        <input type="number" name="quantity" min="1" max="999" required value="<%= f.quantity || 1 %>">
-        <%- err('quantity') %>
-      </label>
-    </div>
-
-    <label>Descripción <span class="muted">(opcional)</span>
-      <textarea name="description" rows="4" maxlength="2000" placeholder="Medidas, detalles, si tiene algún defecto…"><%= f.description || '' %></textarea>
-    </label>
-
-    <div class="form-actions">
-      <a class="btn btn-ghost" href="/vendedor">Cancelar</a>
-      <button class="btn" type="submit" data-busy-text="Subiendo fotos…"><%= product ? 'Guardar cambios' : 'Publicar' %></button>
-    </div>
+    <aside class="listing-guide">
+      <h3>Fotos que venden</h3>
+      <ol class="guide-list">
+        <li><strong>Frente y espalda</strong> completos, con luz natural y fondo liso.</li>
+        <li><strong>Etiqueta de marca</strong> y <strong>etiqueta de talla</strong>.</li>
+        <li><strong>Detalles</strong>: estampado, costuras, botones, cierres.</li>
+        <li><strong>Defectos</strong>, aunque sean pequeños. Evita reclamos.</li>
+        <li><strong>Textura de la tela</strong> de cerca.</li>
+        <li>La prenda <strong>plana con cinta métrica</strong>, para las medidas.</li>
+      </ol>
+      <p class="muted small">¿Tienes un catálogo o lookbook en PDF? Usa "Importar desde PDF" y elige las páginas.</p>
+      <p class="muted small">Tus fotos se guardan en su calidad original y sin ubicación GPS.</p>
+    </aside>
   </form>
-</section>
+</div>
+<script src="/js/listing.js" defer></script>
+<script type="module" src="/js/pdf-import.js"></script>
 <%- include('../partials/footer') %>

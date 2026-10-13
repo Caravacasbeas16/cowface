@@ -54,17 +54,25 @@
       <a class="btn" href="/vendedor/productos/nuevo">Publicar mi primer artículo</a>
     </div>
   <% } else { %>
+    <% if (stats.drafts) { %><p class="small muted">Tienes <%= stats.drafts %> borrador<%= stats.drafts === 1 ? '' : 'es' %> sin publicar: nadie los ve hasta que los publiques.</p><% } %>
     <div class="list">
       <% for (const p of products) { %>
         <div class="list-row">
           <img src="<%= imageUrl(p) %>" alt="">
           <div class="list-main">
-            <a href="/p/<%= p.id %>"><strong><%= p.title %></strong></a>
+            <a href="<%= p.status === 'borrador' ? `/vendedor/productos/${p.id}/editar` : `/p/${p.id}` %>"><strong><%= p.title %></strong></a>
             <div class="muted small">Talla <%= p.size %> · <%= money(p.price) %> · <%= p.quantity %> disp.</div>
             <span class="status status-<%= p.status %>"><%= PRODUCT_STATUS[p.status] %></span>
+            <% if (['disponible', 'pausado', 'vendido'].includes(p.status)) { %>
+              <form action="/vendedor/productos/<%= p.id %>/rapido" method="post" class="quick-edit">
+                <label>Precio ₡<input name="price" inputmode="numeric" value="<%= p.price %>" aria-label="Precio de <%= p.title %>"></label>
+                <label>Cant.<input name="quantity" type="number" min="0" max="999" value="<%= p.quantity %>" aria-label="Cantidad de <%= p.title %>"></label>
+                <button class="btn btn-small btn-ghost">Guardar</button>
+              </form>
+            <% } %>
           </div>
           <div class="list-actions">
-            <a class="btn btn-small btn-ghost" href="/vendedor/productos/<%= p.id %>/editar">Editar</a>
+            <a class="btn btn-small <%= p.status === 'borrador' ? '' : 'btn-ghost' %>" href="/vendedor/productos/<%= p.id %>/editar"><%= p.status === 'borrador' ? 'Terminar y publicar' : 'Editar' %></a>
             <% if (p.status === 'disponible' || p.status === 'pausado') { %>
               <form action="/vendedor/productos/<%= p.id %>/estado" method="post" class="inline">
                 <% if (p.status === 'disponible') { %>
@@ -105,6 +113,27 @@
           <% } %>
         </tbody>
       </table>
+    </div>
+  <% } %>
+</section>
+
+<section id="avisos">
+  <h2>Mis avisos</h2>
+  <% if (!searches.length) { %>
+    <p class="muted">No tienes avisos. En cualquier búsqueda toca <strong>"Avísame cuando haya"</strong> y te mandamos un correo cuando se publique algo que coincida.</p>
+  <% } else { %>
+    <div class="list">
+      <% for (const s of searches) { %>
+        <div class="list-row">
+          <div class="list-main">
+            <a href="/buscar?<%= s.query %>"><strong><%= s.label %></strong></a>
+            <div class="muted small">Creado <%= timeAgo(s.created_at) %><%= s.last_notified_at ? ` · último aviso ${timeAgo(s.last_notified_at)}` : '' %></div>
+          </div>
+          <form action="/vendedor/avisos/<%= s.id %>/borrar" method="post" class="inline">
+            <button class="btn btn-small btn-ghost">Borrar aviso</button>
+          </form>
+        </div>
+      <% } %>
     </div>
   <% } %>
 </section>

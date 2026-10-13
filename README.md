@@ -33,7 +33,7 @@ npm run dev       # abre http://localhost:3100
    vendedor ve la dirección y envía.
 5. El vendedor marca **Enviado**. El comprador toca **Lo recibí**, o pasa el plazo (3 días por defecto)
    sin reclamo y se completa solo.
-6. En `/admin → Pagos a vendedores` ves cuánto transferir (precio − 2 %) y a qué SINPE; al hacerlo,
+6. En `/admin → Pagos a vendedores` ves cuánto transferir (precio − 2 % + envío) y a qué SINPE; al hacerlo,
    tocas **Ya le pagué**.
 7. Si hay problema, el comprador abre un **reclamo** y el dinero queda retenido; tú decides
    **Pagar al vendedor** o **Reembolsar al comprador**.
@@ -75,13 +75,44 @@ el chat en vivo, los límites de intentos y las tareas automáticas viven en ese
 - Hasta **8 fotos** por artículo (mínimo 1), de hasta **20 MB** cada una: JPG, PNG, WebP o AVIF.
   HEIC (iPhone) muestra cómo cambiarlo; los iPhone suelen convertir a JPG solos al subir desde el navegador.
 - `src/images.js` (con `sharp`) endereza la foto según el celular, **borra los metadatos y la
-  ubicación GPS**, y guarda:
-  - una versión grande de hasta 2560 px, JPEG calidad 92 sin submuestreo de color (no se nota
-    diferencia con el original) para la página del artículo y la pantalla completa;
-  - una miniatura de 800 px para las tarjetas, para que el catálogo cargue rápido.
-- Las fotos chicas no se agrandan. El vendedor elige la portada en "Editar".
-- En la página del artículo la foto se ve completa (sin recortar) y con un toque se abre a
-  pantalla completa, con zoom, flechas y deslizar con el dedo.
+  ubicación GPS**, y guarda tres versiones:
+  - **original**: resolución completa. Si es un JPG derecho, solo se le quitan los metadatos y los
+    datos de imagen quedan **byte por byte iguales** (no se vuelve a comprimir). Si hay que
+    enderezarla, se guarda en JPEG calidad 95 sin submuestreo de color (PNG queda sin pérdida);
+  - **grande** de 2048 px (calidad 90, 4:4:4) para la página del artículo;
+  - **miniatura** de 800 px para las tarjetas, para que el catálogo cargue rápido.
+- La pantalla completa (zoom) usa la original. Las fotos chicas no se agrandan; menos de 300 px se rechaza.
+- El formulario de publicar (`public/js/listing.js`) permite arrastrar varias fotos, verlas,
+  reordenarlas, elegir la portada y ver el progreso de subida.
+- **Importar desde PDF** (`public/js/pdf-import.js`, con pdf.js servido desde `/vendor/pdfjs`):
+  el navegador convierte cada página del catálogo de la tienda en una foto de ~2400 px y el
+  vendedor escoge cuáles usar. No se sube el PDF.
+- **Instagram no se importa**: sin iniciar sesión, Instagram solo entrega la primera foto a 640 px
+  y cambia seguido. Lo correcto es subir las fotos originales desde la galería del celular.
+
+## Publicar: borradores, medidas y envío
+
+- **Guardar borrador** no necesita fotos y nadie más lo ve; se publica después desde "Editar".
+- Medidas por categoría (pecho, largo, plantilla, alto…), en cm.
+- El vendedor pone el **costo de envío** (0 = gratis) y si acepta **entrega en persona** (sin costo de envío).
+  El comprador ve el total exacto antes de comprar; al vendedor se le paga precio − 2 % + envío.
+- En el panel: editar precio y cantidad sin abrir el artículo (cantidad 0 lo marca vendido).
+
+## Chat: fotos y comprobantes
+
+- En el chat se adjuntan fotos (JPG/PNG/WebP/AVIF) o PDF de hasta 10 MB. Se guardan **fuera** de
+  la carpeta pública (`attachments/` en el volumen) y `/adjuntos/<archivo>` solo los entrega a las
+  dos personas de la conversación y al admin. Las fotos pierden sus metadatos.
+- Al pagar, enviar o reclamar se puede subir la captura del SINPE, la foto de la guía o la evidencia.
+  Para marcar **Enviado** hace falta número de guía o foto (salvo entrega en persona).
+- El texto del mensaje pasa por el filtro, pero **el filtro no lee texto dentro de las fotos**.
+- El admin puede leer cualquier conversación en `/admin/conversaciones/<id>` para resolver reclamos.
+
+## Avisos de búsqueda
+
+En una búsqueda (con o sin resultados) el botón **Avísame cuando haya** la guarda (máximo 20 por
+persona). Al publicarse algo que coincide se manda un correo (Brevo), como máximo uno cada 6 horas
+por búsqueda. Se borran desde el panel. `/como-funciona` explica plazos, envíos y reclamos.
 
 ## Reseñas, perfiles y bloqueos
 

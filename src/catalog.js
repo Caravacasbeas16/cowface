@@ -48,6 +48,34 @@ export const CATEGORIES = {
   },
 };
 
+// Medidas reales en centímetros, según la categoría (todas opcionales, pero muy recomendadas:
+// en ropa usada la talla de la etiqueta no alcanza para decidir).
+export const MEASUREMENTS = {
+  ropa: [
+    { key: 'pecho', label: 'Pecho', hint: 'De axila a axila, con la prenda plana' },
+    { key: 'largo', label: 'Largo', hint: 'Del hombro (o cintura) hasta el borde de abajo' },
+    { key: 'hombros', label: 'Hombros', hint: 'De costura a costura' },
+    { key: 'manga', label: 'Manga', hint: 'Del hombro al puño' },
+    { key: 'cintura', label: 'Cintura', hint: 'De lado a lado, con la prenda plana' },
+    { key: 'tiro', label: 'Tiro', hint: 'De la entrepierna a la cintura' },
+    { key: 'entrepierna', label: 'Largo de pierna', hint: 'De la entrepierna al ruedo' },
+  ],
+  zapatos: [
+    { key: 'plantilla', label: 'Largo de plantilla', hint: 'Por dentro, del talón a la punta' },
+    { key: 'ancho', label: 'Ancho de suela', hint: 'En la parte más ancha' },
+  ],
+  bolsos: [
+    { key: 'ancho', label: 'Ancho' },
+    { key: 'alto', label: 'Alto' },
+    { key: 'fondo', label: 'Fondo' },
+    { key: 'asa', label: 'Caída del asa', hint: 'Del borde del bolso al punto más alto del asa' },
+  ],
+  accesorios: [
+    { key: 'largo', label: 'Largo' },
+    { key: 'ancho', label: 'Ancho' },
+  ],
+};
+
 export const DEPARTMENTS = {
   mujer: 'Mujer',
   hombre: 'Hombre',
@@ -70,7 +98,7 @@ export const CONDITION_GROUPS = {
 
 export const PROVINCES = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
 
-export const PRODUCT_STATUS = { disponible: 'Disponible', pausado: 'Pausado', reservado: 'Reservado', vendido: 'Vendido' };
+export const PRODUCT_STATUS = { borrador: 'Borrador', disponible: 'Disponible', pausado: 'Pausado', reservado: 'Reservado', vendido: 'Vendido' };
 export const ORDER_STATUS = {
   por_pagar: 'Esperando pago',
   pagado: 'Pagado · por enviar',

@@ -9,10 +9,13 @@ export const now = () => new Date().toISOString();
 
 export const convRow = (id) => db.prepare('SELECT * FROM conversations WHERE id = ?').get(id);
 
-export function addMessage(conv, senderId, kind, body = '', offerId = null) {
+// attachment: { name, type } de un adjunto privado (foto o PDF) ya procesado por images.js.
+export function addMessage(conv, senderId, kind, body = '', offerId = null, attachment = null) {
   const ts = now();
-  db.prepare('INSERT INTO messages (conversation_id, sender_id, kind, body, offer_id, created_at) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(conv.id, senderId, kind, body, offerId, ts);
+  db.prepare(`
+    INSERT INTO messages (conversation_id, sender_id, kind, body, offer_id, attachment, attachment_type, created_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  `).run(conv.id, senderId, kind, body, offerId, attachment?.name || null, attachment?.type || null, ts);
   db.prepare('UPDATE conversations SET last_message_at = ? WHERE id = ?').run(ts, conv.id);
   // Quien escribe ya lo leyó.
   if (senderId) {

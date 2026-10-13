@@ -1,6 +1,6 @@
 // Validación de formularios en el borde del sistema. Cada función devuelve
 // { data, errors } — errors es un objeto { campo: mensaje } vacío si todo está bien.
-import { CATEGORIES, CONDITIONS, DEPARTMENTS, PROVINCES, isValidSize } from './catalog.js';
+import { CATEGORIES, CONDITIONS, DEPARTMENTS, MEASUREMENTS, PROVINCES, isValidSize } from './catalog.js';
 import { blockedMessage, findBlocked } from './moderation.js';
 
 const str = (v, max = 200) => String(v ?? '').trim().slice(0, max);
@@ -51,8 +51,22 @@ export function validateProduct(body) {
     condition: str(body.condition, 30),
     price: parsePrice(body.price),
     quantity: Number.parseInt(body.quantity, 10),
+    // Envío que paga el comprador (0 = envío gratis) y si acepta entrega en persona sin costo.
+    shipping_cost: String(body.shipping_cost ?? '').trim() === '' ? 0 : Number(String(body.shipping_cost).replace(/[₡,.\s]/g, '')),
+    meetup: body.meetup === '1' ? 1 : 0,
+    measurements: {},
   };
   const errors = {};
+  for (const m of MEASUREMENTS[data.category] || []) {
+    const raw = String(body[`m_${m.key}`] ?? '').trim().replace(',', '.');
+    if (!raw) continue;
+    const cm = Number(raw);
+    if (!Number.isFinite(cm) || cm <= 0 || cm > 300) errors.measurements = `"${m.label}" debe ser un número en centímetros (ej. 56 o 56.5).`;
+    else data.measurements[m.key] = Math.round(cm * 2) / 2; // al medio centímetro
+  }
+  if (!Number.isInteger(data.shipping_cost) || data.shipping_cost < 0 || data.shipping_cost > 50_000) {
+    errors.shipping_cost = 'Costo de envío en colones, de 0 (gratis) a ₡50 000.';
+  }
   if (data.title.length < 3) errors.title = 'Escribe un título (ej. "Camisa polo Lacoste azul").';
   if (!CATEGORIES[data.category]) errors.category = 'Elige una categoría.';
   else {

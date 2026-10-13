@@ -22,6 +22,7 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html { -webkit-text-size-adjust: 100%; }
 body {
   margin: 0; font: 15px/1.5 var(--font); background: var(--bg); color: var(--text);
@@ -271,3 +272,32 @@ body.no-scroll { overflow: hidden; }
 .lb-prev { left: 12px; top: 50%; transform: translateY(-50%); }
 .lb-next { right: 12px; top: 50%; transform: translateY(-50%); }
 .lb-count { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); color: #fff; font-size: .8rem; letter-spacing: .08em; }
+
+/* ---------- Artículo: envío, total y medidas ---------- */
+.ship-line { display: flex; flex-wrap: wrap; gap: .3rem 1rem; font-size: .88rem; margin: .2rem 0 .5rem; }
+.price-breakdown { border: 1px solid var(--line); padding: .8rem 1rem; display: flex; flex-direction: column; gap: .25rem; font-size: .9rem; }
+.price-breakdown div { display: flex; justify-content: space-between; gap: 1rem; }
+.price-breakdown-total { font-weight: 800; border-top: 1px solid var(--line); padding-top: .35rem; margin-top: .15rem; }
+.price-breakdown .hint { margin: .2rem 0 0; }
+.measures dt { display: flex; flex-direction: column; }
+.measure-hint { font-size: .7rem; color: var(--muted); }
+.back-to-results { margin-right: .8rem; font-weight: 700; color: var(--ink); }
+.back-to-results[hidden] { display: none; }
+.protect a { text-decoration: underline; }
+
+/* Menú de categorías en pantallas angostas: se nota que hay más hacia la derecha. */
+@media (max-width: 1000px) {
+  .catnav { position: relative; }
+  .catnav::after { content: '›'; position: absolute; right: 0; top: 0; bottom: 0; width: 44px; display: grid; place-items: center end; padding-right: 10px; font-weight: 900; font-size: 1.2rem; pointer-events: none; background: linear-gradient(to right, rgba(255, 255, 255, 0), #fff 60%); }
+  .catnav-inner { padding-right: 44px; }
+}
+
+/* ---------- Búsqueda: filtros activos, avisos y sin resultados ---------- */
+.active-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 1rem; }
+.active-chip { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .7rem; border: 1px solid var(--ink); font-size: .78rem; font-weight: 600; }
+.active-chip:hover { background: var(--ink); color: #fff; text-decoration: none; }
+.clear-all { font-size: .78rem; text-decoration: underline; margin-left: .3rem; }
+.results-tools { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.empty form { margin: 1rem 0; }
+.empty-suggest-title { margin-top: 1.5rem; }
+.empty-suggest { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }

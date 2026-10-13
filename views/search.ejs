@@ -78,18 +78,32 @@
   </details>
 
   <section class="results">
+    <% if (chips.length) { %>
+      <div class="active-chips" aria-label="Filtros activos">
+        <% for (const c of chips) { %><a class="active-chip" href="<%= c.href %>" aria-label="Quitar filtro <%= c.label %>"><%= c.label %> <span aria-hidden="true">×</span></a><% } %>
+        <a class="clear-all" href="/buscar">Limpiar todo</a>
+      </div>
+    <% } %>
     <div class="results-head">
       <p><strong><%= total %></strong> <%= total === 1 ? 'artículo' : 'artículos' %></p>
-      <form action="/buscar" method="get" class="sort">
-        <% for (const [k, v] of new URLSearchParams(baseQuery)) { if (k !== 'orden') { %>
-          <input type="hidden" name="<%= k %>" value="<%= v %>">
-        <% } } %>
-        <select name="orden" aria-label="Ordenar" data-autosubmit>
-          <% for (const [key, label] of Object.entries(catalog.SORTS)) { %>
-            <option value="<%= key %>" <%= f.sort === key ? 'selected' : '' %>><%= label %></option>
-          <% } %>
-        </select>
-      </form>
+      <div class="results-tools">
+        <form action="/avisos" method="post" class="inline">
+          <input type="hidden" name="query" value="<%= baseQuery %>">
+          <button class="btn btn-small btn-ghost" title="Te mandamos un correo cuando se publique algo así">🔔 Avísame cuando haya</button>
+        </form>
+        <% if (total) { %>
+          <form action="/buscar" method="get" class="sort">
+            <% for (const [k, v] of new URLSearchParams(baseQuery)) { if (k !== 'orden') { %>
+              <input type="hidden" name="<%= k %>" value="<%= v %>">
+            <% } } %>
+            <select name="orden" aria-label="Ordenar" data-autosubmit>
+              <% for (const [key, label] of Object.entries(catalog.SORTS)) { %>
+                <option value="<%= key %>" <%= f.sort === key ? 'selected' : '' %>><%= label %></option>
+              <% } %>
+            </select>
+          </form>
+        <% } %>
+      </div>
     </div>
     <% if (items.length) { %>
       <div class="grid">
@@ -104,9 +118,22 @@
       <% } %>
     <% } else { %>
       <div class="empty">
-        <h2>No encontramos nada con esos filtros</h2>
-        <p>Prueba quitando la talla o el precio, o busca en todo el país.</p>
-        <a class="btn btn-ghost" href="/buscar">Ver todo</a>
+        <h2>Todavía no hay <%= alertLabel.toLowerCase() === 'todo lo nuevo' ? 'artículos' : alertLabel.toLowerCase() %></h2>
+        <p class="muted">Llegan prendas nuevas todos los días. Te avisamos por correo apenas se publique algo así:</p>
+        <form action="/avisos" method="post">
+          <input type="hidden" name="query" value="<%= baseQuery %>">
+          <button class="btn">🔔 Avísame cuando haya</button>
+        </form>
+        <% const withStock = Object.entries(catalog.CATEGORIES).filter(([k]) => counts && counts[k]); %>
+        <% if (withStock.length) { %>
+          <p class="muted small empty-suggest-title">Mientras tanto, mira lo que sí hay:</p>
+          <div class="empty-suggest">
+            <% for (const [k, c] of withStock) { %>
+              <a class="active-chip" href="/buscar?categoria=<%= k %>"><%= c.label %> · <%= counts[k] %></a>
+            <% } %>
+            <a class="active-chip" href="/buscar">Ver todo</a>
+          </div>
+        <% } %>
       </div>
     <% } %>
   </section>

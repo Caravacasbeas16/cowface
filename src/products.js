@@ -36,6 +36,7 @@ export function searchProducts(f) {
   const where = ["p.status = 'disponible'", 'u.active = 1'];
   const params = [];
   if (f.viewerId) { where.push(notBlockedSql('p.seller_id')); params.push(f.viewerId, f.viewerId); }
+  if (f.onlyId) { where.push('p.id = ?'); params.push(f.onlyId); }
   if (f.q) {
     // Cada palabra debe aparecer en título, marca, tipo, color o descripción.
     for (const word of f.q.split(/\s+/).slice(0, 6)) {
@@ -68,6 +69,11 @@ export function searchProducts(f) {
   return { items, total, pages: Math.max(1, Math.ceil(total / PAGE_SIZE)) };
 }
 
+// ¿Este artículo aparece en esa búsqueda? (para los avisos de búsquedas guardadas)
+export function productMatches(filters, productId) {
+  return searchProducts({ ...filters, onlyId: productId, page: 1 }).total > 0;
+}
+
 export function latestProducts(limit = 12, viewerId = null) {
   const hide = viewerId ? `AND ${notBlockedSql('p.seller_id')}` : '';
   return db.prepare(`
@@ -90,9 +96,11 @@ export function getProduct(id) {
     FROM products p JOIN users u ON u.id = p.seller_id WHERE p.id = ?
   `).get(id);
   if (!product) return null;
-  product.images = db.prepare(
-    'SELECT id, filename, COALESCE(thumb, filename) AS thumb FROM product_images WHERE product_id = ? ORDER BY position, id',
-  ).all(id);
+  product.images = db.prepare(`
+    SELECT id, filename, COALESCE(thumb, filename) AS thumb, COALESCE(original, filename) AS original
+    FROM product_images WHERE product_id = ? ORDER BY position, id
+  `).all(id);
+  try { product.measurements = JSON.parse(product.measurements || '{}'); } catch { product.measurements = {}; }
   return product;
 }
 
@@ -103,46 +111,65 @@ export function sellerProducts(sellerId) {
   `).all(sellerId);
 }
 
-export function createProduct(sellerId, data, filenames = []) {
+// status: 'disponible' para publicar, 'borrador' para guardar sin publicar.
+export function createProduct(sellerId, data, photos = [], status = 'disponible') {
   return transaction(() => {
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO products (seller_id, title, brand, description, category, department, item_type, size, color, condition, price, quantity)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO products (seller_id, title, brand, description, category, department, item_type, size, color, condition,
+        price, quantity, measurements, shipping_cost, meetup, status)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(sellerId, data.title, data.brand, data.description, data.category, data.department,
-      data.item_type, data.size, data.color, data.condition, data.price, data.quantity);
-    addImages(lastInsertRowid, filenames);
+      data.item_type, data.size, data.color, data.condition, data.price, data.quantity,
+      JSON.stringify(data.measurements || {}), data.shipping_cost || 0, data.meetup ?? 1, status);
+    addImages(lastInsertRowid, photos);
     return Number(lastInsertRowid);
   });
 }
 
-export function updateProduct(id, data, filenames = []) {
+// publish: true pasa un borrador a "disponible" (los demás estados no cambian).
+export function updateProduct(id, data, photos = [], { publish = false } = {}) {
   transaction(() => {
     db.prepare(`
       UPDATE products SET title = ?, brand = ?, description = ?, category = ?, department = ?, item_type = ?,
-        size = ?, color = ?, condition = ?, price = ?, quantity = ?, updated_at = datetime('now')
+        size = ?, color = ?, condition = ?, price = ?, quantity = ?, measurements = ?, shipping_cost = ?, meetup = ?,
+        status = CASE WHEN ? AND status = 'borrador' THEN 'disponible' ELSE status END,
+        created_at = CASE WHEN ? AND status = 'borrador' THEN datetime('now') ELSE created_at END,
+        updated_at = datetime('now')
       WHERE id = ?
     `).run(data.title, data.brand, data.description, data.category, data.department, data.item_type,
-      data.size, data.color, data.condition, data.price, data.quantity, id);
-    addImages(id, filenames);
+      data.size, data.color, data.condition, data.price, data.quantity, JSON.stringify(data.measurements || {}),
+      data.shipping_cost || 0, data.meetup ?? 1, publish ? 1 : 0, publish ? 1 : 0, id);
+    addImages(id, photos);
   });
+}
+
+// Edición rápida desde "Mi cuenta": precio y cantidad sin abrir todo el formulario.
+export function quickUpdate(id, price, quantity) {
+  db.prepare(`
+    UPDATE products SET price = ?, quantity = ?,
+      status = CASE WHEN ? = 0 AND status = 'disponible' THEN 'vendido'
+                    WHEN ? > 0 AND status = 'vendido' THEN 'disponible' ELSE status END,
+      updated_at = datetime('now')
+    WHERE id = ?
+  `).run(price, quantity, quantity, quantity, id);
 }
 
 // photos: [{ filename, thumb }] ya procesadas por images.js (la primera es la portada).
 function addImages(productId, photos) {
   const start = db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS n FROM product_images WHERE product_id = ?').get(productId).n;
-  const insert = db.prepare('INSERT INTO product_images (product_id, filename, thumb, position) VALUES (?, ?, ?, ?)');
-  photos.forEach((p, i) => insert.run(productId, p.filename, p.thumb || null, start + i));
+  const insert = db.prepare('INSERT INTO product_images (product_id, filename, thumb, original, position) VALUES (?, ?, ?, ?, ?)');
+  photos.forEach((p, i) => insert.run(productId, p.filename, p.thumb || null, p.original || null, start + i));
 }
 
 export function imageCount(productId) {
   return db.prepare('SELECT COUNT(*) AS n FROM product_images WHERE product_id = ?').get(productId).n;
 }
 
-const filesOf = (row) => [row.filename, row.thumb].filter(Boolean);
+const filesOf = (row) => [row.filename, row.thumb, row.original].filter(Boolean);
 
-// Devuelve los archivos borrados (foto grande y miniatura) para que la ruta los quite del disco.
+// Devuelve los archivos borrados (original, vista y miniatura) para que la ruta los quite del disco.
 export function deleteImage(productId, imageId) {
-  const row = db.prepare('SELECT filename, thumb FROM product_images WHERE id = ? AND product_id = ?').get(imageId, productId);
+  const row = db.prepare('SELECT filename, thumb, original FROM product_images WHERE id = ? AND product_id = ?').get(imageId, productId);
   if (row) db.prepare('DELETE FROM product_images WHERE id = ?').run(imageId);
   return row ? filesOf(row) : [];
 }
@@ -160,7 +187,7 @@ export function setCoverImage(productId, imageId) {
 }
 
 export function deleteProduct(id) {
-  const files = db.prepare('SELECT filename, thumb FROM product_images WHERE product_id = ?').all(id).flatMap(filesOf);
+  const files = db.prepare('SELECT filename, thumb, original FROM product_images WHERE product_id = ?').all(id).flatMap(filesOf);
   db.prepare('DELETE FROM products WHERE id = ?').run(id);
   return files;
 }

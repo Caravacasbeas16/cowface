@@ -96,19 +96,23 @@ export function createOrder(conv, price, source) {
   db.prepare("UPDATE products SET quantity = ?, status = ?, updated_at = datetime('now') WHERE id = ?")
     .run(left, left === 0 ? 'reservado' : 'disponible', product.id);
 
+  // La comisión se cobra sobre el precio de la prenda. El envío lo paga el comprador y llega
+  // completo al vendedor (que es quien paga el courier). Se toma el costo de envío del artículo en
+  // este momento; si el comprador elige entrega en persona al pagar, el envío queda en cero.
   const rate = commissionRate();
   const commission = Math.round(price * rate);
+  const shipping = product.shipping_cost || 0;
   const code = newOrderCode();
   const { windowHours } = paymentConfig();
   db.prepare(`
     INSERT INTO orders (code, product_id, product_title, seller_id, buyer_id, conversation_id, source, list_price, price,
-      commission_rate, commission_amount, payout_amount, payment_due_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      commission_rate, commission_amount, payout_amount, payment_due_at, shipping_cost, total)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(code, product.id, product.title, conv.seller_id, conv.buyer_id, conv.id, source, product.price, price,
-    rate, commission, price - commission, addHours(windowHours));
+    rate, commission, price - commission + shipping, addHours(windowHours), shipping, price + shipping);
   addMessage(conv, null, 'sistema',
-    `🛒 Pedido ${code} creado por ${formatColones(price)}. El comprador tiene ${windowHours} h para pagar a CowFace; ` +
-    'el vendedor envía cuando confirmemos el pago.');
+    `🛒 Pedido ${code} creado: ${formatColones(price)}${shipping ? ` + envío ${formatColones(shipping)}` : ' (envío gratis)'}. ` +
+    `El comprador tiene ${windowHours} h para pagar a CowFace; el vendedor envía cuando confirmemos el pago.`);
 
   // Si era la última unidad, las demás ofertas por este artículo quedan sin efecto.
   if (left === 0) {
@@ -144,7 +148,14 @@ function complete(order, text) {
   systemNote(order.conversation_id, text);
 }
 
-export function reportPayment(orderId, buyerId, body) {
+// Lo que paga el comprador según cómo reciba el artículo (en persona no se cobra envío).
+export function totalsFor(order, method) {
+  const shipping = method === 'en_persona' ? 0 : order.shipping_cost || 0;
+  return { shipping, total: order.price + shipping, payout: order.price - order.commission_amount + shipping };
+}
+
+// proof: nombre del comprobante (foto/PDF) ya guardado como adjunto privado, o null.
+export function reportPayment(orderId, buyerId, body, proof = null) {
   return transaction(() => {
     const order = load(orderId, { buyerId, from: ['por_pagar'] });
     if (!order) return null;
@@ -158,10 +169,18 @@ export function reportPayment(orderId, buyerId, body) {
     const reused = db.prepare("SELECT 1 FROM orders WHERE payment_reference = ? AND id != ? AND status != 'cancelado'").get(reference, order.id);
     if (reused) throw new UserError('Ese comprobante ya se usó en otro pedido. Revisa el número; si crees que es un error, escríbenos.');
     if (!method) throw new UserError('Elige cómo quieres recibir el artículo.');
+    if (method === 'en_persona') {
+      const product = order.product_id && db.prepare('SELECT meetup FROM products WHERE id = ?').get(order.product_id);
+      if (product && !product.meetup) throw new UserError('Este vendedor no hace entregas en persona: elige envío.');
+    }
     if (address.length < 5) throw new UserError(method === 'en_persona' ? 'Indica dónde y cuándo te queda bien recibirlo.' : 'Escribe la dirección de entrega.');
     if (!phone) throw new UserError('Teléfono de contacto para la entrega (8 dígitos).');
-    update(order, { payment_reported_at: now(), payment_reference: reference, delivery_method: method, delivery_address: address, delivery_phone: phone });
-    systemNote(order.conversation_id, `💸 El comprador avisó que pagó el pedido ${order.code}. CowFace está verificando el pago.`);
+    const t = totalsFor(order, method);
+    update(order, {
+      payment_reported_at: now(), payment_reference: reference, delivery_method: method, delivery_address: address,
+      delivery_phone: phone, payment_proof: proof, shipping_cost: t.shipping, total: t.total, payout_amount: t.payout,
+    });
+    systemNote(order.conversation_id, `💸 El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code}. CowFace está verificando el pago.`);
     return order;
   });
 }
@@ -179,12 +198,18 @@ export function cancelUnpaid(orderId, userId) {
   });
 }
 
-export function markShipped(orderId, sellerId, note) {
+// proof: foto de la guía, del recibo del courier o del paquete (adjunto privado), o null.
+// Si es por envío, se exige el número de guía o la foto: es la prueba del vendedor si hay reclamo.
+export function markShipped(orderId, sellerId, note, proof = null) {
   return transaction(() => {
     const order = load(orderId, { sellerId, from: ['pagado'] });
     if (!order) return null;
+    const text = String(note ?? '').trim().slice(0, 300);
+    if (order.delivery_method !== 'en_persona' && !proof && text.length < 4) {
+      throw new UserError('Para un envío, escribe el número de guía o sube una foto del recibo o del paquete.');
+    }
     const { releaseDays } = paymentConfig();
-    update(order, { status: 'enviado', shipped_at: now(), shipping_note: String(note ?? '').trim().slice(0, 300), auto_release_at: addHours(releaseDays * 24) });
+    update(order, { status: 'enviado', shipped_at: now(), shipping_note: text, shipping_proof: proof, auto_release_at: addHours(releaseDays * 24) });
     systemNote(order.conversation_id,
       `📦 El vendedor marcó el pedido ${order.code} como enviado/entregado. Si no hay reclamo, el pago se libera en ${releaseDays} días.`);
     return order;
@@ -200,13 +225,14 @@ export function confirmReceived(orderId, buyerId) {
   });
 }
 
-export function openDispute(orderId, buyerId, reason) {
+// evidence: foto del problema (adjunto privado), o null.
+export function openDispute(orderId, buyerId, reason, evidence = null) {
   return transaction(() => {
     const order = load(orderId, { buyerId, from: ['pagado', 'enviado'] });
     if (!order) return null;
     const text = String(reason ?? '').trim().slice(0, 1000);
     if (text.length < 10) throw new UserError('Cuéntanos qué pasó (al menos una frase).');
-    update(order, { status: 'en_disputa', dispute_reason: text, auto_release_at: null });
+    update(order, { status: 'en_disputa', dispute_reason: text, dispute_evidence: evidence, auto_release_at: null });
     systemNote(order.conversation_id, `⚠️ El comprador abrió un reclamo en el pedido ${order.code}. El pago queda retenido hasta que CowFace lo resuelva.`);
     return order;
   });
@@ -270,7 +296,7 @@ export const admin = {
       const order = load(orderId, { from: ['reembolso_pendiente'] });
       if (!order) return null;
       update(order, { status: 'reembolsado', refunded_at: now() });
-      systemNote(order.conversation_id, `💸 CowFace devolvió ${formatColones(order.price)} al comprador (pedido ${order.code}).`);
+      systemNote(order.conversation_id, `💸 CowFace devolvió ${formatColones(order.total || order.price)} al comprador (pedido ${order.code}).`);
       return order;
     });
   },

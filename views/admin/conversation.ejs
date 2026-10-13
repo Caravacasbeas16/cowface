@@ -1,0 +1,36 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <h1>Conversación</h1>
+    <p class="muted">«<%= conv.product_title %>» · comprador <strong><%= conv.buyer_name %></strong> · vendedor <strong><%= conv.store_name %></strong></p>
+  </div>
+  <a class="btn btn-ghost" href="/admin#pagos">Volver al panel</a>
+</div>
+<% if (order) { %>
+  <p class="small muted">Pedido <strong><%= order.code %></strong> · <%= ORDER_STATUS_LABEL[order.status] || order.status %> · <%= money(order.total || order.price) %>
+    <% if (order.payment_proof) { %> · <a class="file-link" href="/adjuntos/<%= order.payment_proof %>" target="_blank" rel="noopener">Captura del pago</a><% } %>
+    <% if (order.shipping_proof) { %> · <a class="file-link" href="/adjuntos/<%= order.shipping_proof %>" target="_blank" rel="noopener">Comprobante de envío</a><% } %>
+    <% if (order.dispute_evidence) { %> · <a class="file-link" href="/adjuntos/<%= order.dispute_evidence %>" target="_blank" rel="noopener">Evidencia del reclamo</a><% } %>
+  </p>
+<% } %>
+<div class="admin-thread">
+  <% for (const m of messages) { %>
+    <div class="admin-msg <%= m.sender_id === conv.seller_id ? 'from-seller' : m.sender_id === conv.buyer_id ? 'from-buyer' : 'from-system' %>">
+      <div class="muted small">
+        <strong><%= m.sender_id === conv.seller_id ? `Vendedor (${conv.store_name})` : m.sender_id === conv.buyer_id ? `Comprador (${conv.buyer_name})` : 'Sistema' %></strong>
+        · <%= when(m.created_at, true) %>
+      </div>
+      <% if (m.kind === 'oferta') { %>
+        <div>Oferta de <strong><%= money(m.amount) %></strong> (<%= m.offer_status %>)</div>
+      <% } %>
+      <% if (m.attachment_type === 'imagen') { %>
+        <a href="/adjuntos/<%= m.attachment %>" target="_blank" rel="noopener"><img class="admin-msg-img" src="/adjuntos/<%= m.attachment %>" alt="Foto enviada"></a>
+      <% } else if (m.attachment_type === 'pdf') { %>
+        <a class="file-link" href="/adjuntos/<%= m.attachment %>">📄 PDF</a>
+      <% } %>
+      <% if (m.body) { %><div class="admin-msg-body"><%= m.body %></div><% } %>
+    </div>
+  <% } %>
+  <% if (!messages.length) { %><p class="muted">Sin mensajes.</p><% } %>
+</div>
+<%- include('../partials/footer') %>

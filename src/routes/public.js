@@ -1,14 +1,15 @@
 import { Router } from 'express';
 import { db, commissionRate } from '../db.js';
 import { endSession, hashPassword, startSession, verifyPassword } from '../auth.js';
-import { CATEGORIES } from '../catalog.js';
+import { CATEGORIES, DEPARTMENTS, formatColones } from '../catalog.js';
+import { canonicalQuery, describe, saveSearch } from '../alerts.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { categoryCovers, countByCategory, getProduct, latestProducts, parseFilters, searchProducts } from '../products.js';
 import { findConversation, minOffer } from '../chat.js';
 import { isBlockedEither } from '../blocks.js';
-import { paymentsReady } from '../orders.js';
+import { paymentConfig, paymentsReady } from '../orders.js';
 import { enabledProviders } from '../oauth.js';
 import { ratingSummary } from '../reviews.js';
 import { safeNext, validateSignup } from '../validate.js';
@@ -55,8 +56,13 @@ router.get('/salud', (req, res) => {
   });
 });
 
-router.get('/terminos', (req, res) => res.render('terms', { title: 'Términos de uso', ratePercent: +(commissionRate() * 100).toFixed(2) }));
+router.get('/terminos', (req, res) => res.render('terms', {
+  title: 'Términos de uso', ratePercent: +(commissionRate() * 100).toFixed(2), pay: paymentConfig(),
+}));
 router.get('/privacidad', (req, res) => res.render('privacy', { title: 'Política de privacidad' }));
+router.get('/como-funciona', (req, res) => res.render('how-it-works', {
+  title: 'Cómo funciona la compra protegida', ratePercent: +(commissionRate() * 100).toFixed(2), pay: paymentConfig(),
+}));
 
 router.get('/', (req, res) => {
   res.render('home', {
@@ -74,18 +80,50 @@ router.get('/buscar', (req, res) => {
     if (k === 'pagina') continue;
     for (const item of [v].flat()) if (typeof item === 'string' && item) params.append(k, item);
   }
-  res.render('search', { title: 'Buscar', filters, ...result, baseQuery: params.toString() });
+  // Filtros activos como etiquetas que se pueden quitar: [{ label, href sin ese filtro }].
+  const without = (key, value) => {
+    const p = new URLSearchParams(params);
+    if (value === undefined) p.delete(key);
+    else { const keep = p.getAll(key).filter((v) => v !== value); p.delete(key); keep.forEach((v) => p.append(key, v)); }
+    return `/buscar${p.toString() ? `?${p}` : ''}`;
+  };
+  const chips = [];
+  if (filters.q) chips.push({ label: `"${filters.q}"`, href: without('q') });
+  if (filters.category) chips.push({ label: CATEGORIES[filters.category].label, href: without('categoria') });
+  if (filters.item_type) chips.push({ label: filters.item_type, href: without('tipo') });
+  if (filters.department) chips.push({ label: DEPARTMENTS[filters.department], href: without('para') });
+  for (const s of filters.sizes) chips.push({ label: `Talla ${s}`, href: without('talla', s) });
+  if (filters.condition) chips.push({ label: filters.condition === 'nuevo' ? 'Solo nuevo' : 'Solo usado', href: without('estado') });
+  if (filters.province) chips.push({ label: filters.province, href: without('provincia') });
+  if (filters.min) chips.push({ label: `Desde ${formatColones(filters.min)}`, href: without('min') });
+  if (filters.max) chips.push({ label: `Hasta ${formatColones(filters.max)}`, href: without('max') });
+  res.render('search', {
+    title: 'Buscar', filters, ...result, baseQuery: params.toString(), chips,
+    alertLabel: describe(canonicalQuery(req.query)), counts: result.total ? null : countByCategory(),
+  });
+});
+
+// "Avísame cuando haya…": guarda la búsqueda actual para recibir un correo con lo nuevo.
+router.post('/avisos', (req, res) => {
+  const query = String(req.body.query ?? '').slice(0, 500);
+  if (!req.user || req.user.role !== 'usuario') return res.redirect(`/entrar?next=${encodeURIComponent(`/buscar?${query}`)}`);
+  const obj = {};
+  for (const [k, v] of new URLSearchParams(query)) obj[k] = k === 'talla' ? [...(obj[k] || []), v] : v;
+  const result = saveSearch(req.user.id, obj);
+  res.cookie('flash', result.message, { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+  res.redirect(`/buscar?${query}`);
 });
 
 router.get('/p/:id', (req, res, next) => {
   const product = getProduct(Number(req.params.id));
   if (!product || !product.seller_active) return next();
   const isOwner = req.user?.id === product.seller_id;
+  if (product.status === 'borrador' && !isOwner) return next(); // los borradores solo los ve su dueño
   const conversationId = req.user && !isOwner ? findConversation(product.id, req.user.id) : null;
   const blocked = Boolean(req.user && !isOwner && isBlockedEither(req.user.id, product.seller_id));
   res.render('product', {
     title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
-    sellerRating: ratingSummary(product.seller_id),
+    sellerRating: ratingSummary(product.seller_id), justPublished: isOwner && req.query.publicado === '1',
   });
 });
 

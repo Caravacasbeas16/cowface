@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
       (SELECT COUNT(*) FROM orders WHERE status = 'completado') AS completed,
       (SELECT COALESCE(SUM(price), 0) FROM orders WHERE status = 'completado') AS gmv,
       (SELECT COALESCE(SUM(commission_amount), 0) FROM orders WHERE status = 'completado') AS commission,
-      (SELECT COALESCE(SUM(price), 0) FROM orders WHERE status IN ('pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'))
+      (SELECT COALESCE(SUM(COALESCE(total, price)), 0) FROM orders WHERE status IN ('pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'))
         + (SELECT COALESCE(SUM(payout_amount), 0) FROM orders WHERE status = 'completado' AND payout_status = 'pendiente') AS held,
       (SELECT COUNT(*) FROM flagged_messages WHERE created_at > datetime('now', '-7 days')) AS flagged_week
   `).get();
@@ -87,6 +87,21 @@ router.post('/vendedores/:id/activo', (req, res) => {
   // Al suspender, se cierran sus sesiones abiertas.
   if (req.body.active !== '1') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(Number(req.params.id));
   res.redirect('/admin#usuarios');
+});
+
+// Lectura de una conversación para resolver un reclamo (solo lectura; el admin no escribe en ella).
+router.get('/conversaciones/:id', (req, res, next) => {
+  const conv = db.prepare(`
+    SELECT c.*, b.name AS buyer_name, COALESCE(s.store_name, s.name) AS store_name
+    FROM conversations c JOIN users b ON b.id = c.buyer_id JOIN users s ON s.id = c.seller_id WHERE c.id = ?
+  `).get(Number(req.params.id));
+  if (!conv) return next();
+  const messages = db.prepare(`
+    SELECT m.*, o.amount, o.status AS offer_status FROM messages m LEFT JOIN offers o ON o.id = m.offer_id
+    WHERE m.conversation_id = ? ORDER BY m.id
+  `).all(conv.id);
+  const order = db.prepare('SELECT * FROM orders WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(conv.id);
+  res.render('admin/conversation', { title: `Conversación · ${conv.product_title}`, conv, messages, order, ORDER_STATUS_LABEL: ORDER_STATUS });
 });
 
 // Respaldo de "¿Olvidaste tu contraseña?": el admin genera el enlace y se lo manda a la persona

@@ -59,7 +59,7 @@
 
   // Enviar mensajes y ofertas sin recargar; si el filtro bloquea algo, el texto se queda para corregirlo.
   for (const form of document.querySelectorAll('[data-chat-form]')) {
-    const field = form.querySelector('textarea, input');
+    const field = form.querySelector('textarea, input:not([type="file"])');
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const button = form.querySelector('button');
@@ -90,6 +90,66 @@
         if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); form.requestSubmit(); }
       });
     }
+  }
+
+  // Fotos y PDF en el chat: se elige el archivo, se ve una vista previa y se envía con texto opcional.
+  const fileInput = document.querySelector('[data-chat-file]');
+  const attachForm = document.querySelector('[data-attach-form]');
+  if (fileInput && attachForm) {
+    const previewBox = attachForm.querySelector('[data-attach-preview]');
+    let chosen = null;
+    const resetAttach = () => {
+      chosen = null;
+      fileInput.value = '';
+      previewBox.replaceChildren();
+      attachForm.hidden = true;
+      attachForm.reset();
+    };
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const okTypes = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+      if (!okTypes.includes(file.type)) { showError('Solo se pueden enviar fotos (JPG, PNG, WebP) o PDF.'); fileInput.value = ''; return; }
+      if (file.size > 10 * 1024 * 1024) { showError('El archivo debe pesar menos de 10 MB.'); fileInput.value = ''; return; }
+      showError('');
+      chosen = file;
+      if (file.type === 'application/pdf') {
+        const tag = document.createElement('span');
+        tag.className = 'attach-pdf';
+        tag.textContent = `📄 ${file.name}`;
+        previewBox.replaceChildren(tag);
+      } else {
+        const img = document.createElement('img');
+        img.src = URL.createObjectURL(file);
+        img.alt = 'Vista previa';
+        previewBox.replaceChildren(img);
+      }
+      attachForm.hidden = false;
+    });
+    attachForm.querySelector('[data-attach-cancel]').addEventListener('click', resetAttach);
+    attachForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!chosen) return;
+      const button = attachForm.querySelector('button[type="submit"]');
+      button.disabled = true;
+      button.textContent = button.dataset.busyText;
+      const data = new FormData(attachForm);
+      data.append('file', chosen, chosen.name);
+      try {
+        const res = await fetch(attachForm.action, { method: 'POST', headers: { Accept: 'application/json' }, body: data });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) { showError(json.error || 'No se pudo enviar el archivo.'); return; }
+        showError('');
+        resetAttach();
+        await refreshThread();
+        scrollToEnd();
+      } catch {
+        showError('Sin conexión. Revisa tu internet e intenta de nuevo.');
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Enviar archivo';
+      }
+    });
   }
 
   // Canal en vivo. EventSource se reconecta solo si se cae.

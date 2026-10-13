@@ -195,3 +195,100 @@ label.check a { text-decoration: underline; }
 .photo-preview img { width: 104px; height: 104px; object-fit: cover; display: block; }
 .photo-preview figcaption { position: absolute; left: 0; right: 0; bottom: 0; background: var(--ink); color: #fff; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; text-align: center; padding: .25rem 0; }
 .photo-preview, .current-photos { gap: 8px; }
+
+/* ---------- Publicar (experiencia del vendedor) ---------- */
+.listing-page { max-width: 1180px; margin: 2rem auto; }
+.listing-head h1 { text-transform: uppercase; font-weight: 900; margin-bottom: .3rem; }
+.listing-form { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 2rem; align-items: start; margin-top: 1rem; }
+.listing-main { display: flex; flex-direction: column; gap: 1.25rem; }
+.listing-step { border: 1px solid var(--line); padding: 1.25rem; display: flex; flex-direction: column; gap: .9rem; margin: 0; min-width: 0; }
+.listing-step h2 { display: flex; align-items: center; gap: .6rem; margin: 0; font-size: .95rem; }
+.step-n { width: 26px; height: 26px; border-radius: 50%; background: var(--ink); color: #fff; display: inline-grid; place-items: center; font-size: .8rem; }
+.listing-guide { position: sticky; top: 130px; border: 1px solid var(--line); padding: 1.25rem; background: var(--soft); }
+.listing-guide h3 { text-transform: uppercase; font-size: .82rem; letter-spacing: .08em; }
+.guide-list { padding-left: 1.1rem; margin: .5rem 0 1rem; display: flex; flex-direction: column; gap: .45rem; font-size: .88rem; }
+.listing-actions { position: sticky; bottom: 0; background: #fff; padding: .9rem 0; border-top: 1px solid var(--line); z-index: 5; }
+.sr-label { font-size: 0; gap: 0; }
+.sr-label textarea { font-size: .95rem; }
+
+.dropzone { border: 2px dashed var(--line); padding: 1.5rem; text-align: center; transition: border-color .15s, background .15s; }
+.dropzone.dragging { border-color: var(--ink); background: var(--soft); }
+.dropzone-inner { display: flex; flex-direction: column; align-items: center; gap: .4rem; }
+.dropzone-actions { display: flex; gap: .5rem; flex-wrap: wrap; justify-content: center; margin-top: .4rem; }
+.dropzone-actions .btn + .btn { margin-left: 0; }
+.visually-hidden-input { position: absolute; width: 1px; height: 1px; opacity: 0; overflow: hidden; }
+.visually-hidden-input:focus-visible + .dropzone-inner { outline: 2px solid var(--ink); outline-offset: 4px; }
+.photo-preview .photo-tile { margin: 0; }
+.tile-tools { position: absolute; top: 4px; left: 4px; display: flex; gap: 2px; }
+.tile-tools button { width: 22px; height: 22px; border: 0; background: rgba(255, 255, 255, .92); cursor: pointer; font-weight: 800; line-height: 1; }
+
+.pdf-pages { border: 1px solid var(--ink); padding: 1rem; display: flex; flex-direction: column; gap: .8rem; }
+.pdf-pages-head { display: flex; flex-direction: column; }
+.pdf-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); gap: 8px; max-height: 420px; overflow-y: auto; }
+.pdf-page { position: relative; display: flex; flex-direction: column; gap: .2rem; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .75rem; cursor: pointer; }
+.pdf-page img { width: 100%; aspect-ratio: 3 / 4; object-fit: contain; background: var(--soft); border: 1px solid var(--line); }
+.pdf-page input { position: absolute; top: 6px; left: 6px; width: 18px; height: 18px; }
+.pdf-pages-actions { display: flex; gap: .5rem; }
+.pdf-pages-actions .btn + .btn { margin-left: 0; }
+
+.measure-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem; }
+.earnings { background: var(--soft); padding: 1rem; display: flex; flex-direction: column; gap: .4rem; }
+.earnings div { display: flex; justify-content: space-between; gap: 1rem; font-size: .9rem; }
+.earnings-total { border-top: 1px solid var(--line); padding-top: .5rem; font-size: 1.05rem !important; }
+.earnings-total strong { font-size: 1.25rem; }
+.upload-progress { display: flex; flex-direction: column; gap: .35rem; }
+.upload-bar { height: 8px; background: var(--soft); overflow: hidden; }
+.upload-bar span { display: block; height: 100%; width: 0; background: var(--ink); transition: width .2s; }
+
+@media (max-width: 900px) {
+  .listing-form { grid-template-columns: minmax(0, 1fr); }
+  .listing-guide { position: static; order: -1; }
+}
+
+/* ---------- Adjuntos en el chat ---------- */
+.attach-btn { display: grid; place-items: center; width: 44px; height: 46px; border: 1px solid var(--line); cursor: pointer; font-size: 1.15rem; flex-shrink: 0; text-transform: none; }
+.attach-btn:hover { border-color: var(--ink); }
+.attach-form { border: 1px solid var(--line); padding: .7rem; display: flex; flex-direction: column; gap: .5rem; }
+.attach-form[hidden] { display: none; }
+.attach-preview img { max-height: 160px; max-width: 100%; object-fit: contain; }
+.attach-pdf { font-weight: 600; font-size: .9rem; }
+.attach-actions { display: flex; gap: .4rem; }
+.attach-actions .btn + .btn { margin-left: 0; }
+.bubble-file { display: flex; flex-direction: column; gap: .35rem; }
+.chat-photo img { max-width: 260px; max-height: 300px; object-fit: cover; display: block; }
+.chat-pdf { font-weight: 700; text-decoration: underline; }
+.mine .chat-pdf { color: #fff; }
+.file-link { font-weight: 700; text-decoration: underline; white-space: nowrap; }
+
+/* ---------- Pedido: montos y entrega ---------- */
+.order-lines { display: flex; flex-direction: column; gap: .2rem; margin-top: .4rem; font-size: .9rem; }
+.order-lines div { display: flex; justify-content: space-between; gap: 1rem; }
+.order-total { font-weight: 800; font-size: 1.05rem; border-top: 1px solid var(--line); padding-top: .3rem; margin-top: .2rem; }
+.method-options { display: flex; flex-direction: column; gap: .4rem; }
+.method-option { flex-direction: row; align-items: center; gap: .6rem; padding: .6rem .7rem; border: 1px solid var(--line); cursor: pointer; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .9rem; }
+.method-option:has(input:checked) { border-color: var(--ink); background: var(--soft); }
+.method-option > span { display: flex; flex-direction: column; }
+.method-option input { width: auto; }
+
+/* Edición rápida en "Mi cuenta" */
+.quick-edit { display: flex; align-items: flex-end; gap: .4rem; margin-top: .45rem; flex-wrap: wrap; }
+.quick-edit label { flex-direction: row; align-items: center; gap: .3rem; font-size: .7rem; }
+.quick-edit input { width: 6.5rem; padding: .35rem .5rem; font-size: .85rem; }
+.quick-edit input[type="number"] { width: 4.5rem; }
+.status-borrador { background: #eee; color: #444; }
+
+/* Admin: lectura de conversación */
+.admin-thread { display: flex; flex-direction: column; gap: .6rem; margin: 1.5rem 0; max-width: 760px; }
+.admin-msg { border-left: 3px solid var(--line); padding: .4rem .8rem; }
+.admin-msg.from-seller { border-color: var(--ink); }
+.admin-msg.from-buyer { border-color: var(--info); }
+.admin-msg.from-system { border-color: var(--warn); background: var(--soft); }
+.admin-msg-body { white-space: pre-wrap; overflow-wrap: anywhere; }
+.admin-msg-img { max-width: 280px; max-height: 280px; object-fit: contain; margin: .3rem 0; }
+
+/* Cómo funciona */
+.how-page .lead { font-size: 1.05rem; }
+.how-steps { display: flex; flex-direction: column; gap: .8rem; padding-left: 1.3rem; margin: 1.5rem 0; }
+.how-steps li { padding-left: .3rem; }
+.faq dt { font-weight: 800; margin-top: 1rem; }
+.faq dd { margin: .25rem 0 0; color: #333; }

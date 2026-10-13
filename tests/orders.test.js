@@ -152,7 +152,7 @@ test('plazos automáticos: sin pago se cancela; enviado sin reclamo se completa'
   const shipped = await buyDirect(id2);
   await post(`/pedidos/${shipped.id}/pago`, buyer, PAYMENT);
   await post(`/admin/pedidos/${shipped.id}/confirmar-pago`, admin);
-  await post(`/pedidos/${shipped.id}/enviado`, seller);
+  await post(`/pedidos/${shipped.id}/enviado`, seller, { note: 'Guía Correos RR123CR' });
   db.prepare("UPDATE orders SET auto_release_at = '2000-01-01T00:00:00.000Z' WHERE id = ?").run(shipped.id);
 
   const result = runOrderTimers();

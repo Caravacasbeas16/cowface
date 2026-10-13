@@ -1,53 +1,87 @@
 <%- include('partials/header') %>
+<% const contact = contactEmail ? `<a href="mailto:${contactEmail}">${contactEmail}</a>` : 'nuestro correo de contacto'; %>
 <article class="legal">
   <h1>Términos de uso</h1>
-  <p class="muted">Última actualización: <%= legalUpdated %></p>
+  <p class="muted">Última actualización: <%= legalUpdated %>. Resumen en lenguaje sencillo: <a href="/como-funciona">Cómo funciona la compra protegida</a>.</p>
 
   <h2>1. Qué es <%= siteName %></h2>
-  <p><%= siteName %> es una plataforma que conecta a personas que venden ropa, zapatos, bolsos y accesorios con personas que los quieren comprar en Costa Rica. Una misma cuenta sirve para comprar y vender. <%= siteName %> no es dueño de los artículos publicados, no los vende directamente y no participa en el pago ni en la entrega, que se acuerdan entre comprador y vendedor.</p>
+  <p><%= siteName %> es una plataforma donde personas y tiendas de Costa Rica publican ropa, zapatos, bolsos y accesorios, y otras personas los compran. <%= siteName %> no es el vendedor de los artículos: los vende cada vendedor. Lo que sí hace <%= siteName %> es <strong>gestionar el pago de cada venta</strong>: recibe el dinero del comprador, lo guarda mientras se completa la entrega y luego se lo transfiere al vendedor (o se lo devuelve al comprador si corresponde), según estas reglas.</p>
 
-  <h2>2. Vendedores</h2>
+  <h2>2. Cuentas</h2>
   <ul>
-    <li>Debes ser mayor de edad y dar datos reales de contacto.</li>
-    <li>Eres responsable de que tus artículos existan, coincidan con la descripción, la talla, el estado y las fotos publicadas, y de tener derecho a venderlos.</li>
-    <li>No se permite publicar réplicas o falsificaciones de marcas, artículos robados, ni contenido ofensivo o engañoso.</li>
-    <li>Debes mantener tu inventario al día: pausa o borra lo que ya no tengas.</li>
-    <li>Cuando se registra una venta (compra directa u oferta aceptada), debes marcarla como "Entregado" o "Cancelado" con honestidad.</li>
+    <li>Debes ser mayor de edad y dar datos reales. Una misma cuenta sirve para comprar y vender.</li>
+    <li>Eres responsable de lo que se haga con tu cuenta; cuida tu contraseña.</li>
+    <li>Tu teléfono y tu número SINPE son privados: no se muestran en tu perfil. El teléfono se comparte solo con la otra parte de una venta ya pagada, para coordinar la entrega.</li>
   </ul>
 
-  <h2>3. Pagos y comisión</h2>
+  <h2>3. Publicar artículos</h2>
   <ul>
-    <li>Publicar es gratis. Por cada venta completada, <%= siteName %> cobra una comisión de <strong><%= ratePercent %> %</strong> sobre el precio acordado, que se descuenta del pago al vendedor.</li>
-    <li>El comprador le paga a <%= siteName %> por SINPE Móvil dentro del plazo indicado en el pedido; si no paga a tiempo, el pedido se cancela.</li>
-    <li><%= siteName %> guarda el dinero y lo transfiere al vendedor (menos la comisión) por SINPE Móvil cuando el comprador confirma que recibió el artículo, o automáticamente si pasan los días indicados después del envío sin que el comprador abra un reclamo.</li>
-    <li>El vendedor solo debe enviar cuando <%= siteName %> confirme el pago en el pedido.</li>
+    <li>Las fotos deben ser del artículo real. Indica con honestidad la talla, el estado, las medidas y cualquier defecto.</li>
+    <li>No se permite vender réplicas o falsificaciones, artículos robados ni publicar contenido ofensivo o engañoso.</li>
+    <li>El vendedor fija el precio y el costo de envío, que el comprador ve antes de comprar. También indica si acepta entregas en persona.</li>
+    <li>Mientras un artículo tenga un pedido en curso no se puede editar ni borrar.</li>
   </ul>
 
-  <h2>4. Ofertas y compras</h2>
+  <h2>4. Comprar y ofertar</h2>
   <ul>
-    <li>Puedes comprar al precio publicado o enviar una oferta. Las ofertas vencen a las 48 horas y una oferta nueva reemplaza la anterior.</li>
-    <li>Una oferta aceptada o una compra directa es un compromiso de compra: registra la venta y reserva el artículo.</li>
-    <li>Paga siempre a través de <%= siteName %>. Si le pagas directamente al vendedor, no podemos protegerte ni devolverte el dinero.</li>
-    <li>Cuando confirmamos tu pago, el vendedor ve la dirección y el teléfono de entrega que indicaste.</li>
+    <li>Antes de comprar ves el total: precio de la prenda más envío (o ₡0 si eliges entrega en persona). <strong>El comprador no paga comisiones ni cargos extra.</strong></li>
+    <li>Puedes comprar al precio publicado u ofertar (mínimo 50 % del precio). Una oferta vence a las 48 horas; una oferta nueva reemplaza la anterior. Una oferta aceptada o una compra directa es un compromiso de compra y reserva el artículo.</li>
+    <li>Puedes tener como máximo 3 pedidos sin pagar a la vez.</li>
   </ul>
 
-  <h2>5. Chat</h2>
-  <p>Toda la negociación se hace en el chat de <%= siteName %>. No se permite compartir teléfonos, correos, enlaces ni usuarios de otras aplicaciones o redes sociales (WhatsApp, Facebook, Messenger, Instagram y similares) antes de registrar la venta; el chat los bloquea automáticamente y los intentos quedan registrados. Intentar cerrar ventas fuera de la plataforma para evitar la comisión puede llevar a la suspensión de la cuenta.</p>
-
-  <h2>6. Reclamos y reembolsos</h2>
-  <p>Si el artículo no llega, no corresponde a la publicación (talla, estado, fotos) o resulta ser una réplica, el comprador puede abrir un reclamo antes de confirmar la recepción. El pago queda retenido mientras <%= siteName %> revisa la conversación y la evidencia de ambas partes, y decide si libera el pago al vendedor o reembolsa al comprador. Si el vendedor no puede entregar, se reembolsa al comprador.</p>
-
-  <h2>7. Reseñas y bloqueos</h2>
+  <h2>5. Pago</h2>
   <ul>
-    <li>Al completarse un pedido, comprador y vendedor pueden calificarse mutuamente (1 a 5 estrellas y un comentario). Las reseñas son públicas, deben ser honestas y no pueden incluir datos de contacto ni insultos. <%= siteName %> puede retirar reseñas que incumplan estas reglas.</li>
-    <li>Puedes bloquear a cualquier usuario. Mientras exista el bloqueo no pueden escribirse ni hacer tratos nuevos, y no verás sus artículos. Los pedidos ya pagados siguen su curso para proteger el dinero de ambas partes.</li>
-    <li>También puedes pedirnos que suspendamos una cuenta que incumpla estos términos.</li>
+    <li>Pagas a <%= siteName %> por SINPE Móvil el <strong>monto exacto</strong> del pedido, con el código del pedido en el detalle, dentro de <strong><%= pay.windowHours %> horas</strong>. Si no se paga a tiempo, el pedido se cancela solo y el artículo vuelve a estar disponible.</li>
+    <li>Después de pagar, avisas en el pedido con el número de comprobante (y, si quieres, la captura). <%= siteName %> verifica el pago en un máximo de 1 día hábil y avisa al vendedor para que envíe. Cada comprobante sirve para un solo pedido.</li>
+    <li><strong>Si le pagas directamente al vendedor, fuera de <%= siteName %>, no tienes protección</strong> y no podemos ayudarte a recuperar el dinero.</li>
   </ul>
 
-  <h2>8. Responsabilidad</h2>
-  <p><%= siteName %> no es el vendedor de los artículos ni garantiza su calidad o autenticidad, pero retiene el pago para proteger al comprador según la sección anterior. Haremos lo razonable para retirar publicaciones y cuentas que incumplan estos términos.</p>
+  <h2>6. Envío y entrega</h2>
+  <ul>
+    <li>El vendedor debe enviar o entregar en un máximo de <strong>3 días hábiles</strong> desde que <%= siteName %> confirma el pago.</li>
+    <li>En envíos por Correos de Costa Rica o mensajero, el vendedor registra el número de guía o una foto del recibo o del paquete: es su prueba de envío. El costo del envío lo paga el comprador (incluido en el total) y se le entrega al vendedor junto con su pago.</li>
+    <li>En entregas en persona, deben coordinarse en un lugar público. Revisa el artículo al recibirlo.</li>
+    <li>Si el vendedor no puede entregar, lo indica en el pedido y <%= siteName %> devuelve al comprador el total pagado.</li>
+  </ul>
 
-  <h2>9. Cambios y contacto</h2>
-  <p>Podemos actualizar estos términos; la versión vigente siempre está en esta página. Para reportes o consultas escribe a <%- contactEmail ? `<a href="mailto:${contactEmail}">${contactEmail}</a>` : 'nuestro correo de contacto' %>.</p>
+  <h2>7. Revisión y liberación del pago</h2>
+  <ul>
+    <li>Cuando el artículo llega, el comprador toca "Lo recibí". Si no lo hace, el pago se libera automáticamente <strong><%= pay.releaseDays %> días después</strong> de que el vendedor marcó el envío, siempre que no haya un reclamo abierto.</li>
+    <li>Si el paquete se atrasa, el comprador debe abrir un reclamo <strong>antes</strong> de que venza ese plazo; mientras haya un reclamo abierto el pago no se libera. <%= siteName %> puede extender el plazo si la guía muestra que el envío sigue en camino.</li>
+    <li>Con la venta completada, <%= siteName %> transfiere al vendedor por SINPE Móvil el precio menos la comisión, más el envío, en un máximo de <strong>2 días hábiles</strong>.</li>
+  </ul>
+
+  <h2 id="reclamos">8. Reclamos, reembolsos y devoluciones</h2>
+  <ul>
+    <li><strong>Motivos válidos:</strong> el artículo no llegó; no corresponde a la publicación (talla, medidas, estado o defectos no declarados); es una réplica. <strong>No son motivos válidos</strong>: que no te guste o no te quede, si la talla y las medidas publicadas eran correctas.</li>
+    <li><strong>Evidencia:</strong> fotos claras del problema (y de la etiqueta, si aplica), la conversación del pedido y, en envíos, el seguimiento de la guía. El vendedor puede responder con sus fotos y su prueba de envío.</li>
+    <li><strong>Plazo:</strong> <%= siteName %> revisa y responde en un máximo de <strong>2 días hábiles</strong>. Si pedimos información a una de las partes y no responde en 3 días hábiles, decidimos con la información disponible.</li>
+    <li><strong>Resultado:</strong> liberamos el pago al vendedor o reembolsamos al comprador. Si el artículo no corresponde a la publicación, el comprador lo devuelve y el <strong>costo del envío de devolución lo asume el vendedor</strong>. Si el reclamo no procede, el pago se libera al vendedor.</li>
+    <li><strong>Reembolsos:</strong> se hacen por SINPE Móvil al número desde el que se pagó, en un máximo de 3 días hábiles desde la resolución.</li>
+  </ul>
+
+  <h2>9. Cancelaciones</h2>
+  <ul>
+    <li>Antes de pagar, el comprador o el vendedor pueden cancelar el pedido desde el chat.</li>
+    <li>Después de pagar, el pedido solo se cancela si el vendedor no puede entregar (reembolso total) o como resultado de un reclamo.</li>
+  </ul>
+
+  <h2>10. Comisión</h2>
+  <p>Publicar es gratis. Por cada venta completada, el vendedor paga una comisión de <strong><%= ratePercent %> %</strong> del precio de la prenda (no del envío), que se descuenta de su pago. La comisión de cada venta queda fija al crearse el pedido.</p>
+
+  <h2>11. Chat</h2>
+  <p>Toda la negociación se hace en el chat de <%= siteName %>, donde se pueden enviar mensajes, fotos y PDF. No se permite compartir teléfonos, correos, enlaces ni usuarios de otras aplicaciones o redes sociales (WhatsApp, Facebook, Messenger, Instagram y similares); el chat los bloquea y los intentos quedan registrados. Intentar cerrar ventas fuera de la plataforma puede llevar a la suspensión de la cuenta. <%= siteName %> puede leer una conversación para resolver un reclamo.</p>
+
+  <h2>12. Reseñas y bloqueos</h2>
+  <ul>
+    <li>Al completarse una venta, comprador y vendedor pueden calificarse (1 a 5 estrellas y un comentario). Las reseñas son públicas, deben ser honestas y sin datos de contacto ni insultos; podemos retirar las que incumplan estas reglas.</li>
+    <li>Puedes bloquear a cualquier usuario: no podrán escribirse ni hacer tratos nuevos y no verás sus artículos. Los pedidos ya pagados siguen su curso. También puedes pedirnos que suspendamos una cuenta que incumpla estos términos.</li>
+  </ul>
+
+  <h2>13. Responsabilidad</h2>
+  <p><%= siteName %> no fabrica ni vende los artículos y no garantiza su calidad o autenticidad más allá de lo indicado en la sección 8. Haremos lo razonable para retirar publicaciones y cuentas que incumplan estos términos.</p>
+
+  <h2>14. Cambios y contacto</h2>
+  <p>Podemos actualizar estos términos; la versión vigente siempre está en esta página. Para reportes o consultas escribe a <%- contact %>.</p>
 </article>
 <%- include('partials/footer') %>

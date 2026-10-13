@@ -13,7 +13,7 @@ after(stopServer);
 let seller;
 const UPLOADS = () => process.env.UPLOAD_DIR;
 const images = (productId) => db.prepare('SELECT * FROM product_images WHERE product_id = ? ORDER BY position, id').all(productId);
-const idFrom = (res) => Number(res.headers.get('location').split('/').pop());
+const idFrom = (res) => Number(res.headers.get('location').match(/\/p\/(\d+)/)[1]);
 
 // Foto "de celular": 4000×3000, girada (EXIF orientación 6) y con datos de cámara y de autor.
 const phonePhoto = await sharp({ create: { width: 4000, height: 3000, channels: 3, background: '#aa3322' } })
@@ -31,12 +31,18 @@ test('foto de celular: se endereza, queda en alta calidad, sin metadatos y con m
   const [img] = images(idFrom(res));
   assert.ok(img.thumb, 'tiene miniatura');
 
+  // Original: resolución completa, enderezada, sin metadatos, calidad máxima.
+  const original = await sharp(path.join(UPLOADS(), img.original)).metadata();
+  assert.deepEqual([original.width, original.height], [3000, 4000], 'la original conserva toda la resolución');
+  assert.equal(original.exif, undefined, 'sin EXIF (ni GPS, ni modelo de cámara, ni autor)');
+  assert.ok([undefined, 1].includes(original.orientation), 'ya viene derecha, sin bandera de rotación');
+  assert.equal(original.chromaSubsampling, '4:4:4');
+
+  // Versión para la página: 2048 px de lado mayor, para que cargue rápido.
   const large = await sharp(path.join(UPLOADS(), img.filename)).metadata();
-  // Orientación 6 = girada 90°: 4000×3000 se convierte en vertical, con el lado mayor en 2560.
-  assert.deepEqual([large.width, large.height], [1920, 2560]);
+  assert.deepEqual([large.width, large.height], [1536, 2048]);
   assert.equal(large.format, 'jpeg');
-  assert.equal(large.exif, undefined, 'sin EXIF (ni GPS, ni modelo de cámara, ni autor)');
-  assert.ok([undefined, 1].includes(large.orientation), 'ya viene derecha, sin bandera de rotación');
+  assert.equal(large.exif, undefined);
   assert.equal(large.chromaSubsampling, '4:4:4', 'color sin submuestreo (máxima calidad)');
 
   const thumb = await sharp(path.join(UPLOADS(), img.thumb)).metadata();
@@ -49,6 +55,20 @@ test('foto de celular: se endereza, queda en alta calidad, sin metadatos y con m
   const page = await (await get(`/p/${idFrom(res)}`)).text();
   assert.match(page, new RegExp(`src="/fotos/${img.filename}"`));
   assert.equal(fs.readdirSync(path.join(UPLOADS(), 'tmp')).length, 0, 'no quedan archivos temporales');
+});
+
+test('una foto JPG derecha se guarda sin volver a comprimir: los píxeles quedan idénticos', async () => {
+  const upright = await sharp({ create: { width: 4032, height: 3024, channels: 3, noise: { type: 'gaussian', mean: 128, sigma: 30 } } })
+    .jpeg({ quality: 96 }).withMetadata({ exif: { IFD0: { Make: 'TestPhone', Artist: 'Vendedora' } } }).toBuffer();
+  const res = await publish(seller, POLO, [{ data: upright, type: 'image/jpeg', name: 'IMG_0002.jpg' }]);
+  const [img] = images(idFrom(res));
+  const saved = fs.readFileSync(path.join(UPLOADS(), img.original));
+  const imageData = (b) => b.subarray(b.indexOf(Buffer.from([0xff, 0xda])));
+  assert.ok(imageData(saved).equals(imageData(upright)), 'los datos de la imagen son los mismos bytes que se subieron');
+  assert.equal((await sharp(saved).metadata()).exif, undefined, 'pero sin EXIF');
+  // La pantalla completa del artículo usa la original.
+  const page = await (await get(`/p/${idFrom(res)}`)).text();
+  assert.match(page, new RegExp(`data-full="/fotos/${img.original}"`));
 });
 
 test('fotos pequeñas no se agrandan (no se inventa calidad)', async () => {

@@ -3,8 +3,9 @@ import { requireRole } from '../auth.js';
 import { getProduct } from '../products.js';
 import {
   UserError, buyNow, getConversationForUser, getOrCreateConversation, listConversations, makeOffer, markRead,
-  minOffer, respondOffer, sendText, threadMessages, unreadCount,
+  minOffer, respondOffer, sendAttachment, sendText, threadMessages, unreadCount,
 } from '../chat.js';
+import { attachment, discardAttachment } from '../uploads.js';
 import { blockedMessage, findBlocked, logFlagged } from '../moderation.js';
 import { subscribe } from '../realtime.js';
 import { parsePrice } from '../validate.js';
@@ -17,6 +18,7 @@ const signedIn = requireRole('usuario');
 // Límites por persona (no solo por conexión), para que no se evadan cambiando de IP.
 const messageLimit = rateLimit({ windowMs: 60 * 1000, max: 30, key: perUser, message: 'Estás enviando mensajes muy rápido. Espera un momento.' });
 const dealLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 40, key: perUser, message: 'Demasiadas ofertas o compras seguidas. Intenta más tarde.' });
+const attachLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, key: perUser, message: 'Enviaste muchos archivos seguidos. Espera un rato.' });
 
 const wantsJson = (req) => (req.get('Accept') || '').includes('application/json');
 
@@ -45,7 +47,7 @@ function moderate(req, text, conversationId, context) {
 
 function productFor(req) {
   const product = getProduct(Number(req.params.id));
-  return product && product.seller_active ? product : null;
+  return product && product.seller_active && product.status !== 'borrador' ? product : null;
 }
 
 // ---------- Desde la página del artículo ----------
@@ -136,6 +138,25 @@ router.post('/mensajes/:id', signedIn, messageLimit, loadConversation, (req, res
   try {
     sendText(req.conv, req.user.id, text);
   } catch (err) {
+    if (err instanceof UserError) return fail(req, res, 403, err.message, back);
+    throw err;
+  }
+  if (wantsJson(req)) return res.json({ ok: true });
+  res.redirect(back);
+});
+
+// Foto o PDF en el chat (comprobantes, detalles de la prenda). Se guarda privado y sin metadatos.
+router.post('/mensajes/:id/adjunto', signedIn, attachLimit, loadConversation, attachment('file'), (req, res) => {
+  const back = `/mensajes/${req.conv.id}`;
+  if (req.uploadError) return fail(req, res, 400, req.uploadError, back);
+  if (!req.attachment) return fail(req, res, 400, 'Elige una foto o un PDF.', back);
+  const caption = cleanText(req.body.body);
+  const blocked = caption && moderate(req, caption, req.conv.id, 'chat');
+  if (blocked) { discardAttachment(req); return fail(req, res, 422, blocked, back); }
+  try {
+    sendAttachment(req.conv, req.user.id, req.attachment, caption);
+  } catch (err) {
+    discardAttachment(req);
     if (err instanceof UserError) return fail(req, res, 403, err.message, back);
     throw err;
   }

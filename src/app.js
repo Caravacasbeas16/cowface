@@ -5,7 +5,10 @@ import { fileURLToPath } from 'node:url';
 import { loadUser } from './auth.js';
 import * as catalog from './catalog.js';
 import publicRoutes from './routes/public.js';
-import sellerRoutes, { MAX_IMAGES, MAX_PHOTO_MB, UPLOAD_DIR } from './routes/seller.js';
+import sellerRoutes from './routes/seller.js';
+import attachmentRoutes from './routes/attachments.js';
+import { MAX_ATTACH_MB, MAX_IMAGES, MAX_PHOTO_MB } from './uploads.js';
+import { UPLOAD_DIR } from './storage.js';
 import adminRoutes from './routes/admin.js';
 import chatRoutes from './routes/chat.js';
 import orderRoutes from './routes/orders.js';
@@ -31,7 +34,9 @@ export function createApp() {
   // colar HTML en un mensaje o descripción, el navegador no ejecutaría su código.
   const csp = [
     "default-src 'self'",
-    "script-src 'self'",
+    // 'wasm-unsafe-eval' solo permite WebAssembly (lo usa pdf.js para leer PDF); no habilita eval de JS.
+    "script-src 'self' 'wasm-unsafe-eval'",
+    "worker-src 'self' blob:",
     "style-src 'self' https://fonts.googleapis.com",
     'font-src https://fonts.gstatic.com',
     "img-src 'self' data: blob:",
@@ -75,6 +80,11 @@ export function createApp() {
   // La carpeta temporal de subidas no se sirve.
   app.use('/fotos/tmp', (req, res) => res.status(404).end());
   app.use('/fotos', express.static(UPLOAD_DIR, { maxAge: '365d', immutable: true, index: false }));
+  // pdf.js (para importar fotos desde un PDF) servido desde el propio sitio: solo las carpetas que usa.
+  const PDFJS = path.join(ROOT, 'node_modules', 'pdfjs-dist');
+  for (const dir of ['build', 'wasm', 'cmaps', 'standard_fonts', 'iccs']) {
+    app.use(`/vendor/pdfjs/${dir}`, express.static(path.join(PDFJS, dir), { maxAge: production ? '7d' : 0, index: false }));
+  }
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(cookieParser());
   app.use(loadUser);
@@ -85,6 +95,7 @@ export function createApp() {
   app.locals.paymentConfig = paymentConfig;
   app.locals.maxImages = MAX_IMAGES;
   app.locals.maxPhotoMb = MAX_PHOTO_MB;
+  app.locals.maxAttachMb = MAX_ATTACH_MB;
   app.locals.enabledProviders = enabledProviders;
   app.locals.reviewTarget = reviewTarget;
   app.locals.myReview = myReview;
@@ -147,6 +158,7 @@ export function createApp() {
   app.use('/', passwordRoutes);
   app.use('/', chatRoutes);
   app.use('/pedidos', orderRoutes);
+  app.use('/adjuntos', attachmentRoutes);
   app.use('/vendedor', sellerRoutes);
   app.use('/admin', adminRoutes);
 

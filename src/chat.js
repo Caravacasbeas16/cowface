@@ -46,7 +46,7 @@ export function findConversation(productId, buyerId) {
 export function getConversationForUser(id, userId) {
   expireOffers();
   const c = db.prepare(`
-    SELECT c.*, p.price, p.status AS product_status, p.category, p.size, p.quantity,
+    SELECT c.*, p.price, p.status AS product_status, p.category, p.size, p.quantity, p.meetup, s.province,
       (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image,
       b.name AS buyer_name, s.name AS seller_name, COALESCE(s.store_name, s.name) AS store_name
     FROM conversations c
@@ -70,7 +70,8 @@ export function listConversations(userId) {
       CASE WHEN c.buyer_id = ? THEN 'comprador' ELSE 'vendedor' END AS role,
       CASE WHEN c.buyer_id = ? THEN c.buyer_read_at ELSE c.seller_read_at END < c.last_message_at AS unread,
       (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = c.product_id ORDER BY position LIMIT 1) AS image,
-      (SELECT CASE m.kind WHEN 'texto' THEN m.body WHEN 'oferta' THEN 'Oferta: ' || o.amount ELSE m.body END
+      (SELECT CASE WHEN m.attachment_type = 'imagen' THEN '📷 Foto' WHEN m.attachment_type = 'pdf' THEN '📄 PDF'
+              WHEN m.kind = 'texto' THEN m.body WHEN m.kind = 'oferta' THEN 'Oferta: ' || o.amount ELSE m.body END
          FROM messages m LEFT JOIN offers o ON o.id = m.offer_id
          WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_text
     FROM conversations c
@@ -91,7 +92,7 @@ export function markRead(conv, userId) {
 export function threadMessages(conversationId) {
   expireOffers();
   return db.prepare(`
-    SELECT m.id, m.sender_id, m.kind, m.body, m.created_at,
+    SELECT m.id, m.sender_id, m.kind, m.body, m.created_at, m.attachment, m.attachment_type,
       o.id AS offer_id, o.amount, o.made_by, o.status AS offer_status, o.expires_at
     FROM messages m LEFT JOIN offers o ON o.id = m.offer_id
     WHERE m.conversation_id = ? ORDER BY m.id
@@ -101,6 +102,13 @@ export function threadMessages(conversationId) {
 export function sendText(conv, userId, body) {
   assertNotBlocked(conv.buyer_id, conv.seller_id);
   addMessage(conv, userId, 'texto', body);
+  announce(conv);
+}
+
+// Foto o PDF (comprobantes, detalles de la prenda…), con un texto opcional.
+export function sendAttachment(conv, userId, attachment, caption = '') {
+  assertNotBlocked(conv.buyer_id, conv.seller_id);
+  addMessage(conv, userId, 'texto', caption, null, attachment);
   announce(conv);
 }
 

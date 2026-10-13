@@ -38,7 +38,7 @@ export const photoOf = (type = 'image/png') => ({ data: PNG, type, name: 'foto.p
 
 export const POLO = {
   title: 'Camisa polo azul', brand: 'Lacoste', category: 'ropa', department: 'hombre', item_type: 'Camisas polo',
-  size: 'M', color: 'Azul', condition: 'nuevo', price: '₡25.000', quantity: 1, description: '',
+  size: 'M', color: 'Azul', condition: 'nuevo', price: '₡25.000', quantity: 1, description: '', meetup: '1',
 };
 
 export const get = (url, cookie = '') => fetch(`${ctx.base}${url}`, { headers: { cookie }, redirect: 'manual' });
@@ -72,8 +72,11 @@ export async function publish(cookie, fields, files = []) {
 export async function publishPolo(cookie, extra = {}) {
   const res = await publish(cookie, { ...POLO, ...extra }, [photoOf()]);
   assert.equal(res.status, 302, 'publicó');
-  return Number(res.headers.get('location').split('/').pop());
+  return productIdFrom(res);
 }
+
+// Número de artículo en la redirección después de publicar ("/p/12?publicado=1").
+export const productIdFrom = (res) => Number((res.headers.get('location') || '').match(/\/p\/(\d+)/)?.[1]);
 
 export async function adminLogin() {
   db.prepare("INSERT OR IGNORE INTO users (role, name, email, password_hash) VALUES ('admin', 'Admin', 'admin@test.cr', ?)")

@@ -32,10 +32,11 @@
       <% for (const o of queues.toVerify) { %>
         <div class="task">
           <div class="task-main">
-            <strong><%= o.code %></strong> · <%= money(o.price) %> · comprobante <strong><%= o.payment_reference %></strong>
-            <div class="muted small"><%= o.buyer_name %> compra «<%= o.product_title %>» a <%= o.store_name %> · avisó <%= when(o.payment_reported_at, true) %></div>
+            <strong><%= o.code %></strong> · debe entrar <strong><%= money(o.total || o.price) %></strong> · comprobante <strong><%= o.payment_reference %></strong>
+            <% if (o.payment_proof) { %> · <a class="file-link" href="/adjuntos/<%= o.payment_proof %>" target="_blank" rel="noopener">Ver captura</a><% } %>
+            <div class="muted small"><%= o.buyer_name %> compra «<%= o.product_title %>» a <%= o.store_name %> · <%= DELIVERY_METHODS[o.delivery_method] || '' %><%= o.shipping_cost ? ` (envío ${money(o.shipping_cost)})` : '' %> · avisó <%= when(o.payment_reported_at, true) %></div>
           </div>
-          <form action="/admin/pedidos/<%= o.id %>/confirmar-pago" method="post" data-confirm="¿Confirmas que recibiste <%= money(o.price) %> (<%= o.code %>)?"><button class="btn btn-small">Pago recibido</button></form>
+          <form action="/admin/pedidos/<%= o.id %>/confirmar-pago" method="post" data-confirm="¿Confirmas que recibiste <%= money(o.total || o.price) %> con el detalle <%= o.code %>?"><button class="btn btn-small">Pago recibido</button></form>
           <form action="/admin/pedidos/<%= o.id %>/rechazar-pago" method="post" data-confirm="¿Avisar al comprador que no encontraste el pago?"><button class="btn btn-small btn-ghost">No lo encuentro</button></form>
         </div>
       <% } %>
@@ -49,9 +50,14 @@
       <% for (const o of queues.disputes) { %>
         <div class="task">
           <div class="task-main">
-            <strong><%= o.code %></strong> · <%= money(o.price) %> · <%= o.store_name %> → <%= o.buyer_name %>
+            <strong><%= o.code %></strong> · <%= money(o.total || o.price) %> · <%= o.store_name %> → <%= o.buyer_name %>
             <div class="flag-body">«<%= o.dispute_reason %>»</div>
-            <div class="muted small"><%= o.shipped_at ? `Enviado ${when(o.shipped_at, true)}${o.shipping_note ? ` · «${o.shipping_note}»` : ''}` : 'Sin marcar como enviado' %></div>
+            <div class="muted small">
+              <%= o.shipped_at ? `Enviado ${when(o.shipped_at, true)}${o.shipping_note ? ` · «${o.shipping_note}»` : ''}` : 'Sin marcar como enviado' %>
+              <% if (o.dispute_evidence) { %> · <a class="file-link" href="/adjuntos/<%= o.dispute_evidence %>" target="_blank" rel="noopener">Evidencia del comprador</a><% } %>
+              <% if (o.shipping_proof) { %> · <a class="file-link" href="/adjuntos/<%= o.shipping_proof %>" target="_blank" rel="noopener">Comprobante de envío</a><% } %>
+              <% if (o.conversation_id) { %> · <a class="file-link" href="/admin/conversaciones/<%= o.conversation_id %>">Leer la conversación</a><% } %>
+            </div>
           </div>
           <form action="/admin/pedidos/<%= o.id %>/liberar" method="post" data-confirm="¿Resolver a favor del vendedor y liberarle el pago?"><button class="btn btn-small">Pagar al vendedor</button></form>
           <form action="/admin/pedidos/<%= o.id %>/reembolsar" method="post" data-confirm="¿Resolver a favor del comprador y devolverle el dinero?"><button class="btn btn-small btn-ghost">Reembolsar al comprador</button></form>
@@ -66,8 +72,8 @@
     <div class="task-list">
       <% for (const o of queues.refunds) { %>
         <div class="task">
-          <div class="task-main"><strong><%= o.code %></strong> · devolver <strong><%= money(o.price) %></strong> a <%= o.buyer_name %> · comprobante original <%= o.payment_reference %></div>
-          <form action="/admin/pedidos/<%= o.id %>/reembolsado" method="post" data-confirm="¿Ya devolviste <%= money(o.price) %>?"><button class="btn btn-small">Ya lo devolví</button></form>
+          <div class="task-main"><strong><%= o.code %></strong> · devolver <strong><%= money(o.total || o.price) %></strong> a <%= o.buyer_name %> · comprobante original <%= o.payment_reference %></div>
+          <form action="/admin/pedidos/<%= o.id %>/reembolsado" method="post" data-confirm="¿Ya devolviste <%= money(o.total || o.price) %>?"><button class="btn btn-small">Ya lo devolví</button></form>
         </div>
       <% } %>
     </div>
