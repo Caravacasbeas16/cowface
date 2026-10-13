@@ -114,6 +114,20 @@ En una búsqueda (con o sin resultados) el botón **Avísame cuando haya** la gu
 persona). Al publicarse algo que coincide se manda un correo (Brevo), como máximo uno cada 6 horas
 por búsqueda. Se borran desde el panel. `/como-funciona` explica plazos, envíos y reclamos.
 
+## Herramientas del admin
+
+- **Ganancias** (`/admin/ganancias`): comisión de este mes, del anterior y total; gráfico y tabla
+  por mes (hora de Costa Rica), por año; tiendas que más comisión dejan; lo que está por entrar
+  (pedidos en curso) y lo que se debe a vendedores. "Descargar ventas" baja un CSV que abre en Excel.
+  La comisión cuenta cuando la venta se completa.
+- **Tiendas destacadas**: en `/admin → Usuarios y tiendas`, "Destacar" por 7, 30, 90 días o sin
+  fecha de fin. Sus artículos salen primero en "Más recientes" y en la portada, con la marca
+  "★ Destacada". Vence sola.
+- **Notificaciones** (`/admin → Notificaciones`): correos al admin (a `ADMIN_EMAIL` o al correo que
+  se ponga ahí) cuando un comprador avisa que pagó, hay un reclamo, hay que pagarle a un vendedor o
+  reembolsar; opcionales: registros, publicaciones e intentos bloqueados. El botón **Admin** del
+  menú muestra cuántas tareas hay pendientes.
+
 ## Reseñas, perfiles y bloqueos
 
 - Al completarse un pedido, comprador y vendedor se califican (1–5 estrellas + comentario, que pasa

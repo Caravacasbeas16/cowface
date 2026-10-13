@@ -18,7 +18,7 @@ import passwordRoutes from './routes/password.js';
 import { enabledProviders } from './oauth.js';
 import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
-import { DELIVERY_METHODS, OPEN_STATUSES, paymentConfig } from './orders.js';
+import { DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, paymentConfig } from './orders.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -139,6 +139,7 @@ export function createApp() {
     res.locals.flash = typeof req.cookies.flash === 'string' ? req.cookies.flash.slice(0, 500) : null;
     if (res.locals.flash) res.clearCookie('flash');
     res.locals.unread = req.user?.role === 'usuario' ? unreadCount(req.user.id) : 0;
+    res.locals.adminPending = req.user?.role === 'admin' ? adminPendingCount() : 0;
     next();
   });
 

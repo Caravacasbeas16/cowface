@@ -108,7 +108,7 @@
     <a class="seller-box" href="/u/<%= p.seller_id %>">
       <div class="avatar"><%= (p.store_name || '?').charAt(0).toUpperCase() %></div>
       <div class="seller-main">
-        <strong><%= p.store_name %></strong>
+        <strong><%= p.store_name %></strong><% if (p.featured) { %> <span class="featured-pill">Tienda destacada</span><% } %>
         <div class="small">
           <% if (sellerRating.count) { %><span class="stars"><%= stars(sellerRating.avg) %></span> <%= sellerRating.avg.toFixed(1) %> <span class="muted">(<%= sellerRating.count %>)</span><% } else { %><span class="muted">Sin reseñas todavía</span><% } %>
         </div>

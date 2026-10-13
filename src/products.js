@@ -5,9 +5,12 @@ import { notBlockedSql } from './blocks.js';
 
 export const PAGE_SIZE = 24;
 
+// Tienda destacada por el admin (vigente): sus artículos van primero en "Más recientes" y en la portada.
+export const FEATURED_SQL = "(u.featured_until IS NOT NULL AND u.featured_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";
+
 const CARD_COLUMNS = `
   p.id, p.title, p.brand, p.category, p.department, p.item_type, p.size, p.color, p.condition,
-  p.price, p.status, p.created_at, COALESCE(u.store_name, u.name) AS store_name, u.province,
+  p.price, p.status, p.created_at, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
   (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image
 `;
 
@@ -61,7 +64,7 @@ export function searchProducts(f) {
   if (f.min) { where.push('p.price >= ?'); params.push(f.min); }
   if (f.max) { where.push('p.price <= ?'); params.push(f.max); }
 
-  const order = { recientes: 'p.created_at DESC, p.id DESC', precio_asc: 'p.price ASC', precio_desc: 'p.price DESC' }[f.sort];
+  const order = { recientes: `${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC`, precio_asc: 'p.price ASC', precio_desc: 'p.price DESC' }[f.sort];
   const from = `FROM products p JOIN users u ON u.id = p.seller_id WHERE ${where.join(' AND ')}`;
   const total = db.prepare(`SELECT COUNT(*) AS n ${from}`).get(...params).n;
   const items = db.prepare(`SELECT ${CARD_COLUMNS} ${from} ORDER BY ${order} LIMIT ? OFFSET ?`)
@@ -78,7 +81,7 @@ export function latestProducts(limit = 12, viewerId = null) {
   const hide = viewerId ? `AND ${notBlockedSql('p.seller_id')}` : '';
   return db.prepare(`
     SELECT ${CARD_COLUMNS} FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND u.active = 1 ${hide} ORDER BY p.created_at DESC, p.id DESC LIMIT ?
+    WHERE p.status = 'disponible' AND u.active = 1 ${hide} ORDER BY ${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC LIMIT ?
   `).all(...(viewerId ? [viewerId, viewerId] : []), limit);
 }
 
@@ -92,7 +95,7 @@ export function countByCategory() {
 
 export function getProduct(id) {
   const product = db.prepare(`
-    SELECT p.*, COALESCE(u.store_name, u.name) AS store_name, u.name AS seller_name, u.province, u.active AS seller_active
+    SELECT p.*, COALESCE(u.store_name, u.name) AS store_name, u.name AS seller_name, u.province, u.active AS seller_active, ${FEATURED_SQL} AS featured
     FROM products p JOIN users u ON u.id = p.seller_id WHERE p.id = ?
   `).get(id);
   if (!product) return null;

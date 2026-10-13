@@ -5,6 +5,7 @@ import crypto from 'node:crypto';
 import { db, commissionRate, getSetting, setSetting, transaction } from './db.js';
 import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
+import { notifyAdmin } from './admin-notify.js';
 import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 
@@ -146,6 +147,8 @@ function complete(order, text) {
   update(order, { status: 'completado', completed_at: now(), payout_status: 'pendiente' });
   markSoldIfEmpty(order);
   systemNote(order.conversation_id, text);
+  notifyAdmin('vendedor', `Pagar al vendedor: ${order.code}`,
+    `El pedido ${order.code} se completó. Transfiere ${formatColones(order.payout_amount)} al vendedor por SINPE y márcalo como pagado.`, '/admin#pagos');
 }
 
 // Lo que paga el comprador según cómo reciba el artículo (en persona no se cobra envío).
@@ -181,6 +184,8 @@ export function reportPayment(orderId, buyerId, body, proof = null) {
       delivery_phone: phone, payment_proof: proof, shipping_cost: t.shipping, total: t.total, payout_amount: t.payout,
     });
     systemNote(order.conversation_id, `💸 El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code}. CowFace está verificando el pago.`);
+    notifyAdmin('pago', `Pago por verificar: ${order.code} · ${formatColones(t.total)}`,
+      `El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code} (comprobante ${reference}).\nRevisa en tu banco que entró el SINPE y confírmalo.`, '/admin#pagos');
     return order;
   });
 }
@@ -234,6 +239,7 @@ export function openDispute(orderId, buyerId, reason, evidence = null) {
     if (text.length < 10) throw new UserError('Cuéntanos qué pasó (al menos una frase).');
     update(order, { status: 'en_disputa', dispute_reason: text, dispute_evidence: evidence, auto_release_at: null });
     systemNote(order.conversation_id, `⚠️ El comprador abrió un reclamo en el pedido ${order.code}. El pago queda retenido hasta que CowFace lo resuelva.`);
+    notifyAdmin('reclamo', `Reclamo en ${order.code}`, `El comprador abrió un reclamo en el pedido ${order.code}:\n«${text}»`, `/admin/conversaciones/${order.conversation_id}`);
     return order;
   });
 }
@@ -245,6 +251,8 @@ export function sellerCannotDeliver(orderId, sellerId) {
     update(order, { status: 'reembolso_pendiente' });
     restock(order);
     systemNote(order.conversation_id, `El vendedor no puede entregar el pedido ${order.code}. CowFace le devolverá el dinero al comprador.`);
+    notifyAdmin('reembolso', `Reembolso pendiente: ${order.code}`,
+      `El vendedor no puede entregar el pedido ${order.code}. Devuélvele ${formatColones(order.total || order.price)} al comprador.`, '/admin#pagos');
     return order;
   });
 }
@@ -360,4 +368,13 @@ export function adminQueues() {
     refunds: q("o.status = 'reembolso_pendiente'"),
     payouts: q("o.status = 'completado' AND o.payout_status = 'pendiente'"),
   };
+}
+
+// Tareas pendientes del admin (para el número junto a "Admin" en el menú).
+export function adminPendingCount() {
+  return db.prepare(`
+    SELECT COUNT(*) AS n FROM orders
+    WHERE (status = 'por_pagar' AND payment_reported_at IS NOT NULL) OR status IN ('en_disputa', 'reembolso_pendiente')
+      OR (status = 'completado' AND payout_status = 'pendiente')
+  `).get().n;
 }

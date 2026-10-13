@@ -292,3 +292,24 @@ label.check a { text-decoration: underline; }
 .how-steps li { padding-left: .3rem; }
 .faq dt { font-weight: 800; margin-top: 1rem; }
 .faq dd { margin: .25rem 0 0; color: #333; }
+
+/* ---------- Admin: ganancias, tiendas destacadas y notificaciones ---------- */
+.admin-links { display: flex; gap: .5rem; flex-wrap: wrap; }
+.admin-links .btn + .btn { margin-left: 0; }
+.earn-head { display: flex; justify-content: space-between; align-items: baseline; gap: 1rem; flex-wrap: wrap; }
+.earn-years { display: flex; gap: .3rem; flex-wrap: wrap; }
+.earn-years a { padding: .3rem .7rem; border: 1px solid var(--line); font-size: .8rem; font-weight: 700; }
+.earn-years a.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.earn-chart { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 6px; align-items: end; height: 220px; margin: 1rem 0 1.5rem; padding-top: 1.2rem; border-bottom: 1px solid var(--ink); }
+.earn-col { display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; position: relative; }
+.earn-bar { width: 100%; min-height: 2px; background: var(--ink); }
+.earn-val { font-size: .62rem; font-weight: 700; white-space: nowrap; margin-bottom: .2rem; }
+.earn-label { position: absolute; bottom: -1.4rem; font-size: .68rem; color: var(--muted); white-space: nowrap; }
+.feature-form { display: flex; gap: .3rem; align-items: center; }
+.feature-form select { padding: .3rem; font-size: .8rem; width: auto; }
+.notify-form { max-width: 620px; }
+.notify-events { border: 1px solid var(--line); padding: 1rem; display: flex; flex-direction: column; gap: .55rem; margin: 0; }
+@media (max-width: 640px) {
+  .earn-val { display: none; }
+  .earn-label { font-size: .55rem; }
+}

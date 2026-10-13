@@ -23,7 +23,7 @@
     </form>
     <nav class="topnav">
       <% if (user && user.role === 'admin') { %>
-        <a href="/admin">Admin</a>
+        <a href="/admin" class="nav-messages">Admin<span class="badge" <%= locals.adminPending ? '' : 'hidden' %>><%= locals.adminPending || '' %></span></a>
       <% } else if (user) { %>
         <a class="btn btn-small" href="/vendedor/productos/nuevo">Vender</a>
         <a href="/mensajes" class="nav-messages">Mensajes<span class="badge" data-unread <%= unread ? '' : 'hidden' %>><%= unread %></span></a>

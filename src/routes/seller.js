@@ -15,6 +15,13 @@ import { MAX_IMAGES, photoFiles, photos } from '../uploads.js';
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
 import { deleteSearch, listSearches, notifyMatches } from '../alerts.js';
 import { publicBaseUrl } from '../urls.js';
+import { notifyAdmin } from '../admin-notify.js';
+
+// Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
+function announce(req, id, title) {
+  notifyMatches(id, publicBaseUrl(req));
+  notifyAdmin('publicacion', `Nuevo artículo: ${title}`, `${req.user.store_name || req.user.name} publicó «${title}».`, `/p/${id}`);
+}
 
 const MAX_ACTIVE_LISTINGS = 300;
 // Publicar y editar: máximo 30 por hora por persona (sube fotos al disco del servidor).
@@ -122,7 +129,7 @@ router.post('/productos/nuevo', listingLimit, photos, (req, res) => {
     flash(res, 'Borrador guardado. Nadie lo ve hasta que lo publiques.');
     return res.redirect(`/vendedor/productos/${id}/editar`);
   }
-  notifyMatches(id, publicBaseUrl(req));
+  announce(req, id, data.title);
   res.redirect(`/p/${id}?publicado=1`);
 });
 
@@ -145,7 +152,7 @@ router.post('/productos/:id/editar', listingLimit, photos, lockedWhileOrdered, (
     return res.status(400).render('seller/product-form', formView('Editar artículo', req.product, req.body, errors));
   }
   updateProduct(req.product.id, data, req.photos, { publish });
-  if (publish) notifyMatches(req.product.id, publicBaseUrl(req));
+  if (publish) announce(req, req.product.id, data.title);
   if (req.product.status === 'borrador' && !publish) {
     flash(res, 'Borrador guardado.');
     return res.redirect(`/vendedor/productos/${req.product.id}/editar`);

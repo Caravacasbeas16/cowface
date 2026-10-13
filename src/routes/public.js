@@ -16,6 +16,7 @@ import { safeNext, validateSignup } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
 import { adminEmail } from '../admin-account.js';
 import { mailProvider } from '../mailer.js';
+import { notifyAdmin } from '../admin-notify.js';
 
 const router = Router();
 
@@ -150,6 +151,8 @@ router.post('/registro', signupLimit, (req, res) => {
     INSERT INTO users (role, name, store_name, email, phone, province, password_hash) VALUES ('usuario', ?, ?, ?, ?, ?, ?)
   `).run(data.name, data.store_name || null, data.email, data.phone, data.province, hashPassword(data.password));
   startSession(res, Number(lastInsertRowid));
+  notifyAdmin('registro', `Cuenta nueva: ${data.store_name || data.name}`,
+    `${data.name}${data.store_name ? ` (tienda ${data.store_name})` : ''} se registró con ${data.email} · ${data.province}.`, '/admin#usuarios');
   res.redirect(safeNext(req.body.next, '/'));
 });
 

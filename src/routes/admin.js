@@ -6,6 +6,10 @@ import { blockedWords, saveBlockedWords } from '../moderation.js';
 import { ADMIN_LINK_HOURS, createResetToken } from '../password-reset.js';
 import { publicBaseUrl } from '../urls.js';
 import { DELIVERY_METHODS, admin, adminQueues, paymentConfig, savePaymentConfig } from '../orders.js';
+import { NOTIFY_EVENTS, notifySettings, saveNotifySettings } from '../admin-notify.js';
+import { mailConfigured } from '../mailer.js';
+import { FEATURED_SQL } from '../products.js';
+import { earningsReport, earningsCsv } from '../earnings.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -31,12 +35,12 @@ router.get('/', (req, res) => {
 
   const sellers = db.prepare(`
     SELECT u.id, u.name, COALESCE(u.store_name, u.name) AS store_name, u.email, u.phone, u.province, u.active,
-      u.payout_phone, u.payout_name,
+      u.payout_phone, u.payout_name, u.featured_until, ${FEATURED_SQL} AS featured,
       (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible') AS products,
       (SELECT COUNT(*) FROM orders o WHERE o.seller_id = u.id AND o.status = 'completado') AS sales,
       (SELECT COUNT(*) FROM orders o WHERE o.seller_id = u.id AND o.status IN ('en_disputa', 'reembolso_pendiente', 'reembolsado')) AS problems,
       (SELECT COUNT(*) FROM flagged_messages f WHERE f.user_id = u.id) AS flagged
-    FROM users u WHERE u.role = 'usuario' ORDER BY flagged DESC, problems DESC, u.created_at DESC LIMIT 300
+    FROM users u WHERE u.role = 'usuario' ORDER BY featured DESC, flagged DESC, problems DESC, u.created_at DESC LIMIT 300
   `).all();
 
   const orders = db.prepare(`
@@ -52,6 +56,7 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(),
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS,
+    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(),
   });
 });
 
@@ -112,6 +117,32 @@ router.post('/vendedores/:id/enlace-contrasena', (req, res, next) => {
   const link = `${publicBaseUrl(req)}/restablecer/${createResetToken(target.id, ADMIN_LINK_HOURS * 60)}`;
   res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
   res.render('admin/reset-link', { title: 'Enlace de contraseña', target, link, hours: ADMIN_LINK_HOURS });
+});
+
+// Ganancias: comisión por mes, por tienda y lo que está por entrar. ?formato=csv descarga las ventas.
+router.get('/ganancias', (req, res) => {
+  const year = Number.parseInt(req.query.anio, 10);
+  if (req.query.formato === 'csv') {
+    res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': `attachment; filename="cowface-ventas${year ? `-${year}` : ''}.csv"` });
+    return res.send(earningsCsv(year));
+  }
+  res.render('admin/earnings', { title: 'Ganancias', report: earningsReport(year) });
+});
+
+// Prioridad: los artículos de una tienda destacada salen primero (con la marca "Destacada").
+const FEATURE_DAYS = { 7: 7, 30: 30, 90: 90, siempre: 36500 };
+router.post('/tiendas/:id/destacar', (req, res) => {
+  const days = FEATURE_DAYS[req.body.days];
+  const until = days ? new Date(Date.now() + days * 86400e3).toISOString() : null;
+  const r = db.prepare("UPDATE users SET featured_until = ? WHERE id = ? AND role = 'usuario'").run(until, Number(req.params.id));
+  if (r.changes) flash(res, until ? (req.body.days === 'siempre' ? 'Tienda destacada sin fecha de fin.' : `Tienda destacada por ${days} días.`) : 'La tienda ya no está destacada.');
+  res.redirect('/admin#usuarios');
+});
+
+router.post('/notificaciones', (req, res) => {
+  const error = saveNotifySettings(req.body);
+  flash(res, error || 'Notificaciones guardadas.');
+  res.redirect('/admin#notificaciones');
 });
 
 router.post('/comision', (req, res) => {

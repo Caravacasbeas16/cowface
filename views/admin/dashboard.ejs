@@ -4,6 +4,11 @@
     <h1>Administración</h1>
     <p class="muted">Pagos, comisiones, usuarios y el filtro del chat.</p>
   </div>
+  <nav class="admin-links">
+    <a class="btn" href="/admin/ganancias">Ganancias</a>
+    <a class="btn btn-ghost" href="#usuarios">Tiendas</a>
+    <a class="btn btn-ghost" href="#notificaciones">Notificaciones</a>
+  </nav>
 </div>
 
 <% if (!pay.phone || !pay.holder) { %>
@@ -12,7 +17,7 @@
 
 <div class="stats">
   <div class="stat stat-warn"><span class="stat-n"><%= money(totals.held) %></span><span class="muted">Dinero retenido (de compradores y vendedores)</span></div>
-  <div class="stat stat-accent"><span class="stat-n"><%= money(totals.commission) %></span><span class="muted">Comisión ganada</span></div>
+  <div class="stat stat-accent"><span class="stat-n"><%= money(totals.commission) %></span><span class="muted">Comisión ganada · <a href="/admin/ganancias">ver por mes</a></span></div>
   <div class="stat"><span class="stat-n"><%= money(totals.gmv) %></span><span class="muted">Ventas completadas (<%= totals.completed %>)</span></div>
   <div class="stat"><span class="stat-n"><%= totals.users %></span><span class="muted">Usuarios</span></div>
   <div class="stat"><span class="stat-n"><%= totals.products %></span><span class="muted">Artículos activos</span></div>
@@ -81,7 +86,7 @@
 
   <% if (queues.payouts.length) { %>
     <h3>4. Pagos a vendedores <span class="badge"><%= queues.payouts.length %></span></h3>
-    <p class="hint">Transfiere por SINPE Móvil y márcalo. Tu comisión ya está descontada del monto.</p>
+    <p class="hint">Transfiere por SINPE Móvil y márcalo. Tu comisión ya está descontada del monto (y el envío, si lo hubo, ya está sumado).</p>
     <div class="task-list">
       <% for (const o of queues.payouts) { %>
         <div class="task">
@@ -119,10 +124,11 @@
 </section>
 
 <section id="usuarios">
-  <h2>Usuarios</h2>
+  <h2>Usuarios y tiendas</h2>
+  <p class="hint">Una tienda <strong>destacada</strong> sale primero en "Más recientes" y en la portada, con la marca "★ Destacada". Úsalo para tiendas de confianza o que te paguen por promoción.</p>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Usuario</th><th>Contacto</th><th>Recibe pagos en</th><th>Activos</th><th>Ventas</th><th>Problemas</th><th>Bloqueos</th><th></th></tr></thead>
+      <thead><tr><th>Usuario</th><th>Contacto</th><th>Recibe pagos en</th><th>Activos</th><th>Ventas</th><th>Problemas</th><th>Bloqueos</th><th>Prioridad</th><th></th></tr></thead>
       <tbody>
         <% for (const s of sellers) { %>
           <tr class="<%= s.active ? '' : 'row-off' %>">
@@ -133,6 +139,25 @@
             <td><%= s.sales %></td>
             <td><% if (s.problems) { %><span class="status status-en_disputa"><%= s.problems %></span><% } else { %>0<% } %></td>
             <td><% if (s.flagged) { %><span class="status status-por_pagar"><%= s.flagged %></span><% } else { %>0<% } %></td>
+            <td>
+              <% if (s.featured) { %>
+                <span class="featured-pill">★ Destacada</span>
+                <div class="muted small"><%= s.featured_until > '2100' ? 'sin fecha de fin' : `hasta ${when(s.featured_until, true)}` %></div>
+                <form action="/admin/tiendas/<%= s.id %>/destacar" method="post" class="inline">
+                  <button class="btn btn-small btn-ghost" name="days" value="quitar">Quitar</button>
+                </form>
+              <% } else if (s.active) { %>
+                <form action="/admin/tiendas/<%= s.id %>/destacar" method="post" class="feature-form">
+                  <select name="days" aria-label="Por cuánto tiempo">
+                    <option value="7">7 días</option>
+                    <option value="30" selected>30 días</option>
+                    <option value="90">90 días</option>
+                    <option value="siempre">Sin fecha de fin</option>
+                  </select>
+                  <button class="btn btn-small btn-ghost">Destacar</button>
+                </form>
+              <% } %>
+            </td>
             <td class="actions">
               <form action="/admin/vendedores/<%= s.id %>/activo" method="post" class="inline">
                 <input type="hidden" name="active" value="<%= s.active ? '0' : '1' %>">
@@ -146,7 +171,7 @@
             </td>
           </tr>
         <% } %>
-        <% if (!sellers.length) { %><tr><td colspan="8" class="muted">Sin usuarios todavía.</td></tr><% } %>
+        <% if (!sellers.length) { %><tr><td colspan="9" class="muted">Sin usuarios todavía.</td></tr><% } %>
       </tbody>
     </table>
   </div>
@@ -185,7 +210,28 @@
   </div>
 </section>
 
-<section>
+<section id="notificaciones">
+  <h2>Notificaciones</h2>
+  <% if (!mailReady) { %>
+    <div class="notice">El envío de correos no está configurado (Brevo), así que no te llegarán avisos.</div>
+  <% } %>
+  <p class="hint">Te mandamos un correo cuando pasa algo de esto. Además, el botón <strong>Admin</strong> de arriba muestra cuántas tareas tienes pendientes.</p>
+  <form action="/admin/notificaciones" method="post" class="stack notify-form">
+    <label>Correo para los avisos
+      <input type="email" name="email" value="<%= notify.customEmail %>" placeholder="<%= notify.email || 'tu correo' %>" maxlength="120">
+      <span class="hint">Vacío = el correo de tu cuenta de admin<%= notify.email && !notify.customEmail ? ` (${notify.email})` : '' %>.</span>
+    </label>
+    <fieldset class="notify-events">
+      <legend>Avisarme cuando…</legend>
+      <% for (const [k, e] of Object.entries(NOTIFY_EVENTS)) { %>
+        <label class="check"><input type="checkbox" name="events" value="<%= k %>" <%= notify.events.has(k) ? 'checked' : '' %>> <%= e.label %></label>
+      <% } %>
+    </fieldset>
+    <button class="btn">Guardar notificaciones</button>
+  </form>
+</section>
+
+<section id="bloqueados">
   <h2>Intentos bloqueados</h2>
   <% if (!flagged.length) { %>
     <p class="muted">Nadie ha intentado compartir contacto todavía.</p>

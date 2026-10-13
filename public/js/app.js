@@ -150,3 +150,6 @@ document.addEventListener('click', async (e) => {
     setTimeout(() => delete el.dataset.copied, 1500);
   } catch { /* sin permiso de portapapeles: no pasa nada */ }
 });
+
+// Gráfico de ganancias: la altura de cada barra (la política de seguridad no permite style="" en el HTML).
+for (const bar of document.querySelectorAll('[data-height]')) bar.style.height = `${Number(bar.dataset.height) || 0}%`;

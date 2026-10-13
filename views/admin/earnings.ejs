@@ -1,0 +1,81 @@
+<%- include('../partials/header') %>
+<% const r = report; %>
+<div class="page-head">
+  <div>
+    <p class="muted small"><a href="/admin">← Administración</a></p>
+    <h1>Ganancias</h1>
+    <p class="muted">Tu comisión cuenta cuando la venta se completa: el comprador confirma que la recibió o pasa el plazo sin reclamo.</p>
+  </div>
+  <a class="btn btn-ghost" href="/admin/ganancias?formato=csv<%= r.year ? `&anio=${r.year}` : '' %>">Descargar ventas (Excel)</a>
+</div>
+
+<div class="stats">
+  <div class="stat stat-accent"><span class="stat-n"><%= money(r.thisMonth.commission) %></span><span class="muted">Este mes (<%= r.thisMonth.n %> ventas)</span></div>
+  <div class="stat"><span class="stat-n"><%= money(r.lastMonth.commission) %></span><span class="muted">Mes pasado (<%= r.lastMonth.n %> ventas)</span></div>
+  <div class="stat"><span class="stat-n"><%= money(r.allTime.commission) %></span><span class="muted">Desde el inicio (<%= r.allTime.n %> ventas)</span></div>
+  <div class="stat"><span class="stat-n"><%= money(r.average) %></span><span class="muted">Comisión promedio por venta</span></div>
+  <div class="stat"><span class="stat-n"><%= money(r.pipeline.commission) %></span><span class="muted">Por entrar: <%= r.pipeline.n %> pedidos en curso</span></div>
+  <div class="stat <%= r.owed.n ? 'stat-warn' : '' %>"><span class="stat-n"><%= money(r.owed.amount) %></span><span class="muted">Debes a vendedores (<%= r.owed.n %>)</span></div>
+</div>
+
+<section>
+  <div class="earn-head">
+    <h2><%= r.year ? `Año ${r.year}` : 'Últimos 12 meses' %></h2>
+    <nav class="earn-years" aria-label="Periodo">
+      <a href="/admin/ganancias" class="<%= r.year ? '' : 'active' %>">12 meses</a>
+      <% for (const y of r.years) { %><a href="/admin/ganancias?anio=<%= y %>" class="<%= r.year === y ? 'active' : '' %>"><%= y %></a><% } %>
+    </nav>
+  </div>
+  <p class="muted">En este periodo: <strong><%= money(r.range.commission) %></strong> de comisión sobre <%= money(r.range.gmv) %> vendidos en <%= r.range.sales %> ventas.</p>
+
+  <div class="earn-chart" role="img" aria-label="Comisión por mes">
+    <% for (const m of r.months) { %>
+      <div class="earn-col" title="<%= m.label %>: <%= money(m.commission) %>">
+        <span class="earn-val"><%= m.commission ? money(m.commission) : '' %></span>
+        <span class="earn-bar" data-height="<%= Math.round((m.commission / r.maxCommission) * 100) %>"></span>
+        <span class="earn-label"><%= m.label %></span>
+      </div>
+    <% } %>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Mes</th><th>Ventas</th><th>Vendido</th><th>Tu comisión</th><th>Reembolsos</th></tr></thead>
+      <tbody>
+        <% for (const m of [...r.months].reverse()) { %>
+          <tr>
+            <td><%= m.label %></td>
+            <td><%= m.sales %></td>
+            <td><%= money(m.gmv) %></td>
+            <td><strong><%= money(m.commission) %></strong></td>
+            <td><%= m.refunds ? `${m.refunds} · ${money(m.refunded)}` : '—' %></td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section>
+  <h2>Tiendas que más te dejan</h2>
+  <% if (!r.topStores.length) { %>
+    <p class="muted">Todavía no hay ventas completadas en este periodo.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tienda</th><th>Ventas</th><th>Vendido</th><th>Tu comisión</th></tr></thead>
+        <tbody>
+          <% for (const s of r.topStores) { %>
+            <tr>
+              <td><a href="/u/<%= s.id %>"><strong><%= s.store_name %></strong></a></td>
+              <td><%= s.sales %></td>
+              <td><%= money(s.gmv) %></td>
+              <td><strong><%= money(s.commission) %></strong></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>
