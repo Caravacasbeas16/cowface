@@ -8,7 +8,7 @@ export const PAGE_SIZE = 24;
 const CARD_COLUMNS = `
   p.id, p.title, p.brand, p.category, p.department, p.item_type, p.size, p.color, p.condition,
   p.price, p.status, p.created_at, COALESCE(u.store_name, u.name) AS store_name, u.province,
-  (SELECT filename FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image
+  (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image
 `;
 
 // Limpia los filtros de la URL: lo que no reconoce, lo ignora.
@@ -90,7 +90,9 @@ export function getProduct(id) {
     FROM products p JOIN users u ON u.id = p.seller_id WHERE p.id = ?
   `).get(id);
   if (!product) return null;
-  product.images = db.prepare('SELECT id, filename FROM product_images WHERE product_id = ? ORDER BY position').all(id);
+  product.images = db.prepare(
+    'SELECT id, filename, COALESCE(thumb, filename) AS thumb FROM product_images WHERE product_id = ? ORDER BY position, id',
+  ).all(id);
   return product;
 }
 
@@ -125,25 +127,40 @@ export function updateProduct(id, data, filenames = []) {
   });
 }
 
-function addImages(productId, filenames) {
+// photos: [{ filename, thumb }] ya procesadas por images.js (la primera es la portada).
+function addImages(productId, photos) {
   const start = db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS n FROM product_images WHERE product_id = ?').get(productId).n;
-  const insert = db.prepare('INSERT INTO product_images (product_id, filename, position) VALUES (?, ?, ?)');
-  filenames.forEach((name, i) => insert.run(productId, name, start + i));
+  const insert = db.prepare('INSERT INTO product_images (product_id, filename, thumb, position) VALUES (?, ?, ?, ?)');
+  photos.forEach((p, i) => insert.run(productId, p.filename, p.thumb || null, start + i));
 }
 
 export function imageCount(productId) {
   return db.prepare('SELECT COUNT(*) AS n FROM product_images WHERE product_id = ?').get(productId).n;
 }
 
-// Devuelve el nombre de archivo borrado para que la ruta lo quite del disco.
+const filesOf = (row) => [row.filename, row.thumb].filter(Boolean);
+
+// Devuelve los archivos borrados (foto grande y miniatura) para que la ruta los quite del disco.
 export function deleteImage(productId, imageId) {
-  const row = db.prepare('SELECT filename FROM product_images WHERE id = ? AND product_id = ?').get(imageId, productId);
+  const row = db.prepare('SELECT filename, thumb FROM product_images WHERE id = ? AND product_id = ?').get(imageId, productId);
   if (row) db.prepare('DELETE FROM product_images WHERE id = ?').run(imageId);
-  return row?.filename || null;
+  return row ? filesOf(row) : [];
+}
+
+// Pone una foto como portada (primera en la galería y en las tarjetas).
+export function setCoverImage(productId, imageId) {
+  transaction(() => {
+    const row = db.prepare('SELECT id FROM product_images WHERE id = ? AND product_id = ?').get(imageId, productId);
+    if (!row) return;
+    const ids = db.prepare('SELECT id FROM product_images WHERE product_id = ? ORDER BY position, id').all(productId).map((r) => r.id);
+    const ordered = [imageId, ...ids.filter((id) => id !== imageId)];
+    const update = db.prepare('UPDATE product_images SET position = ? WHERE id = ?');
+    ordered.forEach((id, i) => update.run(i, id));
+  });
 }
 
 export function deleteProduct(id) {
-  const files = db.prepare('SELECT filename FROM product_images WHERE product_id = ?').all(id).map((r) => r.filename);
+  const files = db.prepare('SELECT filename, thumb FROM product_images WHERE product_id = ?').all(id).flatMap(filesOf);
   db.prepare('DELETE FROM products WHERE id = ?').run(id);
   return files;
 }
@@ -155,7 +172,7 @@ export function setProductStatus(id, status) {
 // Una foto real por categoría (el artículo disponible más reciente que tenga foto) para la portada.
 export function categoryCovers() {
   const rows = db.prepare(`
-    SELECT p.category, p.id, i.filename AS image
+    SELECT p.category, p.id, COALESCE(i.thumb, i.filename) AS image
     FROM products p JOIN users u ON u.id = p.seller_id
     JOIN product_images i ON i.product_id = p.id AND i.position = (SELECT MIN(position) FROM product_images WHERE product_id = p.id)
     WHERE p.status = 'disponible' AND u.active = 1

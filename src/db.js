@@ -13,7 +13,8 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 // conservan los datos: solo se agregan tablas o columnas, nunca se borra nada.
 //   3 → 4: reseñas, bloqueos entre usuarios y cuentas de Google/Facebook.
 //   4 → 5: enlaces para restablecer la contraseña.
-const SCHEMA_VERSION = 5;
+//   5 → 6: miniatura de cada foto (product_images.thumb).
+const SCHEMA_VERSION = 6;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -215,8 +216,13 @@ CREATE TABLE IF NOT EXISTS password_resets (
 );
 CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets (user_id);
 
-PRAGMA user_version = ${SCHEMA_VERSION};
 `);
+
+// Columnas nuevas en tablas que ya existen (CREATE TABLE IF NOT EXISTS no las agrega).
+const hasColumn = (table, column) => db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
+if (!hasColumn('product_images', 'thumb')) db.exec('ALTER TABLE product_images ADD COLUMN thumb TEXT');
+
+db.exec(`PRAGMA user_version = ${SCHEMA_VERSION}`);
 
 // Una sola vez: la comisión por defecto bajó de 5 % a 2 %. Si nadie la había cambiado a mano, se ajusta.
 if (db.prepare("SELECT 1 FROM settings WHERE key = 'migration_commission_2pct'").get() == null) {

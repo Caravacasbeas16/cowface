@@ -2,7 +2,9 @@
 <%
   const f = form;
   const action = product ? `/vendedor/productos/${product.id}/editar` : '/vendedor/productos/nuevo';
-  const err = (k) => errors[k] ? `<span class="error">${errors[k]}</span>` : '';
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const err = (k) => errors[k] ? `<span class="error">${esc(errors[k])}</span>` : '';
+  const existing = product ? product.images.length : 0;
 %>
 <section class="form-page">
   <% if (welcome) { %>
@@ -11,22 +13,38 @@
   <h1><%= title %></h1>
   <% if (Object.keys(errors).length) { %><div class="alert">Revisa los campos marcados.</div><% } %>
 
-  <% if (product && product.images.length) { %>
+  <% if (existing) { %>
+    <p class="small muted">Fotos actuales. La primera es la portada.</p>
     <div class="current-photos">
-      <% for (const img of product.images) { %>
-        <form action="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/borrar" method="post" class="photo-tile">
-          <img src="/fotos/<%= img.filename %>" alt="">
-          <button type="submit" aria-label="Quitar foto" title="Quitar foto">×</button>
-        </form>
-      <% } %>
+      <% product.images.forEach((img, i) => { %>
+        <div class="photo-tile <%= i === 0 ? 'is-cover' : '' %>">
+          <img src="/fotos/<%= img.thumb %>" alt="Foto <%= i + 1 %>">
+          <% if (i === 0) { %>
+            <span class="cover-badge">Portada</span>
+          <% } else { %>
+            <form action="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/portada" method="post">
+              <button class="cover-btn" type="submit" title="Usar esta foto como portada">Usar de portada</button>
+            </form>
+          <% } %>
+          <% if (existing > 1) { %>
+            <form action="/vendedor/productos/<%= product.id %>/fotos/<%= img.id %>/borrar" method="post" data-confirm="¿Quitar esta foto?">
+              <button class="remove-btn" type="submit" aria-label="Quitar foto" title="Quitar foto">×</button>
+            </form>
+          <% } %>
+        </div>
+      <% }) %>
     </div>
   <% } %>
 
-  <form action="<%= action %>" method="post" enctype="multipart/form-data" class="stack">
-    <label>Fotos <span class="muted">(hasta 6, JPG/PNG/WebP, máx. 5 MB c/u)</span>
-      <input type="file" name="photos" accept="image/jpeg,image/png,image/webp" multiple data-photo-input>
+  <form action="<%= action %>" method="post" enctype="multipart/form-data" class="stack" data-listing-form>
+    <label><%= existing ? 'Agregar fotos' : 'Fotos' %>
+      <span class="muted">(hasta <%= maxImages - existing %> más · JPG, PNG, WebP o AVIF · máx. <%= maxPhotoMb %> MB cada una)</span>
+      <input type="file" name="photos" accept="image/jpeg,image/png,image/webp,image/avif" multiple
+             data-photo-input data-max="<%= maxImages - existing %>" data-max-mb="<%= maxPhotoMb %>" <%= existing ? '' : 'required' %>>
       <div class="photo-preview" data-photo-preview></div>
+      <span class="error" data-photo-error hidden></span>
       <%- err('photos') %>
+      <span class="hint">Se guardan en alta calidad. Quitamos la ubicación GPS de tus fotos para proteger tu privacidad. Tip: luz natural, fondo liso, y fotos de la etiqueta y de cualquier detalle.</span>
     </label>
 
     <label>Título
@@ -98,7 +116,7 @@
 
     <div class="form-actions">
       <a class="btn btn-ghost" href="/vendedor">Cancelar</a>
-      <button class="btn" type="submit"><%= product ? 'Guardar cambios' : 'Publicar' %></button>
+      <button class="btn" type="submit" data-busy-text="Subiendo fotos…"><%= product ? 'Guardar cambios' : 'Publicar' %></button>
     </div>
   </form>
 </section>

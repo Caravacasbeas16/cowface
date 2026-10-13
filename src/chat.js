@@ -47,7 +47,7 @@ export function getConversationForUser(id, userId) {
   expireOffers();
   const c = db.prepare(`
     SELECT c.*, p.price, p.status AS product_status, p.category, p.size, p.quantity,
-      (SELECT filename FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image,
+      (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image,
       b.name AS buyer_name, s.name AS seller_name, COALESCE(s.store_name, s.name) AS store_name
     FROM conversations c
     LEFT JOIN products p ON p.id = c.product_id
@@ -69,7 +69,7 @@ export function listConversations(userId) {
       CASE WHEN c.buyer_id = ? THEN COALESCE(s.store_name, s.name) ELSE b.name END AS other_name,
       CASE WHEN c.buyer_id = ? THEN 'comprador' ELSE 'vendedor' END AS role,
       CASE WHEN c.buyer_id = ? THEN c.buyer_read_at ELSE c.seller_read_at END < c.last_message_at AS unread,
-      (SELECT filename FROM product_images i WHERE i.product_id = c.product_id ORDER BY position LIMIT 1) AS image,
+      (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = c.product_id ORDER BY position LIMIT 1) AS image,
       (SELECT CASE m.kind WHEN 'texto' THEN m.body WHEN 'oferta' THEN 'Oferta: ' || o.amount ELSE m.body END
          FROM messages m LEFT JOIN offers o ON o.id = m.offer_id
          WHERE m.conversation_id = c.id ORDER BY m.id DESC LIMIT 1) AS last_text

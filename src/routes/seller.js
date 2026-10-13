@@ -7,8 +7,10 @@ import { requireRole } from '../auth.js';
 import { db, commissionRate } from '../db.js';
 import { ORDER_STATUS, PRODUCT_STATUS } from '../catalog.js';
 import {
-  createProduct, deleteImage, deleteProduct, getProduct, imageCount, sellerProducts, setProductStatus, updateProduct,
+  createProduct, deleteImage, deleteProduct, getProduct, imageCount, sellerProducts, setCoverImage, setProductStatus,
+  updateProduct,
 } from '../products.js';
+import { ImageError, processPhoto } from '../images.js';
 import { listConversations } from '../chat.js';
 import { OPEN_STATUSES, buyerOrders, sellerOrders } from '../orders.js';
 import { perUser, rateLimit } from '../rate-limit.js';
@@ -20,7 +22,11 @@ const VOLUME = process.env.RAILWAY_VOLUME_MOUNT_PATH;
 export const UPLOAD_DIR = path.resolve(process.env.UPLOAD_DIR || (VOLUME ? path.join(VOLUME, 'uploads') : 'uploads'));
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-const MAX_IMAGES = 6;
+const TMP_DIR = path.join(UPLOAD_DIR, 'tmp');
+fs.mkdirSync(TMP_DIR, { recursive: true });
+
+export const MAX_IMAGES = 8;
+export const MAX_PHOTO_MB = 20;
 const MAX_ACTIVE_LISTINGS = 300;
 // Publicar y editar: máximo 30 por hora por persona (sube fotos al disco del servidor).
 const listingLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, key: perUser, message: 'Estás publicando muy rápido. Espera un rato e intenta de nuevo.' });
@@ -30,6 +36,7 @@ const SIGNATURES = {
   'image/jpeg': (b) => b[0] === 0xff && b[1] === 0xd8 && b[2] === 0xff,
   'image/png': (b) => b.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])),
   'image/webp': (b) => b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP',
+  'image/avif': (b) => ['ftypavif', 'ftypavis'].includes(b.subarray(4, 12).toString('latin1')),
 };
 function realImages(files) {
   return files.every((f) => {
@@ -46,29 +53,57 @@ const hasOpenOrder = (productId) => Boolean(db.prepare(
 ).get(productId, ...OPEN_STATUSES));
 function lockedWhileOrdered(req, res, next) {
   if (!hasOpenOrder(req.product.id)) return next();
-  removeFiles((req.files || []).map((f) => f.filename));
+  removeFiles(photoFiles(req));
   res.cookie('flash', 'Este artículo tiene un pedido en curso: no se puede editar ni borrar hasta que se complete o se cancele.', { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
   return res.redirect('/vendedor#articulos');
 }
-const IMAGE_TYPES = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/webp': '.webp' };
-
+// Las fotos llegan primero a una carpeta temporal; images.js las procesa y guarda las versiones finales.
 const upload = multer({
   storage: multer.diskStorage({
-    destination: UPLOAD_DIR,
-    filename: (req, file, cb) => cb(null, crypto.randomBytes(12).toString('hex') + IMAGE_TYPES[file.mimetype]),
+    destination: TMP_DIR,
+    filename: (req, file, cb) => cb(null, crypto.randomBytes(12).toString('hex')),
   }),
-  limits: { fileSize: 5 * 1024 * 1024, files: MAX_IMAGES },
-  fileFilter: (req, file, cb) => cb(null, Boolean(IMAGE_TYPES[file.mimetype])),
+  limits: { fileSize: MAX_PHOTO_MB * 1024 * 1024, files: MAX_IMAGES },
+  fileFilter: (req, file, cb) => {
+    if (SIGNATURES[file.mimetype]) return cb(null, true);
+    const err = new Error(file.mimetype);
+    err.code = /hei[cf]/i.test(file.mimetype) || /\.hei[cf]$/i.test(file.originalname) ? 'HEIC' : 'TYPE';
+    return cb(err);
+  },
 });
 
-// Envuelve multer para mostrar sus errores (archivo muy grande, demasiados) en el formulario.
+const UPLOAD_ERRORS = {
+  LIMIT_FILE_SIZE: `Cada foto debe pesar menos de ${MAX_PHOTO_MB} MB.`,
+  LIMIT_FILE_COUNT: `Máximo ${MAX_IMAGES} fotos por artículo.`,
+  LIMIT_UNEXPECTED_FILE: `Máximo ${MAX_IMAGES} fotos por artículo.`,
+  HEIC: 'Las fotos HEIC no se pueden publicar. En iPhone: Ajustes → Cámara → Formatos → "Más compatible", o comparte la foto como JPG.',
+  TYPE: 'Solo se aceptan fotos JPG, PNG, WebP o AVIF.',
+};
+
+// Recibe las fotos, revisa que sean imágenes reales y las procesa (alta calidad + miniatura, sin GPS).
+// Deja el resultado en req.photos = [{ filename, thumb }] o el problema en req.uploadError.
 function photos(req, res, next) {
-  upload.array('photos', MAX_IMAGES)(req, res, (err) => {
-    req.uploadError = err ? (err.code === 'LIMIT_FILE_SIZE' ? 'Cada foto debe pesar menos de 5 MB.' : `Máximo ${MAX_IMAGES} fotos.`) : null;
-    if (!req.uploadError && req.files?.length && !realImages(req.files)) req.uploadError = 'Una de las fotos no es una imagen válida (JPG, PNG o WebP).';
+  upload.array('photos', MAX_IMAGES)(req, res, async (err) => {
+    req.photos = [];
+    const tmp = req.files || [];
+    try {
+      if (err) throw Object.assign(new ImageError(UPLOAD_ERRORS[err.code] || 'No se pudieron subir las fotos.'), { tmpCleanup: true });
+      if (tmp.length && !realImages(tmp)) throw new ImageError('Una de las fotos no es una imagen válida (JPG, PNG, WebP o AVIF).');
+      for (const file of tmp) req.photos.push(await processPhoto(file.path, UPLOAD_DIR));
+      req.uploadError = null;
+    } catch (e) {
+      if (!(e instanceof ImageError)) console.error('Error procesando fotos:', e);
+      req.uploadError = e instanceof ImageError ? e.message : 'No se pudieron procesar las fotos. Intenta de nuevo.';
+      removeFiles(photoFiles(req));
+      req.photos = [];
+      for (const file of tmp) fs.rm(file.path, { force: true }, () => {});
+    }
     next();
   });
 }
+
+// Archivos (grande + miniatura) de las fotos ya procesadas en esta solicitud.
+const photoFiles = (req) => (req.photos || []).flatMap((p) => [p.filename, p.thumb]);
 
 function removeFiles(names) {
   for (const name of names) fs.rm(path.join(UPLOAD_DIR, path.basename(name)), { force: true }, () => {});
@@ -138,19 +173,19 @@ router.get('/productos/nuevo', (req, res) => {
 router.post('/productos/nuevo', listingLimit, photos, (req, res) => {
   const active = db.prepare("SELECT COUNT(*) AS n FROM products WHERE seller_id = ? AND status IN ('disponible', 'pausado', 'reservado')").get(req.user.id).n;
   if (active >= MAX_ACTIVE_LISTINGS) {
-    removeFiles((req.files || []).map((f) => f.filename));
+    removeFiles(photoFiles(req));
     return res.status(400).render('error', { title: 'Límite de artículos', message: `Puedes tener hasta ${MAX_ACTIVE_LISTINGS} artículos activos. Borra o marca como vendidos algunos antes de publicar más.` });
   }
-  if (needsPayout(req)) { removeFiles((req.files || []).map((f) => f.filename)); return res.redirect('/vendedor/pagos?next=publicar'); }
+  if (needsPayout(req)) { removeFiles(photoFiles(req)); return res.redirect('/vendedor/pagos?next=publicar'); }
   const { data, errors } = validateProduct(req.body);
-  const files = (req.files || []).map((f) => f.filename);
   if (req.uploadError) errors.photos = req.uploadError;
+  else if (!req.photos.length) errors.photos = 'Agrega al menos una foto: los artículos con foto se venden mucho más.';
   flagListing(req, errors);
   if (Object.keys(errors).length) {
-    removeFiles(files);
+    removeFiles(photoFiles(req));
     return res.status(400).render('seller/product-form', { title: 'Publicar artículo', product: null, form: req.body, errors, welcome: false });
   }
-  const id = createProduct(req.user.id, data, files);
+  const id = createProduct(req.user.id, data, req.photos);
   res.redirect(`/p/${id}`);
 });
 
@@ -160,21 +195,30 @@ router.get('/productos/:id/editar', lockedWhileOrdered, (req, res) => {
 
 router.post('/productos/:id/editar', listingLimit, photos, lockedWhileOrdered, (req, res) => {
   const { data, errors } = validateProduct(req.body);
-  const files = (req.files || []).map((f) => f.filename);
+  const current = imageCount(req.product.id);
   if (req.uploadError) errors.photos = req.uploadError;
-  else if (imageCount(req.product.id) + files.length > MAX_IMAGES) errors.photos = `Máximo ${MAX_IMAGES} fotos por artículo.`;
+  else if (current + req.photos.length > MAX_IMAGES) errors.photos = `Máximo ${MAX_IMAGES} fotos por artículo (ya tiene ${current}).`;
+  else if (current + req.photos.length === 0) errors.photos = 'El artículo necesita al menos una foto.';
   flagListing(req, errors);
   if (Object.keys(errors).length) {
-    removeFiles(files);
+    removeFiles(photoFiles(req));
     return res.status(400).render('seller/product-form', { title: 'Editar artículo', product: req.product, form: req.body, errors, welcome: false });
   }
-  updateProduct(req.product.id, data, files);
+  updateProduct(req.product.id, data, req.photos);
   res.redirect(`/p/${req.product.id}`);
 });
 
 router.post('/productos/:id/fotos/:imageId/borrar', lockedWhileOrdered, (req, res) => {
-  const name = deleteImage(req.product.id, Number(req.params.imageId));
-  if (name) removeFiles([name]);
+  if (req.product.images.length <= 1) {
+    res.cookie('flash', 'El artículo necesita al menos una foto: sube otra antes de borrar esta.', { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+  } else {
+    removeFiles(deleteImage(req.product.id, Number(req.params.imageId)));
+  }
+  res.redirect(`/vendedor/productos/${req.product.id}/editar`);
+});
+
+router.post('/productos/:id/fotos/:imageId/portada', (req, res) => {
+  setCoverImage(req.product.id, Number(req.params.imageId));
   res.redirect(`/vendedor/productos/${req.product.id}/editar`);
 });
 

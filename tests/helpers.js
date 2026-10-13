@@ -31,8 +31,10 @@ export function stopServer() {
 
 export const form = (obj) => new URLSearchParams(obj);
 
-export const PNG = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000' +
-  '1f15c4890000000d49444154789c6360000002000001e221bc330000000049454e44ae426082', 'hex');
+// Imágenes reales (los artículos necesitan fotos de al menos 300 px).
+const { default: sharp } = await import('sharp');
+export const PNG = await sharp({ create: { width: 400, height: 500, channels: 3, background: '#336699' } }).png().toBuffer();
+export const photoOf = (type = 'image/png') => ({ data: PNG, type, name: 'foto.png' });
 
 export const POLO = {
   title: 'Camisa polo azul', brand: 'Lacoste', category: 'ropa', department: 'hombre', item_type: 'Camisas polo',
@@ -68,7 +70,7 @@ export async function publish(cookie, fields, files = []) {
 }
 
 export async function publishPolo(cookie, extra = {}) {
-  const res = await publish(cookie, { ...POLO, ...extra });
+  const res = await publish(cookie, { ...POLO, ...extra }, [photoOf()]);
   assert.equal(res.status, 302, 'publicó');
   return Number(res.headers.get('location').split('/').pop());
 }

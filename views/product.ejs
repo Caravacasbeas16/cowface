@@ -7,16 +7,28 @@
 <div class="product">
   <div class="gallery" data-gallery>
     <% if (p.images.length) { %>
-      <img class="gallery-main" src="/fotos/<%= p.images[0].filename %>" alt="<%= p.title %>" data-gallery-main>
+      <button type="button" class="gallery-main-btn" data-zoom-open aria-label="Ver foto en grande">
+        <img class="gallery-main" src="/fotos/<%= p.images[0].filename %>" alt="<%= p.title %>" data-gallery-main data-index="0">
+        <span class="zoom-hint" aria-hidden="true">⤢ Ampliar</span>
+      </button>
       <% if (p.images.length > 1) { %>
         <div class="thumbs">
           <% p.images.forEach((img, i) => { %>
-            <button type="button" class="thumb <%= i === 0 ? 'active' : '' %>" data-src="/fotos/<%= img.filename %>" aria-label="Foto <%= i + 1 %>">
-              <img src="/fotos/<%= img.filename %>" alt="">
+            <button type="button" class="thumb <%= i === 0 ? 'active' : '' %>" data-src="/fotos/<%= img.filename %>" data-index="<%= i %>" aria-label="Foto <%= i + 1 %>">
+              <img src="/fotos/<%= img.thumb %>" alt="" loading="lazy">
             </button>
           <% }) %>
         </div>
       <% } %>
+      <div class="lightbox" data-lightbox hidden role="dialog" aria-modal="true" aria-label="Fotos de <%= p.title %>">
+        <img alt="" data-lightbox-img>
+        <button type="button" class="lb-close" data-lb-close aria-label="Cerrar">×</button>
+        <% if (p.images.length > 1) { %>
+          <button type="button" class="lb-nav lb-prev" data-lb-prev aria-label="Foto anterior">‹</button>
+          <button type="button" class="lb-nav lb-next" data-lb-next aria-label="Foto siguiente">›</button>
+          <span class="lb-count" data-lb-count></span>
+        <% } %>
+      </div>
     <% } else { %>
       <img class="gallery-main" src="<%= imageUrl(p, null) %>" alt="Sin foto">
     <% } %>

@@ -8,10 +8,7 @@
 .form-page h1 { text-transform: uppercase; font-weight: 900; }
 .form-actions { display: flex; justify-content: flex-end; gap: .5rem; }
 .photo-preview, .current-photos { display: flex; flex-wrap: wrap; gap: 6px; }
-.photo-preview img, .photo-tile img { width: 88px; height: 88px; object-fit: cover; }
 .current-photos { margin-bottom: 1rem; }
-.photo-tile { position: relative; }
-.photo-tile button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0; background: var(--ink); color: #fff; cursor: pointer; line-height: 1; }
 .legal { max-width: 760px; margin: 2rem auto; }
 .legal h1 { text-transform: uppercase; font-weight: 900; }
 .legal h2 { margin-top: 2rem; }
@@ -183,3 +180,18 @@ label.check a { text-decoration: underline; }
 .spaced { margin-top: 1.5rem; }
 .pay-card.single { grid-template-columns: 1fr; }
 .break { overflow-wrap: anywhere; }
+
+/* ---------- Fotos al publicar ---------- */
+.photo-tile { position: relative; width: 104px; }
+.photo-tile img { width: 104px; height: 104px; object-fit: cover; display: block; }
+.photo-tile.is-cover img { outline: 2px solid var(--ink); outline-offset: -2px; }
+.photo-tile form { margin: 0; }
+.cover-badge, .cover-btn { position: absolute; left: 0; right: 0; bottom: 0; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; text-align: center; padding: .25rem 0; }
+.cover-badge { background: var(--ink); color: #fff; }
+.cover-btn { border: 0; background: rgba(255, 255, 255, .92); color: var(--ink); cursor: pointer; width: 100%; }
+.cover-btn:hover { background: #fff; text-decoration: underline; }
+.remove-btn { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border: 0; background: var(--ink); color: #fff; cursor: pointer; line-height: 1; }
+.photo-preview figure { margin: 0; position: relative; }
+.photo-preview img { width: 104px; height: 104px; object-fit: cover; display: block; }
+.photo-preview figcaption { position: absolute; left: 0; right: 0; bottom: 0; background: var(--ink); color: #fff; font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; text-align: center; padding: .25rem 0; }
+.photo-preview, .current-photos { gap: 8px; }

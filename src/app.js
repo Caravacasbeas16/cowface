@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { loadUser } from './auth.js';
 import * as catalog from './catalog.js';
 import publicRoutes from './routes/public.js';
-import sellerRoutes, { UPLOAD_DIR } from './routes/seller.js';
+import sellerRoutes, { MAX_IMAGES, MAX_PHOTO_MB, UPLOAD_DIR } from './routes/seller.js';
 import adminRoutes from './routes/admin.js';
 import chatRoutes from './routes/chat.js';
 import orderRoutes from './routes/orders.js';
@@ -71,7 +71,10 @@ export function createApp() {
     next();
   });
   app.use(express.static(path.join(ROOT, 'public'), { maxAge: process.env.NODE_ENV === 'production' ? '1h' : 0 }));
-  app.use('/fotos', express.static(UPLOAD_DIR, { maxAge: '7d' }));
+  // Fotos de artículos: nombres aleatorios que nunca cambian, así que se guardan en caché un año.
+  // La carpeta temporal de subidas no se sirve.
+  app.use('/fotos/tmp', (req, res) => res.status(404).end());
+  app.use('/fotos', express.static(UPLOAD_DIR, { maxAge: '365d', immutable: true, index: false }));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(cookieParser());
   app.use(loadUser);
@@ -80,6 +83,8 @@ export function createApp() {
   app.locals.siteName = catalog.SITE_NAME;
   app.locals.catalog = catalog;
   app.locals.paymentConfig = paymentConfig;
+  app.locals.maxImages = MAX_IMAGES;
+  app.locals.maxPhotoMb = MAX_PHOTO_MB;
   app.locals.enabledProviders = enabledProviders;
   app.locals.reviewTarget = reviewTarget;
   app.locals.myReview = myReview;

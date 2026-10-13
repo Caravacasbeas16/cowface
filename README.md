@@ -70,6 +70,19 @@ Después de publicar, entra a `/admin → Cobro` y pon tu número SINPE Móvil y
 Cada `git push` a `main` vuelve a publicar solo. Corre en **un solo servidor** (réplicas = 1):
 el chat en vivo, los límites de intentos y las tareas automáticas viven en ese proceso.
 
+## Fotos
+
+- Hasta **8 fotos** por artículo (mínimo 1), de hasta **20 MB** cada una: JPG, PNG, WebP o AVIF.
+  HEIC (iPhone) muestra cómo cambiarlo; los iPhone suelen convertir a JPG solos al subir desde el navegador.
+- `src/images.js` (con `sharp`) endereza la foto según el celular, **borra los metadatos y la
+  ubicación GPS**, y guarda:
+  - una versión grande de hasta 2560 px, JPEG calidad 92 sin submuestreo de color (no se nota
+    diferencia con el original) para la página del artículo y la pantalla completa;
+  - una miniatura de 800 px para las tarjetas, para que el catálogo cargue rápido.
+- Las fotos chicas no se agrandan. El vendedor elige la portada en "Editar".
+- En la página del artículo la foto se ve completa (sin recortar) y con un toque se abre a
+  pantalla completa, con zoom, flechas y deslizar con el dedo.
+
 ## Reseñas, perfiles y bloqueos
 
 - Al completarse un pedido, comprador y vendedor se califican (1–5 estrellas + comentario, que pasa
