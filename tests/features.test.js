@@ -140,7 +140,7 @@ test('total con envío o en persona, captura del SINPE, guía de envío y eviden
   assert.match(await (await get('/admin', admin)).text(), /debe entrar <strong>₡23\s?000/);
 
   await post(`/admin/pedidos/${o.id}/confirmar-pago`, admin);
-  assert.match(flashOf(await post(`/pedidos/${o.id}/enviado`, seller, {})), /número de guía o sube una foto/);
+  assert.match(flashOf(await post(`/pedidos/${o.id}/enviado`, seller, {})), /foto del envío/);
   await multipart(`/pedidos/${o.id}/enviado`, seller, {}, [{ field: 'comprobante', data: pngWithGps, type: 'image/png', name: 'guia.png' }]);
   o = lastOrder();
   assert.equal(o.status, 'enviado');

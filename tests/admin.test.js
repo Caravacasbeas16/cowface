@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  adminLogin, db, flashOf, get, post, publishPolo, signup, signupSeller, startServer, stopServer,
+  adminLogin, ctx, db, flashOf, get, post, publishPolo, signup, signupSeller, startServer, stopServer,
 } from './helpers.js';
 
 const { outbox } = await import('../src/mailer.js');
@@ -56,6 +56,8 @@ test('notificaciones: correo propio, eventos elegidos y nada si está apagado', 
   const [mail] = mailsTo(from);
   assert.match(mail.subject, new RegExp(`Pago por verificar: ${o.code}`));
   assert.match(mail.text, /\/admin#pagos/);
+
+  assert.match(mail.subject, /con captura|Pago por verificar/);
 
   // El badge de "Admin" cuenta la tarea.
   assert.match(await (await get('/', admin)).text(), /Admin<span class="badge" >1</);
@@ -133,4 +135,58 @@ test('ganancias: comisión por mes y por tienda, lo que está por entrar y el Ex
   assert.match(await (await get(`/admin/ganancias?anio=${year}`, admin)).text(), new RegExp(`Año ${year}`));
   assert.match(await (await get('/admin/ganancias?anio=abc', admin)).text(), /Últimos 12 meses/);
   assert.equal((await get('/admin/ganancias', buyer)).status, 403);
+});
+
+test('captura del SINPE: llega adjunta, por el aviso de pago o por el chat', async () => {
+  await post('/admin/notificaciones', admin, { email: 'avisos@test.cr', events: ['pago', 'comprobante'] });
+  const sharp = (await import('sharp')).default;
+  const shot = await sharp({ create: { width: 600, height: 900, channels: 3, background: '#eee' } }).png().toBuffer();
+  const send = (url, cookie, fields, field) => {
+    const body = new FormData();
+    for (const [k, v] of Object.entries(fields)) body.append(k, v);
+    body.append(field, new Blob([shot], { type: 'image/png' }), 'sinpe.png');
+    return fetch(`${ctx.base}${url}`, { method: 'POST', body, headers: { cookie }, redirect: 'manual' });
+  };
+  const id = await publishPolo(seller);
+  await post(`/p/${id}/comprar`, buyer);
+  const o = lastOrder();
+
+  // 1. Por el chat, mientras el pedido está por pagar.
+  let from = outbox.length;
+  await send(`/mensajes/${o.conversation_id}/adjunto`, buyer, { body: 'Ya te hice el SINPE' }, 'file');
+  await settle();
+  let [mail] = mailsTo(from);
+  assert.match(mail.subject, new RegExp(`Posible captura del SINPE: ${o.code}`));
+  assert.match(mail.text, /Ya te hice el SINPE/);
+  assert.equal(mail.attachments.length, 1, 'la foto va adjunta');
+  assert.match(mail.attachments[0], /\.(jpg|png)$/);
+
+  // Si la manda el vendedor, no es un comprobante de pago.
+  from = outbox.length;
+  await send(`/mensajes/${o.conversation_id}/adjunto`, seller, {}, 'file');
+  await settle();
+  assert.equal(mailsTo(from).length, 0);
+
+  // 2. Con el aviso "Ya pagué".
+  from = outbox.length;
+  await send(`/pedidos/${o.id}/pago`, buyer, { reference: String(++receipt), method: 'correos', address: 'Heredia centro', phone: '8777-0000' }, 'comprobante');
+  await settle();
+  [mail] = mailsTo(from);
+  assert.match(mail.subject, /con captura/);
+  assert.equal(mail.attachments.length, 1);
+
+  // 3. Ya pagado: una foto en el chat no avisa como comprobante.
+  await post(`/admin/pedidos/${o.id}/confirmar-pago`, admin);
+  from = outbox.length;
+  await send(`/mensajes/${o.conversation_id}/adjunto`, buyer, {}, 'file');
+  await settle();
+  assert.equal(mailsTo(from).length, 0);
+});
+
+test('un aviso nuevo se activa aunque el admin ya hubiera guardado sus preferencias antes', async () => {
+  db.prepare("DELETE FROM settings WHERE key = 'notify_known'").run();
+  db.prepare("UPDATE settings SET value = 'pago,reclamo' WHERE key = 'notify_events'").run();
+  const page = await (await get('/admin', admin)).text();
+  assert.match(page, /value="comprobante" checked/, 'el aviso nuevo viene activado');
+  assert.doesNotMatch(page, /value="vendedor" checked/, 'lo que apagó sigue apagado');
 });

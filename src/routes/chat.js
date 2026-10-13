@@ -6,6 +6,11 @@ import {
   minOffer, respondOffer, sendAttachment, sendText, threadMessages, unreadCount,
 } from '../chat.js';
 import { attachment, discardAttachment } from '../uploads.js';
+import path from 'node:path';
+import { ATTACH_DIR } from '../storage.js';
+import { notifyAdmin } from '../admin-notify.js';
+import { orderForConversation } from '../orders.js';
+import { formatColones } from '../catalog.js';
 import { blockedMessage, findBlocked, logFlagged } from '../moderation.js';
 import { subscribe } from '../realtime.js';
 import { parsePrice } from '../validate.js';
@@ -146,6 +151,19 @@ router.post('/mensajes/:id', signedIn, messageLimit, loadConversation, (req, res
 });
 
 // Foto o PDF en el chat (comprobantes, detalles de la prenda). Se guarda privado y sin metadatos.
+// Si el comprador manda una foto o PDF mientras el pedido está por pagar, casi siempre es la
+// captura del SINPE: se le avisa al admin con el archivo adjunto en el correo.
+function notifyIfProof(req, caption) {
+  if (req.user.id !== req.conv.buyer_id) return;
+  const order = orderForConversation(req.conv.id);
+  if (!order || order.status !== 'por_pagar') return;
+  const kind = req.attachment.type === 'pdf' ? 'un PDF' : 'una foto';
+  notifyAdmin('comprobante', `Posible captura del SINPE: ${order.code} · ${formatColones(order.total || order.price)}`,
+    `El comprador mandó ${kind} en el chat del pedido ${order.code}, que está por pagar (${formatColones(order.total || order.price)}).`
+      + `${caption ? `\nMensaje: «${caption}»` : ''}\nVa adjunto. Si es el SINPE, revísalo en tu banco y confirma el pago en el panel.`,
+    `/admin/conversaciones/${req.conv.id}`, { attachments: [{ path: path.join(ATTACH_DIR, req.attachment.name) }] });
+}
+
 router.post('/mensajes/:id/adjunto', signedIn, attachLimit, loadConversation, attachment('file'), (req, res) => {
   const back = `/mensajes/${req.conv.id}`;
   if (req.uploadError) return fail(req, res, 400, req.uploadError, back);
@@ -155,6 +173,7 @@ router.post('/mensajes/:id/adjunto', signedIn, attachLimit, loadConversation, at
   if (blocked) { discardAttachment(req); return fail(req, res, 422, blocked, back); }
   try {
     sendAttachment(req.conv, req.user.id, req.attachment, caption);
+    notifyIfProof(req, caption);
   } catch (err) {
     discardAttachment(req);
     if (err instanceof UserError) return fail(req, res, 403, err.message, back);

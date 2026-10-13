@@ -2,6 +2,8 @@
 // El comprador paga a CowFace por SINPE Móvil; el admin confirma el pago; el vendedor envía;
 // al recibir (o a los N días) se libera el pago al vendedor menos la comisión.
 import crypto from 'node:crypto';
+import path from 'node:path';
+import { ATTACH_DIR } from './storage.js';
 import { db, commissionRate, getSetting, setSetting, transaction } from './db.js';
 import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
@@ -184,8 +186,10 @@ export function reportPayment(orderId, buyerId, body, proof = null) {
       delivery_phone: phone, payment_proof: proof, shipping_cost: t.shipping, total: t.total, payout_amount: t.payout,
     });
     systemNote(order.conversation_id, `💸 El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code}. CowFace está verificando el pago.`);
-    notifyAdmin('pago', `Pago por verificar: ${order.code} · ${formatColones(t.total)}`,
-      `El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code} (comprobante ${reference}).\nRevisa en tu banco que entró el SINPE y confírmalo.`, '/admin#pagos');
+    notifyAdmin('pago', `Pago por verificar: ${order.code} · ${formatColones(t.total)}${proof ? ' · con captura' : ''}`,
+      `El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code} (comprobante ${reference}).\n`
+        + `${proof ? 'La captura del SINPE va adjunta.' : 'No subió captura.'} Revisa en tu banco que entró el SINPE y confírmalo.`,
+      '/admin#pagos', { attachments: proof ? [{ path: path.join(ATTACH_DIR, proof) }] : [] });
     return order;
   });
 }
@@ -204,14 +208,14 @@ export function cancelUnpaid(orderId, userId) {
 }
 
 // proof: foto de la guía, del recibo del courier o del paquete (adjunto privado), o null.
-// Si es por envío, se exige el número de guía o la foto: es la prueba del vendedor si hay reclamo.
+// Si es por envío, se exige la foto (el número de guía es opcional): sin foto del envío no se le paga al vendedor.
 export function markShipped(orderId, sellerId, note, proof = null) {
   return transaction(() => {
     const order = load(orderId, { sellerId, from: ['pagado'] });
     if (!order) return null;
     const text = String(note ?? '').trim().slice(0, 300);
-    if (order.delivery_method !== 'en_persona' && !proof && text.length < 4) {
-      throw new UserError('Para un envío, escribe el número de guía o sube una foto del recibo o del paquete.');
+    if (order.delivery_method !== 'en_persona' && !proof) {
+      throw new UserError('Sube una foto de la guía, del recibo o del paquete enviado. Sin la foto del envío no podemos pagarte la venta.');
     }
     const { releaseDays } = paymentConfig();
     update(order, { status: 'enviado', shipped_at: now(), shipping_note: text, shipping_proof: proof, auto_release_at: addHours(releaseDays * 24) });
@@ -265,7 +269,7 @@ export const admin = {
       const order = load(orderId, { from: ['por_pagar'] });
       if (!order) return null;
       update(order, { status: 'pagado', paid_at: now() });
-      systemNote(order.conversation_id, `✅ CowFace confirmó el pago del pedido ${order.code}. Vendedor: ya puedes enviarlo; arriba están los datos de entrega.`);
+      systemNote(order.conversation_id, `✅ CowFace confirmó el pago del pedido ${order.code}. Vendedor: ya puedes enviarlo; arriba están los datos de entrega. Te pagamos después de que subas la foto del envío y el comprador lo reciba.`);
       return order;
     });
   },

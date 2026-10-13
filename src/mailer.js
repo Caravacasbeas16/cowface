@@ -3,6 +3,8 @@
 //   Resend: RESEND_API_KEY + MAIL_FROM  (requiere dominio propio verificado en Resend)
 // Opcional: MAIL_FROM_NAME (por defecto el nombre del sitio).
 // Sin configuración, mailConfigured() es false y el admin genera los enlaces desde su panel.
+import fs from 'node:fs';
+import path from 'node:path';
 import { SITE_NAME } from './catalog.js';
 
 const env = (k) => (process.env[k] || '').trim();
@@ -19,10 +21,14 @@ export const mailConfigured = () => Boolean(mailProvider());
 // Para pruebas: guarda los correos en memoria en lugar de enviarlos.
 export const outbox = [];
 
-export async function sendMail({ to, subject, text, html }) {
+// attachments: [{ path }] archivos a adjuntar (p. ej. la captura del SINPE). Si no se pueden leer, se omiten.
+export async function sendMail({ to, subject, text, html, attachments = [] }) {
   const provider = mailProvider();
+  const files = attachments.flatMap((a) => {
+    try { return [{ name: path.basename(a.path), content: fs.readFileSync(a.path).toString('base64') }]; } catch { return []; }
+  });
   if (process.env.MAIL_TEST_OUTBOX === '1') {
-    outbox.push({ to, subject, text, html });
+    outbox.push({ to, subject, text, html, attachments: files.map((f) => f.name) });
     return true;
   }
   if (!provider) return false;
@@ -31,12 +37,18 @@ export async function sendMail({ to, subject, text, html }) {
     ? {
       url: 'https://api.brevo.com/v3/smtp/email',
       headers: { 'api-key': env('BREVO_API_KEY') },
-      body: { sender: { email: env('MAIL_FROM'), name: fromName }, to: [{ email: to }], subject, textContent: text, htmlContent: html },
+      body: {
+        sender: { email: env('MAIL_FROM'), name: fromName }, to: [{ email: to }], subject, textContent: text, htmlContent: html,
+        ...(files.length ? { attachment: files } : {}),
+      },
     }
     : {
       url: 'https://api.resend.com/emails',
       headers: { Authorization: `Bearer ${env('RESEND_API_KEY')}` },
-      body: { from: `${fromName} <${env('MAIL_FROM')}>`, to: [to], subject, text, html },
+      body: {
+        from: `${fromName} <${env('MAIL_FROM')}>`, to: [to], subject, text, html,
+        ...(files.length ? { attachments: files.map((f) => ({ filename: f.name, content: f.content })) } : {}),
+      },
     };
   const res = await fetch(request.url, {
     method: 'POST',

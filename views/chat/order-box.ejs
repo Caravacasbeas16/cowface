@@ -118,13 +118,13 @@
         <% if (o.delivery_method === 'en_persona') { %>
           <input name="note" maxlength="300" placeholder="Cómo y dónde lo entregaste (opcional)">
         <% } else { %>
-          <label>Número de guía o seguimiento
+          <label>Foto de la guía, del recibo o del paquete enviado (obligatoria)
+            <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+          </label>
+          <label>Número de guía o seguimiento (opcional)
             <input name="note" maxlength="300" placeholder="Ej. Correos CR: RR123456789CR">
           </label>
-          <label>Foto de la guía o del recibo del envío
-            <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf">
-          </label>
-          <p class="hint">Pon el número de guía o sube la foto: es tu prueba de envío si hay un reclamo.</p>
+          <p class="hint"><strong>El pago de esta venta se te hace después de que subas la foto del envío</strong> y el comprador lo reciba (o pasen <%= pay.releaseDays %> días sin reclamo). La foto también es tu prueba si hay un reclamo.</p>
         <% } %>
         <button class="btn btn-small"><%= o.delivery_method === 'en_persona' ? 'Marcar como entregado' : 'Marcar como enviado' %></button>
       </form>

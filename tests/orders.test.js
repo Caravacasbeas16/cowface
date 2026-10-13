@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  adminLogin, db, flashOf, get, post, publishPolo, setSetting, signup, signupSeller, startServer, stopServer,
+  adminLogin, db, flashOf, get, post, publishPolo, setSetting, shipWithPhoto, signup, signupSeller, startServer, stopServer,
 } from './helpers.js';
 
 const { runOrderTimers } = await import('../src/orders.js');
@@ -87,8 +87,12 @@ test('flujo completo: oferta aceptada → pago → verificación → envío → 
   assert.match(sellerPage, /iglesia/);
   assert.match(sellerPage, /87770000/);
 
-  await post(`/pedidos/${o.id}/enviado`, seller, { note: 'Guía Correos CR123' });
+  // Sin foto del envío no se puede marcar (ni se le paga): el número de guía solo no basta.
+  assert.match(flashOf(await post(`/pedidos/${o.id}/enviado`, seller, { note: 'Guía Correos CR123' })), /Sin la foto del envío no podemos pagarte/);
+  assert.equal(order(o.id).status, 'pagado');
+  await shipWithPhoto(seller, o.id, 'Guía Correos CR123');
   o = order(o.id);
+  assert.ok(o.shipping_proof);
   assert.equal(o.status, 'enviado');
   assert.ok(o.auto_release_at > new Date(Date.now() + 2.9 * 86400e3).toISOString(), 'libera en ~3 días');
 
@@ -152,7 +156,7 @@ test('plazos automáticos: sin pago se cancela; enviado sin reclamo se completa'
   const shipped = await buyDirect(id2);
   await post(`/pedidos/${shipped.id}/pago`, buyer, PAYMENT);
   await post(`/admin/pedidos/${shipped.id}/confirmar-pago`, admin);
-  await post(`/pedidos/${shipped.id}/enviado`, seller, { note: 'Guía Correos RR123CR' });
+  await shipWithPhoto(seller, shipped.id, 'Guía Correos RR123CR');
   db.prepare("UPDATE orders SET auto_release_at = '2000-01-01T00:00:00.000Z' WHERE id = ?").run(shipped.id);
 
   const result = runOrderTimers();

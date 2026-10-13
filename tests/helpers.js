@@ -87,3 +87,11 @@ export async function adminLogin() {
 }
 
 export const flashOf = (res) => decodeURIComponent((res.headers.get('set-cookie') || '').match(/flash=([^;]*)/)?.[1] || '');
+
+// El vendedor marca un envío como enviado con la foto (obligatoria para envíos).
+export function shipWithPhoto(cookie, orderId, note = '') {
+  const body = new FormData();
+  if (note) body.append('note', note);
+  body.append('comprobante', new Blob([PNG], { type: 'image/png' }), 'guia.png');
+  return fetch(`${ctx.base}/pedidos/${orderId}/enviado`, { method: 'POST', body, headers: { cookie }, redirect: 'manual' });
+}
