@@ -14,6 +14,7 @@ import { ratingSummary } from '../reviews.js';
 import { safeNext, validateSignup } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
 import { adminEmail } from '../admin-account.js';
+import { mailProvider } from '../mailer.js';
 
 const router = Router();
 
@@ -49,6 +50,7 @@ router.get('/salud', (req, res) => {
     correoContacto: rawContact == null ? 'falta' : req.app.locals.contactEmail ? 'ok' : 'valor inválido',
     cobroConfigurado: paymentsReady(),
     accesoSocial: enabledProviders(),
+    envioCorreo: mailProvider() || 'sin configurar',
     volumen: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH),
   });
 });
