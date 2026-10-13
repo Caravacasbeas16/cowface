@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db, commissionRate } from '../db.js';
 import { endSession, hashPassword, startSession, verifyPassword } from '../auth.js';
-import { CATEGORIES, DEPARTMENTS, formatColones } from '../catalog.js';
+import { CATEGORIES, CONDITIONS, DEPARTMENTS, formatColones } from '../catalog.js';
 import { canonicalQuery, describe, saveSearch } from '../alerts.js';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -127,8 +127,18 @@ router.get('/p/:id', (req, res, next) => {
   if (product.status === 'borrador' && !isOwner) return next(); // los borradores solo los ve su dueño
   const conversationId = req.user && !isOwner ? findConversation(product.id, req.user.id) : null;
   const blocked = Boolean(req.user && !isOwner && isBlockedEither(req.user.id, product.seller_id));
+  const cover = product.images[0];
+  const og = {
+    type: 'product', path: `/p/${product.id}`, price: product.price,
+    title: `${product.title} · ${formatColones(product.price)}`,
+    description: [
+      product.status === 'vendido' ? 'Vendido' : null, product.brand, product.size && `Talla ${product.size}`,
+      CONDITIONS[product.condition], product.province,
+    ].filter(Boolean).join(' · ') + `. Compra protegida en CowFace: pagas a CowFace y le pagamos al vendedor cuando lo recibes.`,
+    image: cover ? `/fotos/${cover.thumb || cover.filename}` : undefined, imageAlt: product.title,
+  };
   res.render('product', {
-    title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
+    og, title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
     sellerRating: ratingSummary(product.seller_id), justPublished: isOwner && req.query.publicado === '1',
   });
 });

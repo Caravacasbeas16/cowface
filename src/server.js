@@ -4,6 +4,7 @@ import { db } from './db.js';
 import { adminFromEnv, ensureAdmin } from './admin-account.js';
 import { runOrderTimers } from './orders.js';
 import { runMessageEmails } from './seller-notify.js';
+import { runDailyBackup } from './backup.js';
 
 // La cuenta admin sale de ADMIN_EMAIL / ADMIN_PASSWORD (en Railway: pestaña Variables).
 const admin = adminFromEnv();
@@ -23,6 +24,13 @@ setInterval(timers, 5 * 60 * 1000).unref();
 setInterval(() => {
   runMessageEmails().catch((err) => console.error('Error en avisos de mensajes:', err));
 }, 60 * 1000).unref();
+
+// Respaldo diario: se revisa cada hora (y 2 minutos después de arrancar) si ya se hizo el de hoy.
+const backup = () => runDailyBackup()
+  .then((r) => { if (!r.skipped) console.log(`Respaldo ${r.name} (${(r.size / 1024).toFixed(0)} KB, correo: ${r.emailed})`); })
+  .catch((err) => console.error('Error en el respaldo diario:', err));
+setTimeout(backup, 2 * 60 * 1000).unref();
+setInterval(backup, 60 * 60 * 1000).unref();
 
 const port = Number(process.env.PORT) || 3100;
 createApp().listen(port, () => {

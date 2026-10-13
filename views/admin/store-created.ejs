@@ -1,0 +1,13 @@
+<%- include('../partials/header') %>
+<section class="auth auth-wide">
+  <h1>Tienda creada</h1>
+  <p><strong><%= store.store_name || store.name %></strong> (<%= store.email %>) ya tiene cuenta.
+    <%= emailed ? 'Le mandamos por correo el enlace para crear su contraseña. Por si acaso, aquí está también:' : 'Mándale este enlace para que cree su contraseña:' %></p>
+  <div class="pay-card single">
+    <strong class="copy break" data-copy="<%= link %>"><%= link %></strong>
+  </div>
+  <p class="hint">Vence en <%= hours %> horas y sirve una sola vez. Toca el enlace para copiarlo. Si vence, genera otro desde Admin → Usuarios → "Enlace contraseña".</p>
+  <a class="btn btn-block" href="/admin/tiendas/<%= store.id %>/carga">Cargar su inventario ahora</a>
+  <a class="btn btn-ghost btn-block" href="/admin#usuarios">Volver al panel</a>
+</section>
+<%- include('../partials/footer') %>

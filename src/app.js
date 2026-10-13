@@ -10,7 +10,9 @@ import attachmentRoutes from './routes/attachments.js';
 import pushRoutes from './routes/push.js';
 import { MAX_ATTACH_MB, MAX_IMAGES, MAX_PHOTO_MB } from './uploads.js';
 import { UPLOAD_DIR } from './storage.js';
+import { publicBaseUrl } from './urls.js';
 import adminRoutes from './routes/admin.js';
+import adminStoreRoutes from './routes/admin-stores.js';
 import chatRoutes from './routes/chat.js';
 import orderRoutes from './routes/orders.js';
 import oauthRoutes from './routes/oauth.js';
@@ -142,6 +144,9 @@ export function createApp() {
   app.locals.imageUrl = (p, filename = p.image) => filename ? `/fotos/${filename}` : `/sin-foto/${p.category}/${p.id}.svg?v=2`;
   app.use((req, res, next) => {
     res.locals.path = req.path;
+    // Dirección pública para la vista previa al compartir (WhatsApp, Instagram, Facebook).
+    try { res.locals.siteUrl = publicBaseUrl(req); } catch { res.locals.siteUrl = ''; }
+    res.locals.og = null;
     // Aviso de una sola vez (lo deja una acción que redirige).
     res.locals.flash = typeof req.cookies.flash === 'string' ? req.cookies.flash.slice(0, 500) : null;
     if (res.locals.flash) res.clearCookie('flash');
@@ -169,6 +174,7 @@ export function createApp() {
   app.use('/adjuntos', attachmentRoutes);
   app.use('/push', pushRoutes);
   app.use('/vendedor', sellerRoutes);
+  app.use('/admin', adminStoreRoutes);
   app.use('/admin', adminRoutes);
 
   app.use((req, res) => {

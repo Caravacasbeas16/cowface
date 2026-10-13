@@ -1,0 +1,54 @@
+<%- include('../partials/header') %>
+<% const err = (k) => errors[k] ? `<span class="error">${errors[k]}</span>` : ''; %>
+<section class="auth auth-wide">
+  <p class="muted small"><a href="/admin#usuarios">← Administración</a></p>
+  <h1>Crear tienda</h1>
+  <p class="muted">Creas la cuenta por la tienda y le mandas un enlace para que ponga su contraseña. Después le cargas el inventario de una sola vez.</p>
+  <form action="/admin/tiendas/nueva" method="post" class="stack">
+    <div class="row2">
+      <label>Nombre de la tienda
+        <input name="store_name" value="<%= form.store_name || '' %>" placeholder="Ej. Closet de Ana" maxlength="80">
+        <%- err('store_name') %>
+      </label>
+      <label>Persona encargada
+        <input name="name" required value="<%= form.name || '' %>" maxlength="80">
+        <%- err('name') %>
+      </label>
+    </div>
+    <div class="row2">
+      <label>Correo de la tienda
+        <input type="email" name="email" required value="<%= form.email || '' %>" maxlength="120">
+        <span class="hint">Con este correo va a entrar. Le llegan los avisos de mensajes y ventas.</span>
+        <%- err('email') %>
+      </label>
+      <label>Teléfono
+        <input name="phone" required inputmode="tel" placeholder="8888-8888" value="<%= form.phone || '' %>">
+        <span class="hint">Privado.</span>
+        <%- err('phone') %>
+      </label>
+    </div>
+    <div class="row2">
+      <label>Provincia
+        <select name="province" required>
+          <option value="">Elige…</option>
+          <% for (const p of PROVINCES) { %><option <%= form.province === p ? 'selected' : '' %>><%= p %></option><% } %>
+        </select>
+        <%- err('province') %>
+      </label>
+      <label>SINPE Móvil para pagarle
+        <input name="payout_phone" inputmode="tel" placeholder="Si es otro número" value="<%= form.payout_phone || '' %>">
+        <span class="hint">Vacío = el mismo teléfono. La tienda lo puede cambiar después.</span>
+        <%- err('payout_phone') %>
+      </label>
+    </div>
+    <label>Titular del SINPE
+      <input name="payout_name" maxlength="80" value="<%= form.payout_name || '' %>" placeholder="Vacío = la persona encargada">
+    </label>
+    <label class="check">
+      <input type="checkbox" name="send_email" value="1" <%= mailReady ? 'checked' : 'disabled' %>>
+      <span>Mandarle por correo el enlace para crear su contraseña<%= mailReady ? '' : ' (el envío de correos no está configurado: te muestro el enlace para que se lo mandes tú)' %>.</span>
+    </label>
+    <button class="btn">Crear tienda</button>
+  </form>
+</section>
+<%- include('../partials/footer') %>

@@ -235,3 +235,15 @@ for (const bar of document.querySelectorAll('[data-height]')) bar.style.height =
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') set(false); });
   menu.addEventListener('click', (e) => { if (e.target.closest('a')) set(false); });
 })();
+
+// Formularios que tardan (carga de fotos): el botón muestra que está trabajando y no se envía dos veces.
+document.addEventListener('submit', (e) => {
+  const form = e.target.closest('form[data-busy]');
+  if (!form) return;
+  const btn = e.submitter || form.querySelector('button');
+  setTimeout(() => {
+    if (!btn) return;
+    btn.disabled = true;
+    if (btn.dataset.busyText) btn.textContent = btn.dataset.busyText;
+  }, 0);
+});

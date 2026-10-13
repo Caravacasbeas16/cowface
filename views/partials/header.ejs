@@ -4,7 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title><%= title ? `${title} · ${siteName}` : `${siteName} · Compra, vende y oferta ropa en Costa Rica` %></title>
-  <meta name="description" content="Ropa, zapatos y bolsos nuevos y usados en tu talla. Haz ofertas, chatea y compra con pago protegido en Costa Rica.">
+<%
+  // Vista previa al compartir un enlace: cada página puede poner su título, texto e imagen en "og".
+  const ogd = Object.assign({
+    title: title ? `${title} · ${siteName}` : `${siteName} · Compra, vende y oferta ropa en Costa Rica`,
+    description: 'Ropa, zapatos y bolsos nuevos y usados en tu talla. Haz ofertas, chatea y compra con pago protegido en Costa Rica.',
+    image: '/img/brand/01-drop.jpg', type: 'website',
+  }, locals.og || {});
+  const abs = (u) => (/^https?:/.test(u) ? u : `${locals.siteUrl || ''}${u}`);
+%>
+  <meta name="description" content="<%= ogd.description %>">
   <link rel="icon" href="/img/logo.jpg">
   <link rel="manifest" href="/manifest.webmanifest">
   <link rel="apple-touch-icon" href="/img/apple-touch-icon.png">
@@ -13,7 +22,16 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="CowFace">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta property="og:image" content="/img/brand/01-drop.jpg">
+  <meta property="og:site_name" content="<%= siteName %>">
+  <meta property="og:locale" content="es_CR">
+  <meta property="og:type" content="<%= ogd.type %>">
+  <meta property="og:title" content="<%= ogd.title %>">
+  <meta property="og:description" content="<%= ogd.description %>">
+  <meta property="og:image" content="<%= abs(ogd.image) %>">
+  <% if (ogd.imageAlt) { %><meta property="og:image:alt" content="<%= ogd.imageAlt %>"><% } %>
+  <% if (locals.siteUrl) { %><meta property="og:url" content="<%= locals.siteUrl %><%= ogd.path || path %>"><link rel="canonical" href="<%= locals.siteUrl %><%= ogd.path || path %>"><% } %>
+  <% if (ogd.price) { %><meta property="product:price:amount" content="<%= ogd.price %>"><meta property="product:price:currency" content="CRC"><% } %>
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">

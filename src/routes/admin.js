@@ -10,6 +10,8 @@ import { NOTIFY_EVENTS, notifySettings, saveNotifySettings } from '../admin-noti
 import { mailConfigured } from '../mailer.js';
 import { FEATURED_SQL } from '../products.js';
 import { earningsReport, earningsCsv } from '../earnings.js';
+import path from 'node:path';
+import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -56,7 +58,7 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(),
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS,
-    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(),
+    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(),
   });
 });
 
@@ -137,6 +139,28 @@ router.post('/tiendas/:id/destacar', (req, res) => {
   const r = db.prepare("UPDATE users SET featured_until = ? WHERE id = ? AND role = 'usuario'").run(until, Number(req.params.id));
   if (r.changes) flash(res, until ? (req.body.days === 'siempre' ? 'Tienda destacada sin fecha de fin.' : `Tienda destacada por ${days} días.`) : 'La tienda ya no está destacada.');
   res.redirect('/admin#usuarios');
+});
+
+// ---------- Respaldos ----------
+router.post('/respaldos/ahora', async (req, res, next) => {
+  try {
+    const r = await runDailyBackup({ force: true });
+    const mail = { enviado: ' y se mandó a tu correo', 'sin-clave': '. Para recibirlo por correo falta BACKUP_PASSWORD', 'muy-grande': '; es muy grande para el correo: descárgalo aquí', error: '; el correo falló', 'sin-correo': '' }[r.emailed] ?? '';
+    flash(res, `Respaldo hecho (${(r.size / 1024).toFixed(0)} KB)${mail}.`);
+    res.redirect('/admin#respaldos');
+  } catch (err) { next(err); }
+});
+
+router.get('/respaldos/completo', async (req, res, next) => {
+  const day = new Date(Date.now() - 6 * 3600e3).toISOString().slice(0, 10);
+  res.set({ 'Content-Type': 'application/gzip', 'Content-Disposition': `attachment; filename="cowface-completo-${day}.tar.gz"`, 'Cache-Control': 'no-store' });
+  try { await streamFullBackup(res); } catch (err) { if (!res.headersSent) next(err); else res.destroy(err); }
+});
+
+router.get('/respaldos/:name', (req, res, next) => {
+  if (!BACKUP_NAME.test(req.params.name)) return next();
+  res.set('Cache-Control', 'no-store');
+  res.download(path.join(BACKUP_DIR, req.params.name), req.params.name, (err) => { if (err && !res.headersSent) next(); });
 });
 
 router.post('/notificaciones', (req, res) => {

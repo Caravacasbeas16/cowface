@@ -33,12 +33,20 @@ router.get('/u/:id', (req, res, next) => {
   if (!profile) return next();
   const viewer = req.user?.role === 'usuario' ? req.user.id : null;
   const blockedEither = viewer && viewer !== profile.id && isBlockedEither(viewer, profile.id);
+  const listings = blockedEither ? [] : sellerProducts(profile.id).filter((p) => p.status === 'disponible');
+  const rating = ratingSummary(profile.id);
+  const firstPhoto = listings.find((p) => p.image)?.image;
   res.render('profile', {
+    og: {
+      type: 'profile', path: `/u/${profile.id}`, title: `${profile.store_name} en CowFace`,
+      description: `${listings.length} ${listings.length === 1 ? 'artículo' : 'artículos'} a la venta${rating.count ? ` · ★ ${rating.avg.toFixed(1)} (${rating.count} reseñas)` : ''} · ${profile.province}. Compra protegida en CowFace.`,
+      ...(firstPhoto ? { image: `/fotos/${firstPhoto}` } : {}),
+    },
     title: profile.store_name,
     profile,
-    rating: ratingSummary(profile.id),
+    rating,
     reviews: reviewsAbout(profile.id),
-    listings: blockedEither ? [] : sellerProducts(profile.id).filter((p) => p.status === 'disponible'),
+    listings,
     isMe: viewer === profile.id,
     iBlocked: viewer ? hasBlocked(viewer, profile.id) : false,
     blockedEither,

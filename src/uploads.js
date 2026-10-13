@@ -113,3 +113,59 @@ export function attachment(field) {
 }
 
 export const discardAttachment = (req) => { if (req.attachment) removeFrom(ATTACH_DIR, [req.attachment.name]); };
+
+// ---------- Carga rápida (admin): un CSV con los artículos + muchas fotos ----------
+export const BULK_MAX_PHOTOS = 60;
+const BULK_MAX_CSV = 2 * 1024 * 1024;
+const bulkUpload = multer({
+  storage: multer.diskStorage({
+    destination: TMP_DIR,
+    filename: (req, file, cb) => cb(null, crypto.randomBytes(12).toString('hex')),
+  }),
+  // Nombres de archivo con tildes o ñ ("camisa-niño.jpg") llegan bien.
+  defParamCharset: 'utf8',
+  limits: { fileSize: MAX_PHOTO_MB * 1024 * 1024, files: BULK_MAX_PHOTOS + 1, fields: 20, fieldSize: 10 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'archivo') return cb(null, true);
+    if (file.fieldname === 'fotos' && PHOTO_TYPES.includes(file.mimetype)) return cb(null, true);
+    const err = new Error(file.mimetype);
+    err.code = /hei[cf]/i.test(file.mimetype) || /\.hei[cf]$/i.test(file.originalname) ? 'HEIC' : 'TYPE';
+    err.file = file.originalname;
+    return cb(err);
+  },
+});
+
+// Deja req.bulk = { csv: texto, photos: Map(nombre en minúsculas → ruta temporal), error }.
+export function bulkFiles(req, res, next) {
+  bulkUpload.fields([{ name: 'archivo', maxCount: 1 }, { name: 'fotos', maxCount: BULK_MAX_PHOTOS }])(req, res, (err) => {
+    const csvFile = req.files?.archivo?.[0];
+    const photoFilesIn = req.files?.fotos || [];
+    req.bulk = { csv: null, photos: new Map(), error: null, tmp: [...(csvFile ? [csvFile] : []), ...photoFilesIn] };
+    try {
+      if (err) {
+        throw new ImageError({
+          LIMIT_FILE_SIZE: `Cada foto debe pesar menos de ${MAX_PHOTO_MB} MB.`,
+          LIMIT_FILE_COUNT: `Máximo ${BULK_MAX_PHOTOS} fotos por carga. Divide el inventario en varias cargas.`,
+          LIMIT_UNEXPECTED_FILE: `Máximo ${BULK_MAX_PHOTOS} fotos por carga.`,
+          HEIC: `${err.file ? `"${err.file}": ` : ''}${HEIC_HELP}`,
+          TYPE: `${err.file ? `"${err.file}": ` : ''}solo se aceptan fotos JPG, PNG, WebP o AVIF.`,
+        }[err.code] || 'No se pudieron subir los archivos.');
+      }
+      if (!csvFile) throw new ImageError('Elige el archivo CSV con los artículos.');
+      const raw = fs.readFileSync(csvFile.path);
+      if (raw.length > BULK_MAX_CSV) throw new ImageError('El CSV es muy grande (máximo 2 MB).');
+      if (raw.subarray(0, 2).toString('latin1') === 'PK') throw new ImageError('Ese archivo es de Excel (.xlsx). En Excel: Archivo → Guardar como → "CSV UTF-8 (delimitado por comas)".');
+      req.bulk.csv = raw.toString('utf8');
+      for (const f of photoFilesIn) {
+        if (!headerMatches(f)) throw new ImageError(`"${f.originalname}" no es una imagen válida.`);
+        req.bulk.photos.set(f.originalname.toLowerCase(), f.path);
+      }
+    } catch (e) {
+      if (!(e instanceof ImageError)) console.error('Error recibiendo carga rápida:', e);
+      req.bulk.error = e instanceof ImageError ? e.message : 'No se pudieron recibir los archivos.';
+    }
+    next();
+  });
+}
+
+export const discardBulk = (req) => cleanupTmp(req.bulk?.tmp);

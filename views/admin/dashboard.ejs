@@ -7,7 +7,9 @@
   <nav class="admin-links">
     <a class="btn" href="/admin/ganancias">Ganancias</a>
     <a class="btn btn-ghost" href="#usuarios">Tiendas</a>
+    <a class="btn btn-ghost" href="/admin/tiendas/nueva">+ Crear tienda</a>
     <a class="btn btn-ghost" href="#notificaciones">Notificaciones</a>
+    <a class="btn btn-ghost" href="#respaldos">Respaldos</a>
   </nav>
 </div>
 
@@ -124,7 +126,11 @@
 </section>
 
 <section id="usuarios">
-  <h2>Usuarios y tiendas</h2>
+  <div class="section-head">
+    <h2>Usuarios y tiendas</h2>
+    <a class="btn btn-small" href="/admin/tiendas/nueva">+ Crear tienda</a>
+  </div>
+  <p class="hint">Para subir el inventario de una tienda de una sola vez (Excel o Google Sheets + fotos), toca <strong>"Cargar artículos"</strong> en su fila.</p>
   <p class="hint">Una tienda <strong>destacada</strong> sale primero en "Más recientes" y en la portada, con la marca "★ Destacada". Úsalo para tiendas de confianza o que te paguen por promoción.</p>
   <div class="table-wrap">
     <table>
@@ -159,6 +165,7 @@
               <% } %>
             </td>
             <td class="actions">
+              <% if (s.active) { %><a class="btn btn-small" href="/admin/tiendas/<%= s.id %>/carga">Cargar artículos</a><% } %>
               <form action="/admin/vendedores/<%= s.id %>/activo" method="post" class="inline">
                 <input type="hidden" name="active" value="<%= s.active ? '0' : '1' %>">
                 <button class="btn btn-small btn-ghost"><%= s.active ? 'Suspender' : 'Reactivar' %></button>
@@ -208,6 +215,43 @@
       <button class="btn">Guardar lista</button>
     </form>
   </div>
+</section>
+
+<section id="respaldos">
+  <h2>Respaldos</h2>
+  <% const b = backups; const kb = (n) => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`; %>
+  <p>
+    <% if (b.lastAt) { %>Último respaldo: <strong><%= when(b.lastAt, true) %></strong>.<% } else { %><strong>Todavía no hay respaldos.</strong> El primero se hace solo en unos minutos, o tócalo abajo.<% } %>
+    Se hace uno solo todos los días y se guardan los últimos 7 aquí.
+  </p>
+  <% if (!b.encryption) { %>
+    <div class="notice">
+      <strong>Falta un paso para que te lleguen por correo</strong> (una copia fuera de Railway, por si el servidor se pierde):
+      en Railway → tu servicio → <strong>Variables</strong>, agrega <code>BACKUP_PASSWORD</code> con una contraseña larga (12+ caracteres) que solo tú sepas
+      y guárdala en un lugar seguro (sin ella no se pueden abrir los respaldos). No la compartas con nadie.
+    </div>
+  <% } else if (!b.mail) { %>
+    <div class="notice">Los respaldos no se pueden mandar por correo porque el envío de correos (Brevo) no está configurado.</div>
+  <% } else { %>
+    <p class="hint">✓ Cada día te llega por correo a <strong><%= notify.email %></strong> una copia cifrada de la base de datos<%= b.lastEmail === 'enviado' ? ' (la última se envió bien)' : b.lastEmail === 'muy-grande' ? ' (la última era muy grande para el correo: descárgala aquí)' : b.lastEmail === 'error' ? ' (la última falló: revisa Brevo)' : '' %>.</p>
+  <% } %>
+  <div class="push-actions">
+    <form action="/admin/respaldos/ahora" method="post" class="inline"><button class="btn btn-small">Hacer un respaldo ahora</button></form>
+    <a class="btn btn-small btn-ghost" href="/admin/respaldos/completo">Descargar todo (base + fotos + adjuntos)</a>
+  </div>
+  <p class="hint">"Descargar todo" baja un archivo .tar.gz con todo lo necesario para levantar CowFace de nuevo. Hazlo una vez al mes y guárdalo en tu computadora o Google Drive.</p>
+  <% if (b.files.length) { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Día</th><th>Tamaño</th><th></th></tr></thead>
+        <tbody>
+          <% for (const f of b.files) { %>
+            <tr><td><%= f.day %></td><td><%= kb(f.size) %></td><td><a class="file-link" href="/admin/respaldos/<%= f.name %>">Descargar base</a></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
 </section>
 
 <section id="notificaciones">

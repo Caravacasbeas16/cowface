@@ -324,3 +324,10 @@ label.check a { text-decoration: underline; }
 .push-steps { padding-left: 1.2rem; display: flex; flex-direction: column; gap: .35rem; }
 .push-cta { display: flex; align-items: center; justify-content: space-between; gap: .8rem; padding: .7rem .9rem; margin: .8rem 0; background: var(--soft); border: 1px solid var(--line); border-radius: 12px; font-size: .9rem; }
 .composer .push-cta { margin: 0; }
+
+/* ---------- Carga rápida ---------- */
+.bulk-form { max-width: 640px; }
+.bulk-help { display: flex; flex-direction: column; gap: .5rem; }
+.bulk-help details { border: 1px solid var(--line); padding: .6rem .9rem; }
+.bulk-help p { margin: .4rem 0; font-size: .88rem; }
+.notice-ok { background: var(--ok-soft); border-color: var(--ok); }

@@ -138,6 +138,34 @@ invierten. La barra de arriba sugiere categorías, tipos y marcas mientras se es
 - Solo se aceptan direcciones de los servicios de notificaciones de Google, Apple, Mozilla y Microsoft.
 - El menú en el celular es de hamburguesa (☰), con el ícono de mensajes y su contador a la vista.
 
+## Respaldos
+
+- Todos los días (`src/backup.js`): copia de la base en el volumen (`/data/backups`, las últimas 7),
+  sin sesiones ni enlaces de contraseña.
+- Si está `BACKUP_PASSWORD` (12+ caracteres) en Railway → Variables, esa copia se cifra (AES-256) y
+  llega por correo al admin: es la que sobrevive si se pierde el volumen. Sin esa contraseña no se
+  puede abrir: guárdala aparte.
+- `/admin → Respaldos`: hacer uno ahora, descargar las copias del día, o **"Descargar todo"**
+  (.tar.gz con la base, las fotos y los adjuntos). Conviene bajarlo una vez al mes.
+- Restaurar: `node scripts/restore-backup.mjs archivo.cfbk` (o `.db.gz`) deja `cowface-restaurado.db`.
+  Para volver a ponerla en Railway: detener el servicio, reemplazar `/data/db/cowface.db` por ese
+  archivo (y descomprimir `uploads/` y `attachments/` del respaldo completo en `/data`), y arrancar.
+
+## Vista previa al compartir
+
+Cada artículo y cada perfil tiene etiquetas Open Graph: al pegar el enlace en WhatsApp, Instagram o
+Facebook sale la foto, el nombre, el precio y la talla. Las direcciones salen de `PUBLIC_URL` o del
+dominio de Railway; si se cambia a dominio propio, definir `PUBLIC_URL`.
+
+## Carga rápida de tiendas
+
+- `/admin → + Crear tienda`: crea la cuenta (con su SINPE) y le manda por correo un enlace para que
+  ponga su contraseña (vence en 72 horas).
+- `/admin → Cargar artículos` (en la fila de la tienda): un CSV de Excel o Google Sheets + las fotos
+  (hasta 60 por carga, 200 artículos por CSV). Hay plantilla para descargar. Acepta valores como los
+  escribe una persona ("Zapatos", "niños", "9" → US 9, "32" en jeans → Cintura 32). Las filas con
+  errores no se crean y se explica por qué; las que no tienen fotos quedan como borrador.
+
 ## Herramientas del admin
 
 - **Ganancias** (`/admin/ganancias`): comisión de este mes, del anterior y total; gráfico y tabla

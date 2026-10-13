@@ -1,0 +1,75 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <p class="muted small"><a href="/admin#usuarios">← Administración</a></p>
+    <h1>Carga rápida</h1>
+    <p class="muted">Inventario de <strong><a href="/u/<%= store.id %>"><%= store.store_name %></a></strong> desde un Excel o Google Sheets.</p>
+  </div>
+  <a class="btn btn-ghost" href="/admin/carga/plantilla.csv">Descargar plantilla</a>
+</div>
+
+<% if (results) { %>
+  <% const ok = results.filter((r) => r.ok); const pub = ok.filter((r) => r.status === 'disponible'); const bad = results.filter((r) => !r.ok); %>
+  <div class="notice <%= bad.length ? '' : 'notice-ok' %>">
+    <strong><%= pub.length %> publicados</strong><%= ok.length - pub.length ? `, ${ok.length - pub.length} como borrador` : '' %><%= bad.length ? ` y ${bad.length} con errores (no se crearon: corrígelos y sube solo esas filas)` : '' %>.
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fila</th><th>Artículo</th><th>Resultado</th></tr></thead>
+      <tbody>
+        <% for (const r of results) { %>
+          <tr class="<%= r.ok ? '' : 'row-off' %>">
+            <td><%= r.line %></td>
+            <td><% if (r.ok) { %><a href="/p/<%= r.id %>"><%= r.title %></a><% } else { %><%= r.title || '(sin título)' %><% } %></td>
+            <td>
+              <% if (r.ok) { %><span class="status status-<%= r.status === 'disponible' ? 'vendido' : 'pendiente' %>"><%= r.status === 'disponible' ? 'Publicado' : 'Borrador' %></span><% } else { %><span class="status status-en_disputa">Error</span><% } %>
+              <% for (const m of r.messages) { %><div class="muted small"><%= m %></div><% } %>
+            </td>
+          </tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+<% } %>
+
+<% if (error) { %><div class="alert"><%= error %></div><% } %>
+
+<section>
+  <h2><%= results ? 'Cargar más' : 'Subir inventario' %></h2>
+  <form action="/admin/tiendas/<%= store.id %>/carga" method="post" enctype="multipart/form-data" class="stack bulk-form" data-busy>
+    <label>1. Archivo CSV con los artículos
+      <input type="file" name="archivo" accept=".csv,text/csv" required>
+      <span class="hint">En Excel: Archivo → Guardar como → "CSV UTF-8". En Google Sheets: Archivo → Descargar → CSV. Máximo <%= maxRows %> artículos.</span>
+    </label>
+    <label>2. Las fotos (todas juntas)
+      <input type="file" name="fotos" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
+      <span class="hint">Selecciona todas las fotos que nombra el CSV (hasta <%= maxPhotos %> por carga; si son más, divide el CSV). Se guardan en calidad original, sin ubicación GPS.</span>
+    </label>
+    <label class="check"><input type="checkbox" name="publish" value="1" checked> <span>Publicar de una vez (si no, quedan como borradores para revisarlos)</span></label>
+    <button class="btn" data-busy-text="Subiendo y procesando fotos… (puede tardar un par de minutos)">Cargar artículos</button>
+  </form>
+</section>
+
+<section>
+  <h2>Cómo llenar el CSV</h2>
+  <p class="muted">Una fila por artículo. La primera fila son los nombres de las columnas (como en la plantilla). Las filas con errores no se crean y te decimos por qué.</p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Columna</th><th>Ejemplo</th><th>Notas</th></tr></thead>
+      <tbody>
+        <% for (const [k, ex, note] of COLUMNS) { %><tr><td><code><%= k %></code></td><td><%= ex %></td><td class="muted small"><%= note %></td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+  <h3>Tipos y tallas por categoría</h3>
+  <div class="bulk-help">
+    <% for (const [key, c] of Object.entries(CATEGORIES)) { %>
+      <details>
+        <summary><strong><%= c.label %></strong></summary>
+        <p><strong>Tipos:</strong> <%= c.types.join(', ') %></p>
+        <% for (const [group, sizes] of Object.entries(c.sizes)) { %><p><strong><%= group %>:</strong> <%= sizes.join(', ') %></p><% } %>
+      </details>
+    <% } %>
+  </div>
+</section>
+<%- include('../partials/footer') %>

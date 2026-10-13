@@ -2,4 +2,5 @@ node_modules/
 data/
 uploads/
 attachments/
+backups/
 .env
