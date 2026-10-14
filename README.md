@@ -165,6 +165,21 @@ dominio de Railway; si se cambia a dominio propio, definir `PUBLIC_URL`.
   (hasta 60 por carga, 200 artículos por CSV). Hay plantilla para descargar. Acepta valores como los
   escribe una persona ("Zapatos", "niños", "9" → US 9, "32" en jeans → Cintura 32). Las filas con
   errores no se crean y se explica por qué; las que no tienen fotos quedan como borrador.
+- **Ventas y reseñas previas** (en la fila de la tienda): el historial de antes de CowFace (por
+  ejemplo de Instagram). Se suma a lo que haga en CowFace, que se va agregando solo, y el perfil
+  aclara cuánto es previo y de dónde viene.
+- `/tiendas`: directorio público con cada tienda, sus ventas, reseñas y artículos a la venta.
+- **Datos por enviar a tiendas** (en "Por hacer"): después de confirmar el SINPE, el admin le manda
+  a la tienda por correo los datos de entrega (o los copia para WhatsApp y los marca como enviados).
+
+## Chats cifrados
+
+Con `CHAT_KEY` (16+ caracteres) en Railway → Variables, el texto de los mensajes y los archivos
+privados (fotos y PDF del chat, capturas del SINPE, guías, evidencia de reclamos) se guardan cifrados
+con AES-256-GCM (`src/crypto-box.js`): en la base, en el disco y en los respaldos son ilegibles. Al
+arrancar con la clave se cifra también todo lo anterior. No es "punta a punta": el servidor los
+descifra para el filtro de contacto, los avisos y los reclamos. **Si `CHAT_KEY` se pierde o cambia,
+lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
 
 ## Herramientas del admin
 

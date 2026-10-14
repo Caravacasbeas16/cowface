@@ -5,6 +5,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { db } from '../db.js';
 import { ATTACH_DIR } from '../storage.js';
+import { readPrivateFile } from '../crypto-box.js';
 
 const router = Router();
 
@@ -28,9 +29,11 @@ router.get('/:name', (req, res, next) => {
   const file = path.join(ATTACH_DIR, name);
   if (!fs.existsSync(file)) return next();
   res.set({ 'Cache-Control': 'private, max-age=86400', 'X-Content-Type-Options': 'nosniff' });
+  const content = readPrivateFile(file);
+  if (!content) return res.status(500).type('text').send('No se pudo abrir el archivo (clave de cifrado).');
   // Los PDF se descargan en vez de abrirse dentro del sitio.
   if (name.endsWith('.pdf')) res.attachment(`comprobante-${name.slice(0, 8)}.pdf`);
-  res.sendFile(file);
+  res.type(name.endsWith('.pdf') ? 'application/pdf' : name.endsWith('.png') ? 'image/png' : 'image/jpeg').send(content);
 });
 
 export default router;

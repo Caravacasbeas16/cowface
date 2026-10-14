@@ -6,6 +6,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { SITE_NAME } from './catalog.js';
+import { readPrivateFile } from './crypto-box.js';
 
 const env = (k) => (process.env[k] || '').trim();
 
@@ -25,7 +26,10 @@ export const outbox = [];
 export async function sendMail({ to, subject, text, html, attachments = [] }) {
   const provider = mailProvider();
   const files = attachments.flatMap((a) => {
-    try { return [{ name: path.basename(a.path), content: fs.readFileSync(a.path).toString('base64') }]; } catch { return []; }
+    try {
+      const content = readPrivateFile(a.path);
+      return content ? [{ name: path.basename(a.path), content: content.toString('base64') }] : [];
+    } catch { return []; }
   });
   if (process.env.MAIL_TEST_OUTBOX === '1') {
     outbox.push({ to, subject, text, html, attachments: files.map((f) => f.name) });

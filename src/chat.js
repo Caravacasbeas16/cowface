@@ -6,6 +6,7 @@ import { notify } from './realtime.js';
 import { UserError, addMessage, announce, convRow, now, unreadCount } from './messages.js';
 import { createOrder, orderForConversation } from './orders.js';
 import { isBlockedEither } from './blocks.js';
+import { openText } from './crypto-box.js';
 
 const BLOCKED_MSG = 'No puedes tratar con esta persona: una de las dos cuentas bloqueó a la otra.';
 function assertNotBlocked(a, b) {
@@ -80,7 +81,7 @@ export function listConversations(userId) {
     LEFT JOIN products p ON p.id = c.product_id
     WHERE c.buyer_id = ? OR c.seller_id = ?
     ORDER BY c.last_message_at DESC LIMIT 200
-  `).all(userId, userId, userId, userId, userId);
+  `).all(userId, userId, userId, userId, userId).map((c) => ({ ...c, last_text: openText(c.last_text) }));
 }
 
 export function markRead(conv, userId) {
@@ -96,7 +97,7 @@ export function threadMessages(conversationId) {
       o.id AS offer_id, o.amount, o.made_by, o.status AS offer_status, o.expires_at
     FROM messages m LEFT JOIN offers o ON o.id = m.offer_id
     WHERE m.conversation_id = ? ORDER BY m.id
-  `).all(conversationId);
+  `).all(conversationId).map((m) => ({ ...m, body: openText(m.body) }));
 }
 
 export function sendText(conv, userId, body) {

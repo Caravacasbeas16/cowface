@@ -6,6 +6,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { ImageError, processAttachment, processPhoto } from './images.js';
 import { ATTACH_DIR, TMP_DIR, UPLOAD_DIR, removeFrom } from './storage.js';
+import { sealFile } from './crypto-box.js';
+import path from 'node:path';
 
 export const MAX_IMAGES = 8;
 export const MAX_PHOTO_MB = 20;
@@ -100,6 +102,7 @@ export function attachment(field) {
         if (req.file) {
           if (!headerMatches(req.file)) throw new ImageError('El archivo no es una foto o PDF válido.');
           req.attachment = await processAttachment(req.file.path, req.file.mimetype, ATTACH_DIR);
+          sealFile(path.join(ATTACH_DIR, req.attachment.name));
         }
       } catch (e) {
         if (!(e instanceof ImageError)) console.error('Error procesando adjunto:', e);

@@ -104,6 +104,48 @@ router.post('/tiendas/:id/carga', bulkFiles, async (req, res, next) => {
   }
 });
 
+// Historial de antes de CowFace: ventas y reseñas que la tienda ya tenía (por ejemplo en Instagram).
+// Se suman a las de la plataforma, que se van agregando solas, y el perfil aclara cuánto es previo.
+const historyOf = (id) => db.prepare(`
+  SELECT id, COALESCE(store_name, name) AS store_name, sales_base, reviews_base_count, reviews_base_avg, history_source,
+    (SELECT COUNT(*) FROM orders WHERE seller_id = users.id AND status = 'completado') AS platform_sales,
+    (SELECT COUNT(*) FROM reviews WHERE subject_id = users.id) AS platform_reviews
+  FROM users WHERE id = ? AND role = 'usuario'
+`).get(id);
+
+router.get('/tiendas/:id/historial', (req, res, next) => {
+  const store = historyOf(Number(req.params.id));
+  if (!store) return next();
+  res.render('admin/store-history', { title: `Historial · ${store.store_name}`, store, form: store, errors: {} });
+});
+
+router.post('/tiendas/:id/historial', (req, res, next) => {
+  const store = historyOf(Number(req.params.id));
+  if (!store) return next();
+  const int = (v) => (String(v ?? '').trim() === '' ? 0 : Number(String(v).replace(/[.,\s]/g, '')));
+  const data = {
+    sales: int(req.body.sales_base),
+    count: int(req.body.reviews_base_count),
+    avg: Number(String(req.body.reviews_base_avg ?? '').replace(',', '.')) || 0,
+    source: String(req.body.history_source ?? '').trim().slice(0, 40),
+  };
+  const errors = {};
+  if (!Number.isInteger(data.sales) || data.sales < 0 || data.sales > 100_000) errors.sales_base = 'Un número entero de 0 a 100 000.';
+  if (!Number.isInteger(data.count) || data.count < 0 || data.count > 100_000) errors.reviews_base_count = 'Un número entero de 0 a 100 000.';
+  if (data.count > 0 && !(data.avg >= 1 && data.avg <= 5)) errors.reviews_base_avg = 'Promedio de 1 a 5 (ej. 4.8).';
+  // Lo escribe el admin: puede decir "Instagram" (que el filtro del chat bloquea), pero sin enlaces ni @usuarios.
+  if (!/^[\p{L}\p{N} .,&'()-]*$/u.test(data.source) || /https?|www\.|\.(com|cr|net|org)\b/i.test(data.source)) {
+    errors.history_source = 'Solo el nombre del lugar (ej. Instagram), sin enlaces ni usuarios.';
+  }
+  if (Object.keys(errors).length) {
+    return res.status(400).render('admin/store-history', { title: `Historial · ${store.store_name}`, store, form: req.body, errors });
+  }
+  db.prepare('UPDATE users SET sales_base = ?, reviews_base_count = ?, reviews_base_avg = ?, history_source = ? WHERE id = ?')
+    .run(data.sales, data.count, data.count ? Math.round(data.avg * 10) / 10 : 0, data.source, store.id);
+  res.cookie('flash', `Historial de ${store.store_name} guardado.`, { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+  res.redirect('/admin#usuarios');
+});
+
 router.get('/carga/plantilla.csv', (req, res) => {
   res.set({ 'Content-Type': 'text/csv; charset=utf-8', 'Content-Disposition': 'attachment; filename="cowface-plantilla.csv"' });
   res.send(templateCsv());

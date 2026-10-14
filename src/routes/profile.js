@@ -4,7 +4,9 @@ import { db } from '../db.js';
 import { PROVINCES } from '../catalog.js';
 import { UserError } from '../messages.js';
 import { block, hasBlocked, isBlockedEither, myBlocks, unblock } from '../blocks.js';
-import { createReview, ratingSummary, reviewsAbout } from '../reviews.js';
+import { createReview, ratingSummary, reviewsAbout, salesSummary } from '../reviews.js';
+import { FEATURED_SQL } from '../products.js';
+import { notBlockedSql } from '../blocks.js';
 import { sellerProducts } from '../products.js';
 import { normalizePhone, safeNext } from '../validate.js';
 import { blockedMessage, findBlocked } from '../moderation.js';
@@ -22,6 +24,29 @@ const backTo = (req, fallback) => {
 };
 
 // ---------- Perfil público (como el de Grailed) ----------
+
+// Directorio de tiendas: todas las que tienen artículos a la venta o historial de ventas, con sus
+// ventas y reseñas. Primero las destacadas, después las que más venden.
+router.get('/tiendas', (req, res) => {
+  const viewer = req.user?.role === 'usuario' ? req.user.id : null;
+  const hide = viewer ? `AND ${notBlockedSql('u.id')}` : '';
+  const stores = db.prepare(`
+    SELECT u.id, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
+      (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible') AS listings,
+      (SELECT COALESCE(i.thumb, i.filename) FROM products p JOIN product_images i ON i.product_id = p.id
+        WHERE p.seller_id = u.id AND p.status = 'disponible' ORDER BY p.created_at DESC, i.position LIMIT 1) AS cover
+    FROM users u
+    WHERE u.role = 'usuario' AND u.active = 1 ${hide}
+      AND (EXISTS (SELECT 1 FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible')
+           OR u.sales_base > 0 OR EXISTS (SELECT 1 FROM orders o WHERE o.seller_id = u.id AND o.status = 'completado'))
+  `).all(...(viewer ? [viewer, viewer] : []))
+    .map((s) => ({ ...s, sales: salesSummary(s.id), rating: ratingSummary(s.id) }))
+    .sort((a, b) => b.featured - a.featured || b.sales.total - a.sales.total || b.listings - a.listings);
+  res.render('stores', {
+    title: 'Tiendas', stores,
+    og: { title: 'Tiendas en CowFace', description: `${stores.length} tiendas de ropa, zapatos y bolsos en Costa Rica, con sus ventas y reseñas. Compra protegida.` },
+  });
+});
 
 router.get('/u/:id', (req, res, next) => {
   const profile = db.prepare(`
@@ -45,6 +70,7 @@ router.get('/u/:id', (req, res, next) => {
     title: profile.store_name,
     profile,
     rating,
+    sales: salesSummary(profile.id),
     reviews: reviewsAbout(profile.id),
     listings,
     isMe: viewer === profile.id,

@@ -45,13 +45,34 @@ export function createReview(orderId, userId, body) {
   return order;
 }
 
-// Promedio general y por papel (como vendedor / como comprador).
+// Promedio general y por papel (como vendedor / como comprador). Las reseñas de antes de CowFace
+// que puso el admin cuentan como reseñas de vendedor y se suman a las de la plataforma.
 export function ratingSummary(userId) {
   const rows = db.prepare('SELECT role, COUNT(*) AS n, AVG(rating) AS avg FROM reviews WHERE subject_id = ? GROUP BY role').all(userId);
-  const by = Object.fromEntries(rows.map((r) => [r.role, { count: r.n, avg: r.avg }]));
+  const base = db.prepare('SELECT reviews_base_count AS n, reviews_base_avg AS avg FROM users WHERE id = ?').get(userId);
+  if (base?.n > 0) rows.push({ role: 'vendedor', n: base.n, avg: base.avg, imported: true });
+  const by = {};
+  for (const r of rows) {
+    const prev = by[r.role] || { count: 0, sum: 0 };
+    by[r.role] = { count: prev.count + r.n, sum: prev.sum + r.avg * r.n };
+  }
+  const pack = (b) => (b ? { count: b.count, avg: b.sum / b.count } : { count: 0, avg: null });
   const count = rows.reduce((s, r) => s + r.n, 0);
   const avg = count ? rows.reduce((s, r) => s + r.avg * r.n, 0) / count : null;
-  return { count, avg, asSeller: by.vendedor || { count: 0, avg: null }, asBuyer: by.comprador || { count: 0, avg: null } };
+  return {
+    count, avg, asSeller: pack(by.vendedor), asBuyer: pack(by.comprador),
+    imported: base?.n > 0 ? { count: base.n, avg: base.avg } : null,
+  };
+}
+
+// Ventas de una tienda: las de antes de CowFace (que puso el admin) + las completadas aquí.
+export function salesSummary(userId) {
+  const row = db.prepare(`
+    SELECT sales_base AS base, history_source AS source,
+      (SELECT COUNT(*) FROM orders WHERE seller_id = users.id AND status = 'completado') AS platform
+    FROM users WHERE id = ?
+  `).get(userId) || { base: 0, platform: 0, source: '' };
+  return { total: row.base + row.platform, base: row.base, platform: row.platform, source: row.source };
 }
 
 export function reviewsAbout(userId, limit = 50) {

@@ -11,7 +11,7 @@ import { findConversation, minOffer } from '../chat.js';
 import { isBlockedEither } from '../blocks.js';
 import { paymentConfig, paymentsReady } from '../orders.js';
 import { enabledProviders } from '../oauth.js';
-import { ratingSummary } from '../reviews.js';
+import { ratingSummary, salesSummary } from '../reviews.js';
 import { safeNext, validateSignup } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
 import { adminEmail } from '../admin-account.js';
@@ -139,7 +139,7 @@ router.get('/p/:id', (req, res, next) => {
   };
   res.render('product', {
     og, title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
-    sellerRating: ratingSummary(product.seller_id), justPublished: isOwner && req.query.publicado === '1',
+    sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), justPublished: isOwner && req.query.publicado === '1',
   });
 });
 

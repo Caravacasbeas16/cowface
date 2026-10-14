@@ -5,6 +5,7 @@ import { db } from './db.js';
 import { SITE_NAME, formatColones } from './catalog.js';
 import { sendMail } from './mailer.js';
 import { siteBaseUrl } from './urls.js';
+import { openText } from './crypto-box.js';
 
 export const WAIT_MINUTES = 5;      // si lo lee antes (o tiene el chat abierto), no se manda
 export const GAP_MINUTES = 60;      // entre correos de la misma conversación
@@ -65,7 +66,7 @@ export async function runMessageEmails(nowMs = Date.now()) {
 function describe(m) {
   if (m.kind === 'oferta') return m.amount ? `Te hizo una oferta de ${formatColones(m.amount)}` : 'Te hizo una oferta';
   const file = m.attachment_type === 'pdf' ? '📄 Te mandó un PDF' : m.attachment_type ? '📷 Te mandó una foto' : '';
-  const text = String(m.body || '').trim();
+  const text = String(openText(m.body) || '').trim();
   const short = text.length > 200 ? `${text.slice(0, 200)}…` : text;
   return [file, short && `«${short}»`].filter(Boolean).join(' ');
 }

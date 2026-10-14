@@ -3,6 +3,7 @@ import { db } from './db.js';
 import { notify } from './realtime.js';
 import { pushToUser } from './push.js';
 import { formatColones } from './catalog.js';
+import { sealText } from './crypto-box.js';
 
 // Error con mensaje para mostrarle al usuario tal cual.
 export class UserError extends Error {}
@@ -17,7 +18,7 @@ export function addMessage(conv, senderId, kind, body = '', offerId = null, atta
   db.prepare(`
     INSERT INTO messages (conversation_id, sender_id, kind, body, offer_id, attachment, attachment_type, created_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `).run(conv.id, senderId, kind, body, offerId, attachment?.name || null, attachment?.type || null, ts);
+  `).run(conv.id, senderId, kind, sealText(body), offerId, attachment?.name || null, attachment?.type || null, ts);
   db.prepare('UPDATE conversations SET last_message_at = ? WHERE id = ?').run(ts, conv.id);
   // Quien escribe ya lo leyó.
   if (senderId) {

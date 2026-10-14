@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 11;
+const SCHEMA_VERSION = 13;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -252,6 +252,12 @@ addColumn('users', 'featured_until', 'TEXT');         // tienda destacada hasta 
 addColumn('users', 'email_messages', 'INTEGER NOT NULL DEFAULT 1');   // 1 = recibe un correo cuando le escriben y no lo ha leído
 addColumn('conversations', 'seller_notified_at', 'TEXT'); // último correo al vendedor por esta conversación
 addColumn('products', 'search_text', "TEXT NOT NULL DEFAULT ''"); // texto normalizado para buscar (ver search-text.js)
+// Historial de antes de CowFace (lo pone el admin): se suma a las ventas y reseñas de la plataforma.
+addColumn('users', 'sales_base', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'reviews_base_count', 'INTEGER NOT NULL DEFAULT 0');
+addColumn('users', 'reviews_base_avg', 'REAL NOT NULL DEFAULT 0');
+addColumn('users', 'history_source', "TEXT NOT NULL DEFAULT ''");  // de dónde viene (ej. "Instagram")
+addColumn('orders', 'data_sent_at', 'TEXT');           // cuándo el admin le mandó a la tienda los datos de entrega
 
 // Notificaciones en el celular/navegador (Web Push): una fila por dispositivo que las activó.
 db.exec(`

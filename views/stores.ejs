@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <div>
+    <h1>Tiendas</h1>
+    <p class="muted"><%= stores.length %> tienda<%= stores.length === 1 ? '' : 's' %> en <%= siteName %>, con sus ventas y reseñas. Todas venden con compra protegida.</p>
+  </div>
+</div>
+
+<% if (!stores.length) { %>
+  <div class="empty"><h2>Todavía no hay tiendas</h2><p class="muted">Pronto vas a ver aquí las tiendas con sus artículos.</p></div>
+<% } else { %>
+  <div class="store-grid">
+    <% for (const s of stores) { %>
+      <a class="store-card" href="/u/<%= s.id %>">
+        <div class="store-cover">
+          <% if (s.cover) { %><img src="/fotos/<%= s.cover %>" alt="" loading="lazy"><% } else { %><span class="avatar avatar-lg"><%= s.store_name.charAt(0).toUpperCase() %></span><% } %>
+          <% if (s.featured) { %><span class="tag">★ Destacada</span><% } %>
+        </div>
+        <div class="store-body">
+          <strong class="store-name"><%= s.store_name %></strong>
+          <span class="small">
+            <% if (s.rating.count) { %><span class="stars"><%= stars(s.rating.avg) %></span> <%= s.rating.avg.toFixed(1) %> <span class="muted">(<%= s.rating.count %>)</span><% } else { %><span class="muted">Sin reseñas todavía</span><% } %>
+          </span>
+          <span class="muted small">
+            <%= s.sales.total %> venta<%= s.sales.total === 1 ? '' : 's' %> · <%= s.listings %> a la venta · <%= s.province %>
+          </span>
+        </div>
+      </a>
+    <% } %>
+  </div>
+  <p class="hint">Las ventas y reseñas de algunas tiendas incluyen su historial de antes de <%= siteName %>; en cada perfil se indica cuánto.</p>
+<% } %>
+<%- include('partials/footer') %>

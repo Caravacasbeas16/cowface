@@ -29,7 +29,7 @@
 
 <section id="pagos">
   <h2>Por hacer</h2>
-  <% const empty = !queues.toVerify.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
+  <% const empty = !queues.toVerify.length && !queues.toShip.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
   <% if (empty) { %><p class="muted">Todo al día. 🎉</p><% } %>
 
   <% if (queues.toVerify.length) { %>
@@ -45,6 +45,28 @@
           </div>
           <form action="/admin/pedidos/<%= o.id %>/confirmar-pago" method="post" data-confirm="¿Confirmas que recibiste <%= money(o.total || o.price) %> con el detalle <%= o.code %>?"><button class="btn btn-small">Pago recibido</button></form>
           <form action="/admin/pedidos/<%= o.id %>/rechazar-pago" method="post" data-confirm="¿Avisar al comprador que no encontraste el pago?"><button class="btn btn-small btn-ghost">No lo encuentro</button></form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+
+  <% if (queues.toShip.length) { %>
+    <h3 id="envios">Datos por enviar a tiendas <span class="badge"><%= queues.toShip.filter((o) => !o.data_sent_at).length || '' %></span></h3>
+    <p class="hint">Pagos ya confirmados. Mándale a la tienda los datos de entrega por correo, o cópialos y pégalos en WhatsApp (y márcalos como enviados). La tienda también los ve en el pedido.</p>
+    <div class="task-list">
+      <% for (const o of queues.toShip) { %>
+        <% const text = orderDataText(o, siteUrl); %>
+        <div class="task task-ship">
+          <div class="task-main">
+            <strong><%= o.code %></strong> · <%= o.store_name %> → <%= o.buyer_name %> · <%= DELIVERY_METHODS[o.delivery_method] || '' %>
+            <% if (o.data_sent_at) { %><span class="status status-vendido">Datos enviados <%= when(o.data_sent_at, true) %></span><% } else { %><span class="status status-por_pagar">Sin enviar</span><% } %>
+            <pre class="ship-data copy" data-copy="<%= text %>" title="Toca para copiar"><%= text %></pre>
+          </div>
+          <div class="ship-actions">
+            <form action="/admin/pedidos/<%= o.id %>/enviar-datos" method="post"><button class="btn btn-small"><%= o.data_sent_at ? 'Reenviar por correo' : 'Mandar por correo' %></button></form>
+            <button class="btn btn-small btn-ghost" type="button" data-copy="<%= text %>">Copiar para WhatsApp</button>
+            <% if (!o.data_sent_at) { %><form action="/admin/pedidos/<%= o.id %>/datos-enviados" method="post"><button class="btn btn-small btn-ghost">Ya se los mandé</button></form><% } %>
+          </div>
         </div>
       <% } %>
     </div>
@@ -166,6 +188,7 @@
             </td>
             <td class="actions">
               <% if (s.active) { %><a class="btn btn-small" href="/admin/tiendas/<%= s.id %>/carga">Cargar artículos</a><% } %>
+              <a class="btn btn-small btn-ghost" href="/admin/tiendas/<%= s.id %>/historial">Ventas y reseñas previas</a>
               <form action="/admin/vendedores/<%= s.id %>/activo" method="post" class="inline">
                 <input type="hidden" name="active" value="<%= s.active ? '0' : '1' %>">
                 <button class="btn btn-small btn-ghost"><%= s.active ? 'Suspender' : 'Reactivar' %></button>
@@ -215,6 +238,18 @@
       <button class="btn">Guardar lista</button>
     </form>
   </div>
+</section>
+
+<section id="cifrado">
+  <h2>Cifrado de los chats</h2>
+  <% if (chatEncrypted) { %>
+    <p class="hint">✓ Los mensajes, fotos y comprobantes del chat se guardan cifrados (AES-256): en la base de datos y en los respaldos son ilegibles sin la clave <code>CHAT_KEY</code>. <strong>Nunca la cambies ni la borres</strong>: lo cifrado con ella no se podría volver a leer.</p>
+  <% } else { %>
+    <div class="notice">
+      <strong>Los chats todavía se guardan sin cifrar.</strong> Para cifrarlos: en Railway → tu servicio → <strong>Variables</strong>, agrega <code>CHAT_KEY</code> con una contraseña larga (16+ caracteres, distinta de BACKUP_PASSWORD).
+      Al reiniciarse, se cifran también todos los mensajes y archivos anteriores. Guárdala junto a BACKUP_PASSWORD: si se pierde, los chats cifrados no se pueden leer. No la compartas con nadie.
+    </div>
+  <% } %>
 </section>
 
 <section id="respaldos">

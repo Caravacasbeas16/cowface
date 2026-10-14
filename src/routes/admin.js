@@ -5,12 +5,15 @@ import { ORDER_STATUS } from '../catalog.js';
 import { blockedWords, saveBlockedWords } from '../moderation.js';
 import { ADMIN_LINK_HOURS, createResetToken } from '../password-reset.js';
 import { publicBaseUrl } from '../urls.js';
-import { DELIVERY_METHODS, admin, adminQueues, paymentConfig, savePaymentConfig } from '../orders.js';
+import { DELIVERY_METHODS, admin, adminQueues, markDataSent, orderDataText, paymentConfig, savePaymentConfig } from '../orders.js';
+import { sendMail } from '../mailer.js';
+import { SITE_NAME } from '../catalog.js';
 import { NOTIFY_EVENTS, notifySettings, saveNotifySettings } from '../admin-notify.js';
 import { mailConfigured } from '../mailer.js';
 import { FEATURED_SQL } from '../products.js';
 import { earningsReport, earningsCsv } from '../earnings.js';
 import path from 'node:path';
+import { encryptionEnabled, openText } from '../crypto-box.js';
 import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
 
 const router = Router();
@@ -56,9 +59,9 @@ router.get('/', (req, res) => {
   `).all();
 
   res.render('admin/dashboard', {
-    title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(),
+    title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS,
-    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(),
+    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(),
   });
 });
 
@@ -71,6 +74,35 @@ const ORDER_ACTIONS = {
   reembolsado: (id) => admin.markRefunded(id),
   'pago-vendedor': (id) => admin.markPayout(id),
 };
+
+// Después de confirmar el SINPE: mandarle a la tienda los datos de entrega por correo,
+// o marcarlos como enviados si se los pasaste por WhatsApp.
+const paidOrder = (id) => adminQueues().toShip.find((o) => o.id === id);
+
+router.post('/pedidos/:id/enviar-datos', async (req, res, next) => {
+  const o = paidOrder(Number(req.params.id));
+  if (!o) { flash(res, 'Ese pedido ya no está pagado y por enviar.'); return res.redirect('/admin#envios'); }
+  try {
+    const text = orderDataText(o, publicBaseUrl(req));
+    const ok = await sendMail({
+      to: o.store_email,
+      subject: `[${SITE_NAME}] Pedido ${o.code}: envíalo a ${o.buyer_name}`,
+      text: `Hola ${o.store_name}:\n\n${text}\n\n${SITE_NAME}`,
+      html: `<p>Hola ${escapeHtml(o.store_name)}:</p><p style="white-space:pre-line">${escapeHtml(text)}</p>`,
+    });
+    if (ok) markDataSent(o.id);
+    flash(res, ok ? `Datos del pedido ${o.code} enviados a ${o.store_email}.` : 'No se pudo mandar el correo (revisa Brevo). Puedes copiarlos y mandarlos por WhatsApp.');
+    res.redirect('/admin#envios');
+  } catch (err) { next(err); }
+});
+
+router.post('/pedidos/:id/datos-enviados', (req, res) => {
+  const o = paidOrder(Number(req.params.id));
+  if (o) markDataSent(o.id);
+  res.redirect('/admin#envios');
+});
+
+const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 router.post('/pedidos/:id/:action', (req, res, next) => {
   const action = ORDER_ACTIONS[req.params.action];
@@ -106,7 +138,7 @@ router.get('/conversaciones/:id', (req, res, next) => {
   const messages = db.prepare(`
     SELECT m.*, o.amount, o.status AS offer_status FROM messages m LEFT JOIN offers o ON o.id = m.offer_id
     WHERE m.conversation_id = ? ORDER BY m.id
-  `).all(conv.id);
+  `).all(conv.id).map((m) => ({ ...m, body: openText(m.body) }));
   const order = db.prepare('SELECT * FROM orders WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(conv.id);
   res.render('admin/conversation', { title: `Conversación · ${conv.product_title}`, conv, messages, order, ORDER_STATUS_LABEL: ORDER_STATUS });
 });

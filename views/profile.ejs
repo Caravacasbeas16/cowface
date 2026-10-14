@@ -15,9 +15,16 @@
     <div class="profile-facts muted small">
       <span><%= profile.province %></span>
       <span>En <%= siteName %> desde <%= when(profile.created_at, true).replace(/,.*$/, '') %></span>
-      <span><%= profile.sales %> venta<%= profile.sales === 1 ? '' : 's' %></span>
+      <span><strong><%= sales.total %></strong> venta<%= sales.total === 1 ? '' : 's' %></span>
       <span><%= profile.purchases %> compra<%= profile.purchases === 1 ? '' : 's' %></span>
     </div>
+    <% if (sales.base || rating.imported) { %>
+      <p class="history-note muted small">
+        Incluye historial de antes de <%= siteName %><%= sales.source ? ` (${sales.source})` : '' %>:
+        <%= [sales.base ? `${sales.base} venta${sales.base === 1 ? '' : 's'}` : null, rating.imported ? `${rating.imported.count} reseña${rating.imported.count === 1 ? '' : 's'} (★ ${rating.imported.avg.toFixed(1)})` : null].filter(Boolean).join(' y ') %>.
+        En <%= siteName %>: <%= sales.platform %> venta<%= sales.platform === 1 ? '' : 's' %>.
+      </p>
+    <% } %>
   </div>
   <div class="profile-actions">
     <% if (isMe) { %>

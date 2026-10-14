@@ -73,6 +73,7 @@
         <a href="/registro" class="nav-strong">Registrarse</a>
       <% } %>
       <a href="/buscar" class="menu-only">Explorar todo</a>
+      <a href="/tiendas" class="menu-only">Tiendas</a>
       <a href="/como-funciona" class="menu-only">Cómo funciona</a>
       <% if (user) { %>
         <form action="/salir" method="post" class="inline"><button class="linklike" type="submit">Salir</button></form>
@@ -83,6 +84,7 @@
     <div class="wrap catnav-inner">
       <a href="/buscar?para=hombre">Hombre</a>
       <a href="/buscar?para=mujer">Mujer</a>
+      <a href="/tiendas">Tiendas</a>
       <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
         <a href="/buscar?categoria=<%= key %>"><%= c.label %></a>
       <% } %>

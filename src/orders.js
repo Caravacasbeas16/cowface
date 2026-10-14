@@ -362,12 +362,13 @@ export function buyerOrders(buyerId) {
 
 export function adminQueues() {
   const q = (where) => db.prepare(`
-    SELECT o.*, COALESCE(s.store_name, s.name) AS store_name, s.payout_phone, s.payout_name, b.name AS buyer_name
+    SELECT o.*, COALESCE(s.store_name, s.name) AS store_name, s.payout_phone, s.payout_name, s.email AS store_email, b.name AS buyer_name
     FROM orders o JOIN users s ON s.id = o.seller_id JOIN users b ON b.id = o.buyer_id
     WHERE ${where} ORDER BY o.updated_at, o.id
   `).all();
   return {
     toVerify: q("o.status = 'por_pagar' AND o.payment_reported_at IS NOT NULL"),
+    toShip: q("o.status = 'pagado'"),
     disputes: q("o.status = 'en_disputa'"),
     refunds: q("o.status = 'reembolso_pendiente'"),
     payouts: q("o.status = 'completado' AND o.payout_status = 'pendiente'"),
@@ -379,6 +380,26 @@ export function adminPendingCount() {
   return db.prepare(`
     SELECT COUNT(*) AS n FROM orders
     WHERE (status = 'por_pagar' AND payment_reported_at IS NOT NULL) OR status IN ('en_disputa', 'reembolso_pendiente')
-      OR (status = 'completado' AND payout_status = 'pendiente')
+      OR (status = 'completado' AND payout_status = 'pendiente') OR (status = 'pagado' AND data_sent_at IS NULL)
   `).get().n;
+}
+
+// Datos que el admin le manda a la tienda después de confirmar el SINPE (por correo o para pegar en WhatsApp).
+export function orderDataText(o, baseUrl = '') {
+  return [
+    `Pedido ${o.code} en CowFace: pago confirmado ✅`,
+    `Artículo: ${o.product_title}`,
+    `Entrega: ${DELIVERY_METHODS[o.delivery_method] || o.delivery_method}`,
+    `Nombre: ${o.buyer_name}`,
+    `Dirección / punto de entrega: ${o.delivery_address}`,
+    `Teléfono: ${o.delivery_phone}`,
+    o.shipping_cost ? `Envío pagado por el comprador: ${formatColones(o.shipping_cost)}` : null,
+    `Te pagamos ${formatColones(o.payout_amount)} por SINPE cuando el comprador lo reciba.`,
+    'Envíalo en máximo 3 días hábiles y sube la foto del envío (guía o paquete) en el pedido: sin esa foto no se puede pagar.',
+    baseUrl && o.conversation_id ? `Pedido: ${baseUrl}/mensajes/${o.conversation_id}` : null,
+  ].filter(Boolean).join('\n');
+}
+
+export function markDataSent(orderId) {
+  db.prepare("UPDATE orders SET data_sent_at = ? WHERE id = ? AND status = 'pagado'").run(now(), orderId);
 }
