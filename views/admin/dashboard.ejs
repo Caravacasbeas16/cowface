@@ -29,8 +29,32 @@
 
 <section id="pagos">
   <h2>Por hacer</h2>
-  <% const empty = !queues.toVerify.length && !queues.toShip.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
+  <% const empty = !storesToApprove.length && !queues.toVerify.length && !queues.toShip.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
   <% if (empty) { %><p class="muted">Todo al día. 🎉</p><% } %>
+
+  <% if (storesToApprove.length) { %>
+    <h3 id="tiendas-por-aprobar">Tiendas por aprobar <span class="badge"><%= storesToApprove.length %></span></h3>
+    <p class="hint">Pidieron permiso para vender. Revisa su Instagram y lo que van a vender; mientras esperan pueden ir guardando borradores.</p>
+    <div class="task-list">
+      <% for (const t of storesToApprove) { %>
+        <div class="task task-ship">
+          <div class="task-main">
+            <strong><%= t.store_name %></strong> · <%= t.name %> · <%= t.province %>
+            <div class="muted small"><%= t.email %> · <%= t.phone %> · pidió <%= when(t.request.requested_at || t.created_at, true) %><%= t.drafts ? ` · ${t.drafts} borrador${t.drafts === 1 ? '' : 'es'} listos` : '' %></div>
+            <% if (t.request.instagram) { %><div class="small">Instagram: <a href="https://www.instagram.com/<%= encodeURIComponent(t.request.instagram) %>/" target="_blank" rel="noopener noreferrer">@<%= t.request.instagram %></a></div><% } %>
+            <div class="flag-body">«<%= t.request.about %>»</div>
+          </div>
+          <div class="ship-actions">
+            <form action="/admin/tiendas/<%= t.id %>/aprobar" method="post"><button class="btn btn-small">Aprobar</button></form>
+            <form action="/admin/tiendas/<%= t.id %>/rechazar" method="post" class="reject-form">
+              <input name="reason" maxlength="300" placeholder="Motivo (opcional, se lo enviamos)" aria-label="Motivo del rechazo">
+              <button class="btn btn-small btn-ghost" data-confirm-click="¿Rechazar la solicitud de <%= t.store_name %>?">Rechazar</button>
+            </form>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
 
   <% if (queues.toVerify.length) { %>
     <h3>1. Pagos por verificar <span class="badge"><%= queues.toVerify.length %></span></h3>
@@ -160,7 +184,9 @@
       <tbody>
         <% for (const s of sellers) { %>
           <tr class="<%= s.active ? '' : 'row-off' %>">
-            <td><strong><%= s.store_name %></strong><div class="muted small"><%= s.name %> · <%= s.province %></div></td>
+            <td><strong><%= s.store_name %></strong><div class="muted small"><%= s.name %> · <%= s.province %></div>
+              <% const st = { aprobado: ['vendido', 'Tienda aprobada'], pendiente: ['por_pagar', 'Por aprobar'], rechazado: ['en_disputa', 'No aprobada'] }[s.seller_status]; %>
+              <% if (st) { %><span class="status status-<%= st[0] %>"><%= st[1] %></span><% } %></td>
             <td><%= s.phone %><div class="muted small"><%= s.email %></div></td>
             <td><%= s.payout_phone || '—' %><div class="muted small"><%= s.payout_name || '' %></div></td>
             <td><%= s.products %></td>
@@ -189,6 +215,13 @@
             <td class="actions">
               <% if (s.active) { %><a class="btn btn-small" href="/admin/tiendas/<%= s.id %>/carga">Cargar artículos</a><% } %>
               <a class="btn btn-small btn-ghost" href="/admin/tiendas/<%= s.id %>/historial">Ventas y reseñas previas</a>
+              <% if (s.seller_status === 'aprobado') { %>
+                <form action="/admin/tiendas/<%= s.id %>/quitar-aprobacion" method="post" class="inline" data-confirm="¿Quitarle a <%= s.store_name %> el permiso de vender? Sus artículos a la venta quedan pausados.">
+                  <button class="btn btn-small btn-ghost">Quitar aprobación</button>
+                </form>
+              <% } else if (s.seller_status === 'rechazado') { %>
+                <form action="/admin/tiendas/<%= s.id %>/aprobar" method="post" class="inline"><button class="btn btn-small btn-ghost">Aprobar</button></form>
+              <% } %>
               <form action="/admin/vendedores/<%= s.id %>/activo" method="post" class="inline">
                 <input type="hidden" name="active" value="<%= s.active ? '0' : '1' %>">
                 <button class="btn btn-small btn-ghost"><%= s.active ? 'Suspender' : 'Reactivar' %></button>
@@ -221,6 +254,13 @@
         <label>Días para liberar el pago<input type="number" name="release_days" min="1" max="30" value="<%= pay.releaseDays %>"></label>
       </div>
       <button class="btn">Guardar cobro</button>
+    </form>
+    <form action="/admin/aprobacion" method="post" class="stack approval-form">
+      <label class="check">
+        <input type="checkbox" name="on" value="1" <%= approvalOn ? 'checked' : '' %> data-autosubmit>
+        <span><strong>Aprobar tiendas antes de que publiquen.</strong> Quien quiera vender te manda una solicitud; comprar no necesita aprobación.</span>
+      </label>
+      <noscript><button class="btn btn-small">Guardar</button></noscript>
     </form>
     <form action="/admin/comision" method="post" class="rate-form commission-form">
       <label>Comisión por venta

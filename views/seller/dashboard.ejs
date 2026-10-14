@@ -10,6 +10,8 @@
     <a class="btn" href="/vendedor/productos/nuevo">+ Publicar artículo</a>
   </div>
 </div>
+<% if (sellerState === 'pendiente') { %><div class="notice"><strong>Tu tienda está en revisión.</strong> Te avisamos por correo cuando la aprobemos; mientras tanto puedes ir subiendo artículos como borradores.</div><% } %>
+<% if (sellerState === 'rechazado') { %><div class="notice">Tu tienda no está aprobada para vender en este momento. <a href="/vendedor/solicitud">Ver detalles</a></div><% } %>
 <p class="small muted account-links"><a href="/bloqueados">Usuarios bloqueados</a> · <a href="/vendedor/pagos">Datos para recibir pagos</a></p>
 
 <div class="stats">

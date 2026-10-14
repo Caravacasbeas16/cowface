@@ -14,6 +14,7 @@ import { BULK_MAX_PHOTOS, bulkFiles, discardBulk } from '../uploads.js';
 import { COLUMNS, MAX_ROWS, importRows, templateCsv } from '../bulk.js';
 import { notifyMatches } from '../alerts.js';
 import { ImageError } from '../images.js';
+import { approve, reject, revoke, setApprovalRequired } from '../approval.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -51,8 +52,8 @@ router.post('/tiendas/nueva', async (req, res, next) => {
   try {
     // Contraseña al azar que nadie conoce: la tienda crea la suya con el enlace de invitación.
     const { lastInsertRowid } = db.prepare(`
-      INSERT INTO users (role, name, store_name, email, phone, province, payout_phone, payout_name, password_hash)
-      VALUES ('usuario', ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO users (role, name, store_name, email, phone, province, payout_phone, payout_name, password_hash, seller_status)
+      VALUES ('usuario', ?, ?, ?, ?, ?, ?, ?, ?, 'aprobado')
     `).run(data.name, data.store_name || null, data.email, data.phone, data.province, data.payout_phone,
       data.payout_name || data.name, hashPassword(crypto.randomBytes(32).toString('base64url')));
     const id = Number(lastInsertRowid);
@@ -144,6 +145,39 @@ router.post('/tiendas/:id/historial', (req, res, next) => {
     .run(data.sales, data.count, data.count ? Math.round(data.avg * 10) / 10 : 0, data.source, store.id);
   res.cookie('flash', `Historial de ${store.store_name} guardado.`, { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
   res.redirect('/admin#usuarios');
+});
+
+// ---------- Aprobación de tiendas ----------
+const flashTo = (res, message, anchor) => {
+  res.cookie('flash', message, { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+  res.redirect(`/admin#${anchor}`);
+};
+
+router.post('/tiendas/:id/aprobar', async (req, res, next) => {
+  try {
+    const u = await approve(Number(req.params.id));
+    if (!u) return next();
+    flashTo(res, `${u.store_name} aprobada: ya puede publicar (le avisamos por correo).`, 'tiendas-por-aprobar');
+  } catch (err) { next(err); }
+});
+
+router.post('/tiendas/:id/rechazar', async (req, res, next) => {
+  try {
+    const u = await reject(Number(req.params.id), req.body.reason);
+    if (!u) return next();
+    flashTo(res, `Solicitud de ${u.store_name} rechazada (le avisamos por correo).`, 'tiendas-por-aprobar');
+  } catch (err) { next(err); }
+});
+
+router.post('/tiendas/:id/quitar-aprobacion', (req, res, next) => {
+  const u = revoke(Number(req.params.id), req.body.reason);
+  if (!u) return next();
+  flashTo(res, `${u.store_name} ya no puede publicar; sus artículos a la venta quedaron pausados.`, 'usuarios');
+});
+
+router.post('/aprobacion', (req, res) => {
+  setApprovalRequired(req.body.on === '1');
+  flashTo(res, req.body.on === '1' ? 'Las tiendas nuevas necesitan tu aprobación para publicar.' : 'Cualquiera puede publicar sin aprobación.', 'config');
 });
 
 router.get('/carga/plantilla.csv', (req, res) => {

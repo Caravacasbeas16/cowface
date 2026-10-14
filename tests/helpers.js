@@ -54,11 +54,13 @@ export async function signup(email, name, phone = '8888-1234') {
   return res.headers.get('set-cookie').split(';')[0];
 }
 
-// Registra un vendedor con sus datos para recibir pagos.
+// Registra un vendedor con sus datos para recibir pagos y su tienda aprobada.
 export async function signupSeller(email, name, phone = '8888-1234') {
   const cookie = await signup(email, name, phone);
   const res = await post('/vendedor/pagos', cookie, { payout_phone: phone, payout_name: name });
   assert.equal(res.status, 302);
+  // Tienda ya aprobada por el admin (la aprobación se prueba aparte, en approval.test.js).
+  db.prepare("UPDATE users SET seller_status = 'aprobado' WHERE email = ?").run(email);
   return cookie;
 }
 

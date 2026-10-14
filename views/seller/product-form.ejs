@@ -12,6 +12,8 @@
 <div class="listing-page">
   <div class="listing-head">
     <% if (welcome) { %><div class="notice notice-ok">¡Tu cuenta está lista! Publica tu primer artículo.</div><% } %>
+    <% if (sellerState === 'pendiente') { %><div class="notice"><strong>Tu tienda está en revisión.</strong> Mientras tanto puedes ir subiendo tus artículos: quedan como borradores y los publicas cuando la aprobemos (te avisamos por correo).</div><% } %>
+    <% if (sellerState === 'rechazado') { %><div class="notice">Tu tienda no está aprobada para vender en este momento: puedes editar tus artículos, pero no publicarlos. Escríbenos si crees que es un error.</div><% } %>
     <h1><%= title %></h1>
     <% if (product && product.status === 'borrador') { %><p class="muted">Este artículo es un borrador: nadie lo ve hasta que lo publiques.</p><% } %>
     <% if (Object.keys(errors).length) { %><div class="alert">Revisa los campos marcados en rojo.</div><% } %>
@@ -195,7 +197,11 @@
         <% if (isDraft) { %>
           <button class="btn btn-ghost" type="submit" name="action" value="borrador" formnovalidate data-busy-text="Guardando…">Guardar borrador</button>
         <% } %>
-        <button class="btn" type="submit" name="action" value="publicar" data-busy-text="Subiendo…"><%= isDraft ? 'Publicar' : 'Guardar cambios' %></button>
+        <% if (canPublish || !isDraft) { %>
+          <button class="btn" type="submit" name="action" value="publicar" data-busy-text="Subiendo…"><%= isDraft ? 'Publicar' : 'Guardar cambios' %></button>
+        <% } else { %>
+          <span class="hint">Podrás publicar cuando aprobemos tu tienda.</span>
+        <% } %>
       </div>
     </div>
 

@@ -17,6 +17,7 @@ import { deleteSearch, listSearches, notifyMatches } from '../alerts.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
 import { WAIT_MINUTES } from '../seller-notify.js';
+import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
 
 // Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
 function announce(req, id, title) {
@@ -50,7 +51,10 @@ function flagListing(req, errors) {
   delete errors._blocked;
 }
 
-const formView = (title, product, form, errors) => ({ title, product, form, errors, welcome: false, commissionRateNow: commissionRate(), releaseDays: paymentConfig().releaseDays });
+const formView = (title, product, form, errors, user = null) => ({
+  title, product, form, errors, welcome: false, commissionRateNow: commissionRate(), releaseDays: paymentConfig().releaseDays,
+  canPublish: user ? canPublish(user) : true, sellerState: user ? sellerStatus(user) : 'aprobado',
+});
 
 const router = Router();
 router.use(requireRole('usuario'));
@@ -79,7 +83,7 @@ router.get('/', (req, res) => {
   };
   res.render('seller/dashboard', {
     title: 'Mi cuenta', products, orders, purchases, stats, searches: listSearches(req.user.id), PRODUCT_STATUS, ORDER_STATUS,
-    emailWait: WAIT_MINUTES, conversations: listConversations(req.user.id).slice(0, 6),
+    emailWait: WAIT_MINUTES, conversations: listConversations(req.user.id).slice(0, 6), sellerState: sellerStatus(req.user),
   });
 });
 
@@ -109,10 +113,39 @@ router.post('/pagos', (req, res) => {
 
 const needsPayout = (req) => !req.user.payout_phone || !req.user.payout_name;
 
+// Solicitud para vender: el admin aprueba cada tienda antes de que pueda publicar.
+const requestView = (req, form = null, errors = {}) => {
+  const saved = db.prepare('SELECT seller_request, seller_note FROM users WHERE id = ?').get(req.user.id);
+  const request = JSON.parse(saved?.seller_request || '{}');
+  return {
+    title: 'Vender en CowFace', status: sellerStatus(req.user), note: saved?.seller_note || '', errors,
+    form: form || { store_name: req.user.store_name || '', instagram: request.instagram || '', about: request.about || '' },
+  };
+};
+
+router.get('/solicitud', (req, res) => {
+  if (needsPayout(req)) return res.redirect('/vendedor/pagos?next=publicar');
+  if (canPublish(req.user)) return res.redirect('/vendedor/productos/nuevo');
+  res.render('seller/request', requestView(req));
+});
+
+router.post('/solicitud', (req, res) => {
+  if (canPublish(req.user)) return res.redirect('/vendedor/productos/nuevo');
+  if (sellerStatus(req.user) === 'pendiente') return res.redirect('/vendedor/solicitud');
+  const { errors, data } = submitRequest(req.user, req.body);
+  if (errors) return res.status(400).render('seller/request', requestView(req, data, errors));
+  flash(res, 'Recibimos tu solicitud. Te avisamos por correo cuando la revisemos; mientras tanto puedes ir guardando borradores.');
+  res.redirect('/vendedor/solicitud');
+});
+
+// Sin aprobación (y sin solicitud en revisión) no se entra al formulario de publicar.
+const needsRequest = (req) => approvalRequired() && ['nuevo', 'rechazado'].includes(sellerStatus(req.user));
+
 router.get('/productos/nuevo', (req, res) => {
   if (needsPayout(req)) return res.redirect('/vendedor/pagos?next=publicar');
+  if (needsRequest(req)) return res.redirect('/vendedor/solicitud');
   res.render('seller/product-form', {
-    ...formView('Publicar artículo', null, { quantity: 1, meetup: 1, shipping_cost: '' }, {}), welcome: req.query.bienvenida === '1',
+    ...formView('Publicar artículo', null, { quantity: 1, meetup: 1, shipping_cost: '' }, {}, req.user), welcome: req.query.bienvenida === '1',
   });
 });
 
@@ -124,18 +157,20 @@ router.post('/productos/nuevo', listingLimit, photos, (req, res) => {
     return res.status(400).render('error', { title: 'Límite de artículos', message: `Puedes tener hasta ${MAX_ACTIVE_LISTINGS} artículos activos o en borrador. Borra o marca como vendidos algunos antes de publicar más.` });
   }
   if (needsPayout(req)) { removeFiles(photoFiles(req)); return res.redirect('/vendedor/pagos?next=publicar'); }
-  const draft = req.body.action === 'borrador';
+  if (needsRequest(req)) { removeFiles(photoFiles(req)); return res.redirect('/vendedor/solicitud'); }
+  // Tienda en revisión: todo queda como borrador hasta que la aprueben.
+  const draft = req.body.action === 'borrador' || !canPublish(req.user);
   const { data, errors } = validateProduct(req.body);
   if (req.uploadError) errors.photos = req.uploadError;
   else if (!draft && !req.photos.length) errors.photos = 'Agrega al menos una foto para publicar (o guarda como borrador).';
   flagListing(req, errors);
   if (Object.keys(errors).length) {
     removeFiles(photoFiles(req));
-    return res.status(400).render('seller/product-form', formView('Publicar artículo', null, req.body, errors));
+    return res.status(400).render('seller/product-form', formView('Publicar artículo', null, req.body, errors, req.user));
   }
   const id = createProduct(req.user.id, data, req.photos, draft ? 'borrador' : 'disponible');
   if (draft) {
-    flash(res, 'Borrador guardado. Nadie lo ve hasta que lo publiques.');
+    flash(res, canPublish(req.user) ? 'Borrador guardado. Nadie lo ve hasta que lo publiques.' : 'Borrador guardado. Lo vas a poder publicar cuando aprobemos tu tienda.');
     return res.redirect(`/vendedor/productos/${id}/editar`);
   }
   announce(req, id, data.title);
@@ -145,20 +180,20 @@ router.post('/productos/nuevo', listingLimit, photos, (req, res) => {
 router.get('/productos/:id/editar', lockedWhileOrdered, (req, res) => {
   const form = { ...req.product };
   for (const [k, v] of Object.entries(req.product.measurements || {})) form[`m_${k}`] = v;
-  res.render('seller/product-form', formView(req.product.status === 'borrador' ? 'Borrador' : 'Editar artículo', req.product, form, {}));
+  res.render('seller/product-form', formView(req.product.status === 'borrador' ? 'Borrador' : 'Editar artículo', req.product, form, {}, req.user));
 });
 
 router.post('/productos/:id/editar', listingLimit, photos, lockedWhileOrdered, (req, res) => {
   const { data, errors } = validateProduct(req.body);
   const current = imageCount(req.product.id);
-  const publish = req.product.status === 'borrador' && req.body.action !== 'borrador';
+  const publish = req.product.status === 'borrador' && req.body.action !== 'borrador' && canPublish(req.user);
   if (req.uploadError) errors.photos = req.uploadError;
   else if (current + req.photos.length > MAX_IMAGES) errors.photos = `Máximo ${MAX_IMAGES} fotos por artículo (ya tiene ${current}).`;
   else if (current + req.photos.length === 0 && (publish || req.product.status !== 'borrador')) errors.photos = 'El artículo necesita al menos una foto.';
   flagListing(req, errors);
   if (Object.keys(errors).length) {
     removeFiles(photoFiles(req));
-    return res.status(400).render('seller/product-form', formView('Editar artículo', req.product, req.body, errors));
+    return res.status(400).render('seller/product-form', formView('Editar artículo', req.product, req.body, errors, req.user));
   }
   updateProduct(req.product.id, data, req.photos, { publish });
   if (publish) announce(req, req.product.id, data.title);
@@ -187,7 +222,9 @@ router.post('/productos/:id/fotos/:imageId/portada', (req, res) => {
 router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
   const price = parsePrice(req.body.price);
   const quantity = Number.parseInt(req.body.quantity, 10);
-  if (!price || !Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
+  if (quantity > 0 && req.product.status === 'vendido' && !canPublish(req.user)) {
+    flash(res, 'Tu tienda no está aprobada para vender en este momento.');
+  } else if (!price || !Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
     flash(res, 'Revisa el precio (en colones) y la cantidad (0 a 999).');
   } else {
     quickUpdate(req.product.id, price, quantity);
@@ -199,6 +236,10 @@ router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
 // El vendedor solo pausa o reactiva; "reservado" y "vendido" los maneja el flujo de ventas.
 router.post('/productos/:id/estado', (req, res) => {
   const manual = ['disponible', 'pausado'];
+  if (req.body.status === 'disponible' && !canPublish(req.user)) {
+    flash(res, 'Tu tienda no está aprobada para vender en este momento.');
+    return res.redirect('/vendedor#articulos');
+  }
   if (manual.includes(req.product.status) && manual.includes(req.body.status) && req.product.quantity > 0) {
     setProductStatus(req.product.id, req.body.status);
   }

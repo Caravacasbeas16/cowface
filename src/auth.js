@@ -42,7 +42,7 @@ export function loadUser(req, res, next) {
   let user = null;
   if (typeof token === 'string' && /^[a-f0-9]{64}$/.test(token)) {
     user = db.prepare(`
-      SELECT u.id, u.role, u.name, u.store_name, u.email, u.phone, u.province, u.active, u.payout_phone, u.payout_name, u.email_messages
+      SELECT u.id, u.role, u.name, u.store_name, u.email, u.phone, u.province, u.active, u.payout_phone, u.payout_name, u.email_messages, u.seller_status
       FROM sessions s JOIN users u ON u.id = s.user_id
       WHERE s.token = ? AND s.expires_at > ? AND u.active = 1
     `).get(token, new Date().toISOString()) || null;

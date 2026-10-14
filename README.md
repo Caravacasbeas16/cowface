@@ -172,6 +172,14 @@ dominio de Railway; si se cambia a dominio propio, definir `PUBLIC_URL`.
 - **Datos por enviar a tiendas** (en "Por hacer"): después de confirmar el SINPE, el admin le manda
   a la tienda por correo los datos de entrega (o los copia para WhatsApp y los marca como enviados).
 
+## Aprobación de tiendas
+
+Comprar no necesita nada. Para vender: datos de SINPE → **solicitud de tienda** (nombre, Instagram
+que solo ve el admin, qué va a vender) → el admin aprueba o rechaza en `/admin → Por hacer` y la
+tienda recibe un correo. Mientras espera puede guardar borradores (nunca se publican). "Quitar
+aprobación" pausa sus artículos. Se apaga en `/admin → Cobro` ("Aprobar tiendas antes de que
+publiquen"). Las tiendas que ya vendían quedaron aprobadas; las que crea el admin, también.
+
 ## Chats cifrados
 
 Con `CHAT_KEY` (16+ caracteres) en Railway → Variables, el texto de los mensajes y los archivos

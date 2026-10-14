@@ -381,7 +381,7 @@ export function adminPendingCount() {
     SELECT COUNT(*) AS n FROM orders
     WHERE (status = 'por_pagar' AND payment_reported_at IS NOT NULL) OR status IN ('en_disputa', 'reembolso_pendiente')
       OR (status = 'completado' AND payout_status = 'pendiente') OR (status = 'pagado' AND data_sent_at IS NULL)
-  `).get().n;
+  `).get().n + db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'usuario' AND active = 1 AND seller_status = 'pendiente'").get().n;
 }
 
 // Datos que el admin le manda a la tienda después de confirmar el SINPE (por correo o para pegar en WhatsApp).

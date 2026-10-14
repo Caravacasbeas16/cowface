@@ -9,6 +9,7 @@ import { publicBaseUrl } from './urls.js';
 export const NOTIFY_EVENTS = {
   pago: { label: 'Un comprador avisó que pagó (hay que verificar el SINPE; llega con la captura si la subió)', default: true },
   comprobante: { label: 'Un comprador mandó una foto o PDF en el chat de un pedido por pagar (posible captura del SINPE)', default: true },
+  tienda: { label: 'Una tienda pidió permiso para vender (hay que aprobarla)', default: true },
   reclamo: { label: 'Se abrió un reclamo', default: true },
   vendedor: { label: 'Venta completada: hay que pagarle al vendedor', default: true },
   reembolso: { label: 'Un vendedor no puede entregar: hay que reembolsar', default: true },

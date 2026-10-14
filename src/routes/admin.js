@@ -14,6 +14,7 @@ import { FEATURED_SQL } from '../products.js';
 import { earningsReport, earningsCsv } from '../earnings.js';
 import path from 'node:path';
 import { encryptionEnabled, openText } from '../crypto-box.js';
+import { approvalRequired, pendingStores } from '../approval.js';
 import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
 
 const router = Router();
@@ -40,7 +41,7 @@ router.get('/', (req, res) => {
 
   const sellers = db.prepare(`
     SELECT u.id, u.name, COALESCE(u.store_name, u.name) AS store_name, u.email, u.phone, u.province, u.active,
-      u.payout_phone, u.payout_name, u.featured_until, ${FEATURED_SQL} AS featured,
+      u.payout_phone, u.payout_name, u.featured_until, ${FEATURED_SQL} AS featured, u.seller_status,
       (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible') AS products,
       (SELECT COUNT(*) FROM orders o WHERE o.seller_id = u.id AND o.status = 'completado') AS sales,
       (SELECT COUNT(*) FROM orders o WHERE o.seller_id = u.id AND o.status IN ('en_disputa', 'reembolso_pendiente', 'reembolsado')) AS problems,
@@ -61,7 +62,7 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS,
-    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(),
+    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(),
   });
 });
 

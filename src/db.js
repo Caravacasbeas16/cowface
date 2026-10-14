@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -258,6 +258,17 @@ addColumn('users', 'reviews_base_count', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'reviews_base_avg', 'REAL NOT NULL DEFAULT 0');
 addColumn('users', 'history_source', "TEXT NOT NULL DEFAULT ''");  // de dónde viene (ej. "Instagram")
 addColumn('orders', 'data_sent_at', 'TEXT');           // cuándo el admin le mandó a la tienda los datos de entrega
+
+// Aprobación de tiendas: 'nuevo' (no ha pedido vender), 'pendiente', 'aprobado' o 'rechazado'.
+// Al crear la columna, quien ya venía vendiendo (artículos, ventas o datos de pago) queda aprobado.
+const hadSellerStatus = hasColumn('users', 'seller_status');
+addColumn('users', 'seller_status', "TEXT NOT NULL DEFAULT 'nuevo'");
+addColumn('users', 'seller_request', "TEXT NOT NULL DEFAULT '{}'"); // JSON: { instagram, about, requested_at }
+addColumn('users', 'seller_note', "TEXT NOT NULL DEFAULT ''");       // motivo si se rechazó
+if (!hadSellerStatus) {
+  db.exec(`UPDATE users SET seller_status = 'aprobado' WHERE role = 'usuario' AND (payout_phone IS NOT NULL
+    OR EXISTS (SELECT 1 FROM products p WHERE p.seller_id = users.id) OR sales_base > 0)`);
+}
 
 // Notificaciones en el celular/navegador (Web Push): una fila por dispositivo que las activó.
 db.exec(`

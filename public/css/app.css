@@ -348,3 +348,6 @@ label.check a { text-decoration: underline; }
 .ship-actions { display: flex; flex-direction: column; gap: .35rem; }
 .ship-actions .btn + .btn { margin-left: 0; }
 .btn[data-copied]::after { content: " ✓"; }
+.reject-form { display: flex; flex-direction: column; gap: .3rem; }
+.reject-form input { font-size: .8rem; padding: .35rem .5rem; }
+.approval-form { margin: 1rem 0; }

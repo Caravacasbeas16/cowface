@@ -1,0 +1,41 @@
+<%- include('../partials/header') %>
+<% const err = (k) => errors[k] ? `<span class="error">${errors[k]}</span>` : ''; %>
+<section class="auth auth-wide">
+  <% if (status === 'pendiente') { %>
+    <h1>Tu tienda está en revisión</h1>
+    <p>Recibimos tu solicitud para vender en <%= siteName %>. La revisamos en 1 día hábil como máximo y te avisamos por correo a <strong><%= user.email %></strong>.</p>
+    <p class="muted">Mientras tanto puedes ir subiendo tus artículos: quedan como <strong>borradores</strong> y los publicas apenas aprobemos tu tienda.</p>
+    <a class="btn btn-block" href="/vendedor/productos/nuevo">Subir un artículo como borrador</a>
+    <a class="btn btn-ghost btn-block" href="/vendedor">Ir a Mi cuenta</a>
+  <% } else { %>
+    <h1>Vende en <%= siteName %></h1>
+    <% if (status === 'rechazado') { %>
+      <div class="notice">
+        <strong>No pudimos aprobar tu solicitud anterior.</strong>
+        <% if (note) { %>Motivo: <%= note %>.<% } %>
+        Puedes corregir los datos y volver a enviarla.
+      </div>
+    <% } else { %>
+      <p class="muted">Para cuidar a los compradores, revisamos cada tienda antes de que pueda publicar. Cuéntanos un poco de la tuya; te respondemos en 1 día hábil como máximo.</p>
+    <% } %>
+    <form action="/vendedor/solicitud" method="post" class="stack">
+      <label>Nombre de tu tienda
+        <input name="store_name" required maxlength="80" value="<%= form.store_name || '' %>" placeholder="Ej. Closet de Ana">
+        <span class="hint">Es el nombre público que ven los compradores. Si vendes como persona, pon tu nombre.</span>
+        <%- err('store_name') %>
+      </label>
+      <label>Instagram de tu tienda <span class="muted">(opcional)</span>
+        <input name="instagram" maxlength="60" value="<%= form.instagram || '' %>" placeholder="closetdeana">
+        <span class="hint">Solo lo vemos nosotros, para conocer tu tienda. No se muestra a los compradores.</span>
+        <%- err('instagram') %>
+      </label>
+      <label>¿Qué vas a vender?
+        <textarea name="about" rows="4" maxlength="600" required placeholder="Ej. Ropa americana de segunda mano, sobre todo jeans y chaquetas, en buen estado."><%= form.about || '' %></textarea>
+        <%- err('about') %>
+      </label>
+      <button class="btn btn-block">Enviar solicitud</button>
+    </form>
+    <p class="hint">Comprar no necesita aprobación: puedes seguir comprando con tu cuenta.</p>
+  <% } %>
+</section>
+<%- include('../partials/footer') %>
