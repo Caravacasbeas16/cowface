@@ -1,0 +1,26 @@
+<%- include('partials/header') %>
+<article class="legal">
+  <h1>Borrar tu cuenta de <%= siteName %></h1>
+  <p>Puedes borrar tu cuenta cuando quieras, desde el sitio o desde la app:</p>
+  <ol>
+    <li>Entra a <strong><%= siteName %></strong> con tu correo y contraseña.</li>
+    <li>Ve a <strong>Mi cuenta</strong> y toca <strong>"Borrar mi cuenta"</strong> (al final de la página).</li>
+    <li>Confirma con tu contraseña.</li>
+  </ol>
+  <p><a class="btn" href="/vendedor/borrar-cuenta">Ir a borrar mi cuenta</a></p>
+  <p>Si no puedes entrar a tu cuenta, escríbenos desde el correo con el que te registraste<%- contactEmail ? ` a <a href="mailto:${contactEmail}">${contactEmail}</a>` : '' %> y la borramos en un máximo de 7 días.</p>
+
+  <h2>Qué se borra</h2>
+  <ul>
+    <li>Tus datos personales: nombre, correo, teléfono, provincia, número SINPE, dirección y horario de tu tienda.</li>
+    <li>Tus artículos y sus fotos, tus avisos de búsqueda, tus notificaciones y las conversaciones en las que no hubo pedido (con sus fotos y archivos).</li>
+  </ul>
+  <h2>Qué se conserva y por cuánto</h2>
+  <ul>
+    <li>Los pedidos y sus conversaciones se conservan <strong>sin tu nombre</strong> (aparecen como "Cuenta eliminada"), por obligaciones contables y para resolver reclamos, hasta por 5 años.</li>
+    <li>Las reseñas que diste o recibiste se conservan sin tu nombre.</li>
+    <li>Los respaldos cifrados de la base de datos se reemplazan en un máximo de 7 días.</li>
+  </ul>
+  <p class="hint">No se puede borrar una cuenta con pedidos en curso o con pagos pendientes: primero se completan o se cancelan.</p>
+</article>
+<%- include('partials/footer') %>

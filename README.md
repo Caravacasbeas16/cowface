@@ -267,6 +267,18 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
 - Cualquiera puede **bloquear** a otro desde su perfil o el chat: no pueden escribirse ni hacer
   tratos nuevos y no se ven los artículos. Los pedidos ya pagados siguen. Lista en `/bloqueados`.
 
+## Reportar y borrar la cuenta (requisitos de Google Play / App Store)
+
+- **Reportar** (`src/reports.js`): "🚩 Reportar" en cada artículo, perfil y chat (motivo + detalles).
+  Llega a `/admin → 🚩 Reportes` y por correo (aviso "reporte"). El admin puede **ocultar el
+  artículo** (la tienda no lo puede reactivar), **suspender la cuenta** o **descartar**; se cierran
+  todos los reportes abiertos sobre lo mismo. La persona reportada no sabe quién fue.
+- **Borrar cuenta** (`src/account-deletion.js`): Mi cuenta → Borrar mi cuenta, con contraseña y
+  "BORRAR". No se puede con pedidos en curso ni con pagos pendientes a la tienda. Se borran datos
+  personales, artículos, fotos, sesiones y chats sin pedido; la fila del usuario queda anónima
+  ("Cuenta eliminada") para no perder los pedidos (sus llaves borrarían en cascada).
+- **Página pública para la ficha de Google Play**: `https://cowfacecr.com/borrar-cuenta`.
+
 ## ¿Olvidaste tu contraseña?
 
 En `/olvide` la persona pide un enlace (vence en 1 hora, sirve una vez y cierra sus sesiones).

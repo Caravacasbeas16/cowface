@@ -74,6 +74,8 @@
   <% } %>
 </section>
 
+<% if (!isMe) { %><%- include('partials/report', { type: 'usuario', id: profile.id, label: 'esta cuenta', back: `/u/${profile.id}` }) %><% } %>
+
 <section id="resenas">
   <div class="section-head"><h2>Reseñas (<%= reviews.length %>)</h2></div>
   <% if (!reviews.length) { %>

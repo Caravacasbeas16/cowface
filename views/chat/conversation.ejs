@@ -70,6 +70,7 @@
         <p class="hint">Si hay un problema con una compra, <strong>CowFace se hace cargo</strong>: revisamos la conversación y les respondemos por aquí. Solo lo leemos nosotros.</p>
       </form>
     </details>
+    <%- include('../partials/report', { type: 'conversacion', id: conv.id, label: 'esta conversación o a la otra persona', back: `/mensajes/${conv.id}` }) %>
     <p class="hint center">🔒 No compartas teléfonos, redes sociales ni enlaces: el chat los bloquea. Paga siempre a CowFace: guardamos tu dinero hasta que recibas el artículo.</p>
   </div>
 </div>

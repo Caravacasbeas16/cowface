@@ -1,0 +1,25 @@
+<%# "Reportar": type ('articulo' | 'usuario' | 'conversacion'), id, label (qué se reporta), back (a dónde volver). %>
+<details class="report-panel">
+  <summary>🚩 Reportar <%= label %></summary>
+  <% if (!user) { %>
+    <p class="hint"><a href="/entrar?next=<%= encodeURIComponent(back) %>">Entra</a> para reportar.</p>
+  <% } else { %>
+    <form action="/reportar" method="post" class="stack compact">
+      <input type="hidden" name="type" value="<%= type %>">
+      <input type="hidden" name="id" value="<%= id %>">
+      <input type="hidden" name="back" value="<%= back %>">
+      <label>Motivo
+        <select name="reason" required>
+          <option value="">Elige…</option>
+          <% for (const [k, l] of Object.entries(REPORT_REASONS)) { %>
+            <% if (type !== 'articulo' && ['replica', 'prohibido'].includes(k)) continue; %>
+            <option value="<%= k %>"><%= l %></option>
+          <% } %>
+        </select>
+      </label>
+      <textarea name="details" rows="2" maxlength="1000" placeholder="Detalles (opcional; obligatorio si eliges Otro)"></textarea>
+      <button class="btn btn-small btn-ghost">Enviar reporte</button>
+      <p class="hint">Solo lo ve CowFace; la otra persona no sabe quién reportó.</p>
+    </form>
+  <% } %>
+</details>

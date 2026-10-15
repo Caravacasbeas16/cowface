@@ -19,6 +19,8 @@ import { mailProvider } from '../mailer.js';
 import { notifyAdmin } from '../admin-notify.js';
 import { pickupPointsOf } from '../pickup.js';
 import { untilLabel } from '../promos.js';
+import { REPORT_REASONS, createReport } from '../reports.js';
+import { UserError } from '../messages.js';
 import { presenceOf } from '../presence.js';
 import { storeHoursInfo } from '../store-hours.js';
 
@@ -78,6 +80,25 @@ router.get('/', (req, res) => {
 
 // Sugerencias mientras se escribe (JSON para la barra de búsqueda).
 const suggestLimit = rateLimit({ windowMs: MIN, max: 120, message: 'Demasiadas búsquedas seguidas.' });
+// Reportar un artículo, una cuenta o una conversación (hay que tener sesión).
+const reportLimit = rateLimit({ windowMs: 60 * MIN, max: 20, message: 'Enviaste muchos reportes seguidos. Intenta más tarde.' });
+router.post('/reportar', reportLimit, (req, res, next) => {
+  const back = String(req.body.back || '/').startsWith('/') && !String(req.body.back).startsWith('//') ? String(req.body.back) : '/';
+  if (!req.user || req.user.role !== 'usuario') return res.redirect(`/entrar?next=${encodeURIComponent(back)}`);
+  try {
+    const id = createReport(req.user, req.body.type, req.body.id, req.body.reason, req.body.details);
+    if (!id) return next();
+    res.cookie('flash', 'Gracias por avisar. CowFace revisa el reporte y toma acción si hace falta; tu nombre no se le muestra a la persona reportada.', { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+  } catch (err) {
+    if (!(err instanceof UserError)) return next(err);
+    res.cookie('flash', err.message, { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+  }
+  res.redirect(back);
+});
+
+// Para Google Play / App Store: cómo borrar la cuenta y qué datos se borran (pública, sin sesión).
+router.get('/borrar-cuenta', (req, res) => res.render('delete-info', { title: 'Borrar tu cuenta' }));
+
 // Cómo instalar CowFace como app (para compartir en Instagram y para iPhone, que no tiene botón).
 router.get('/instalar', (req, res) => {
   res.render('install', { title: 'Instalar la app', og: { title: 'Instala CowFace en tu celular', description: 'Ten CowFace como una app: pantalla completa, más rápido y con avisos cuando te escriben.' } });

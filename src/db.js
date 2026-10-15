@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -280,6 +280,25 @@ addColumn('products', 'compare_at_price', 'INTEGER');   // precio antes del desc
 addColumn('products', 'promo_until', 'TEXT');           // cuándo termina el descuento (ISO); NULL = sin fecha
 addColumn('products', 'promo_store', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el descuento viene de la promo de toda la tienda
 addColumn('users', 'store_promo', "TEXT NOT NULL DEFAULT '{}'");    // JSON: { pct, until, label } promo de toda la tienda
+addColumn('users', 'deleted_at', 'TEXT');               // la persona borró su cuenta (queda anónima)
+addColumn('products', 'admin_hidden', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el admin lo ocultó por un reporte
+
+// Reportes de artículos, personas y conversaciones (requisito de Google Play / App Store).
+db.exec(`
+CREATE TABLE IF NOT EXISTS reports (
+  id           INTEGER PRIMARY KEY,
+  reporter_id  INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  target_type  TEXT NOT NULL CHECK (target_type IN ('articulo', 'usuario', 'conversacion')),
+  target_id    INTEGER NOT NULL,
+  reason       TEXT NOT NULL,
+  details      TEXT NOT NULL DEFAULT '',
+  status       TEXT NOT NULL DEFAULT 'abierto' CHECK (status IN ('abierto', 'resuelto')),
+  resolution   TEXT NOT NULL DEFAULT '',
+  created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at  TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_reports_status ON reports (status, id);
+`);
 
 // "Pedir ayuda a CowFace": cualquier problema con una compra o conversación; el admin se hace cargo.
 db.exec(`

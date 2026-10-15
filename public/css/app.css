@@ -403,3 +403,10 @@ label.check a { text-decoration: underline; }
 .discount-form { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-top: .4rem; font-size: .8rem; }
 .discount-form input { width: 74px; padding: .3rem .4rem; font-size: .8rem; }
 .discount-form input[type="date"] { width: 140px; }
+
+/* ---------- Reportar y borrar cuenta ---------- */
+.report-panel { margin: .8rem 0; font-size: .85rem; }
+.report-panel summary { cursor: pointer; color: var(--muted); }
+.report-panel form { margin-top: .5rem; max-width: 420px; }
+.danger-zone { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
+.delete-list { display: flex; flex-direction: column; gap: .5rem; padding-left: 1.1rem; }

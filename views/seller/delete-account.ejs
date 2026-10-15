@@ -1,0 +1,31 @@
+<%- include('../partials/header') %>
+<section class="auth auth-wide">
+  <p class="muted small"><a href="/vendedor">← Mi cuenta</a></p>
+  <h1>Borrar mi cuenta</h1>
+  <% if (blockers.length) { %>
+    <div class="notice">
+      <strong>Todavía no se puede borrar:</strong>
+      <ul><% for (const b of blockers) { %><li><%= b %></li><% } %></ul>
+      Es para proteger a las dos partes de cada venta. Cuando esto se resuelva, vuelve aquí.
+    </div>
+  <% } else { %>
+    <p>Esto <strong>no se puede deshacer</strong>. Al borrar tu cuenta:</p>
+    <ul class="delete-list">
+      <li>🗑️ Se borran tus datos personales (nombre, correo, teléfono, provincia, SINPE, dirección), tus artículos y sus fotos, tus avisos de búsqueda, tus notificaciones y las conversaciones sin pedido.</li>
+      <li>🧾 Los pedidos que ya hiciste se conservan <strong>sin tu nombre</strong> ("Cuenta eliminada"), porque los necesitamos por contabilidad y para resolver reclamos. Lo mismo sus conversaciones y las reseñas.</li>
+      <li>🔒 Tu sesión se cierra y ya no podrás entrar con este correo. Si quieres volver, puedes crear una cuenta nueva.</li>
+    </ul>
+    <% if (error) { %><div class="alert"><%= error %></div><% } %>
+    <form action="/vendedor/borrar-cuenta" method="post" class="stack">
+      <label>Tu contraseña
+        <input type="password" name="password" required autocomplete="current-password">
+      </label>
+      <label>Escribe <strong>BORRAR</strong> para confirmar
+        <input name="confirm" required autocomplete="off">
+      </label>
+      <button class="btn btn-danger btn-block">Borrar mi cuenta para siempre</button>
+    </form>
+  <% } %>
+  <p class="hint">¿Algún problema con CowFace? Antes de irte, puedes escribirnos<%= locals.contactEmail ? ` a ${contactEmail}` : '' %>.</p>
+</section>
+<%- include('../partials/footer') %>

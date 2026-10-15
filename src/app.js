@@ -22,6 +22,7 @@ import { enabledProviders } from './oauth.js';
 import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
 import { touch } from './presence.js';
+import { REPORT_REASONS } from './reports.js';
 import { DELIVERY_LABELS, DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, isPickUp, paymentConfig, payoutDayOf } from './orders.js';
 import { cutoffLabel, payoutDayLabel, todayCR } from './payout-schedule.js';
 
@@ -129,6 +130,7 @@ export function createApp() {
   app.locals.DELIVERY_METHODS = DELIVERY_METHODS;
   app.locals.DELIVERY_LABELS = DELIVERY_LABELS;
   app.locals.isPickUp = isPickUp;
+  app.locals.REPORT_REASONS = REPORT_REASONS;
   // Cuándo se le paga a la tienda ("hoy al final del día", "el lunes 20 oct al final del día") y la regla en palabras.
   app.locals.payoutWhen = (o) => payoutDayLabel(payoutDayOf(o));
   app.locals.todayCR = () => todayCR();

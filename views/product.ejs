@@ -140,6 +140,8 @@
       </section>
     <% } %>
 
+    <% if (!isOwner) { %><%- include('partials/report', { type: 'articulo', id: p.id, label: 'este artículo', back: `/p/${p.id}` }) %><% } %>
+
     <% if (measureList.length) { %>
       <h2 class="details-title">Medidas</h2>
       <dl class="specs measures">

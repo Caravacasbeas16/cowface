@@ -16,6 +16,7 @@ import path from 'node:path';
 import { encryptionEnabled, openText } from '../crypto-box.js';
 import { approvalRequired, pendingStores } from '../approval.js';
 import { adminSay, openHelpRequests, resolveHelp } from '../help.js';
+import { openReports, resolveReport } from '../reports.js';
 import { UserError } from '../messages.js';
 import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
 
@@ -48,7 +49,7 @@ router.get('/', (req, res) => {
       (SELECT COUNT(*) FROM orders o WHERE o.seller_id = u.id AND o.status = 'completado') AS sales,
       (SELECT COUNT(*) FROM orders o WHERE o.seller_id = u.id AND o.status IN ('en_disputa', 'reembolso_pendiente', 'reembolsado')) AS problems,
       (SELECT COUNT(*) FROM flagged_messages f WHERE f.user_id = u.id) AS flagged
-    FROM users u WHERE u.role = 'usuario' ORDER BY featured DESC, flagged DESC, problems DESC, u.created_at DESC LIMIT 300
+    FROM users u WHERE u.role = 'usuario' AND u.deleted_at IS NULL ORDER BY featured DESC, flagged DESC, problems DESC, u.created_at DESC LIMIT 300
   `).all();
 
   const orders = db.prepare(`
@@ -64,7 +65,7 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS: DELIVERY_LABELS,
-    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(), helpRequests: openHelpRequests(),
+    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(), helpRequests: openHelpRequests(), reports: openReports(),
   });
 });
 
@@ -209,6 +210,14 @@ router.post('/conversaciones/:id/mensaje', (req, res, next) => {
     flash(res, err.message);
   }
   res.redirect(`/admin/conversaciones/${Number(req.params.id)}`);
+});
+
+router.post('/reportes/:id/:action', (req, res, next) => {
+  if (!['ocultar', 'suspender', 'descartar'].includes(req.params.action)) return next();
+  const r = resolveReport(Number(req.params.id), req.params.action);
+  if (!r) return next();
+  flash(res, `Reporte resuelto: ${r.resolution.toLowerCase()}.`);
+  res.redirect('/admin#reportes');
 });
 
 router.post('/ayuda/:id/resolver', (req, res, next) => {

@@ -29,8 +29,29 @@
 
 <section id="pagos">
   <h2>Por hacer</h2>
-  <% const empty = !helpRequests.length && !storesToApprove.length && !queues.toVerify.length && !queues.toShip.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
+  <% const empty = !reports.length && !helpRequests.length && !storesToApprove.length && !queues.toVerify.length && !queues.toShip.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
   <% if (empty) { %><p class="muted">Todo al día. 🎉</p><% } %>
+
+  <% if (reports.length) { %>
+    <h3 id="reportes">🚩 Reportes <span class="badge"><%= reports.length %></span></h3>
+    <p class="hint">Revisa lo reportado y decide. La persona reportada no sabe quién la reportó.</p>
+    <div class="task-list">
+      <% for (const r of reports) { %>
+        <div class="task task-ship">
+          <div class="task-main">
+            <strong><%= r.reasonLabel %></strong> · <%= r.target_type === 'articulo' ? 'Artículo' : r.target_type === 'usuario' ? 'Cuenta' : 'Conversación' %>: <a href="<%= r.link %>"><%= r.targetLabel %></a>
+            <div class="muted small">Reportó <%= r.reporter_name %> · <%= when(r.created_at, true) %><%= r.reported ? ` · cuenta reportada: ${r.reported.name}${r.reported.active ? '' : ' (suspendida)'}` : '' %></div>
+            <% if (r.details) { %><div class="flag-body">«<%= r.details %>»</div><% } %>
+          </div>
+          <div class="ship-actions">
+            <% if (r.target_type === 'articulo') { %><form action="/admin/reportes/<%= r.id %>/ocultar" method="post" data-confirm="¿Ocultar este artículo? La tienda no podrá volver a publicarlo."><button class="btn btn-small">Ocultar artículo</button></form><% } %>
+            <% if (r.reported && r.reported.active) { %><form action="/admin/reportes/<%= r.id %>/suspender" method="post" data-confirm="¿Suspender la cuenta de <%= r.reported.name %>? Se cierra su sesión y no puede entrar."><button class="btn btn-small btn-danger">Suspender cuenta</button></form><% } %>
+            <form action="/admin/reportes/<%= r.id %>/descartar" method="post"><button class="btn btn-small btn-ghost">Descartar</button></form>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
 
   <% if (helpRequests.length) { %>
     <h3 id="ayuda">🛟 Ayuda solicitada <span class="badge"><%= helpRequests.length %></span></h3>

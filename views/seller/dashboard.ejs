@@ -12,7 +12,7 @@
 </div>
 <% if (sellerState === 'pendiente') { %><div class="notice"><strong>Tu tienda está en revisión.</strong> Te avisamos por correo cuando la aprobemos; mientras tanto puedes ir subiendo artículos como borradores.</div><% } %>
 <% if (sellerState === 'rechazado') { %><div class="notice">Tu tienda no está aprobada para vender en este momento. <a href="/vendedor/solicitud">Ver detalles</a></div><% } %>
-<p class="small muted account-links"><a href="/vendedor/ganancias"><strong>Mis ganancias</strong></a> · <a href="/bloqueados">Usuarios bloqueados</a> · <a href="/vendedor/pagos">Datos para recibir pagos</a></p>
+<p class="small muted account-links"><a href="/vendedor/ganancias"><strong>Mis ganancias</strong></a> · <a href="/bloqueados">Usuarios bloqueados</a> · <a href="/vendedor/borrar-cuenta">Borrar mi cuenta</a> · <a href="/vendedor/pagos">Datos para recibir pagos</a></p>
 
 <div class="stats">
   <div class="stat"><span class="stat-n"><%= stats.available %></span><span class="muted">Publicados</span></div>
@@ -278,5 +278,10 @@
     </label>
     <button class="btn btn-small">Guardar</button>
   </form>
+</section>
+<section class="danger-zone">
+  <h2>Borrar mi cuenta</h2>
+  <p class="muted">Borra tus datos personales, tus artículos y tus conversaciones sin pedido. <a href="/borrar-cuenta">Qué se borra y qué se conserva</a>.</p>
+  <a class="btn btn-small btn-danger" href="/vendedor/borrar-cuenta">Borrar mi cuenta</a>
 </section>
 <%- include('../partials/footer') %>

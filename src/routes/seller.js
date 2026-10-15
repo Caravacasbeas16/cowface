@@ -9,6 +9,8 @@ import {
 import { listConversations } from '../chat.js';
 import { systemNote } from '../messages.js';
 import { sellerEarnings } from '../seller-earnings.js';
+import { deleteAccount, deletionBlockers } from '../account-deletion.js';
+import { endSession, verifyPassword } from '../auth.js';
 import {
   MAX_PCT, MIN_PCT, applyStorePromoTo, discountPct, endStorePromo, parsePct, parseUntil, reapplyAfterPriceChange,
   removeProductDiscount, setProductDiscount, startStorePromo, storePromoOf, untilLabel,
@@ -133,6 +135,26 @@ router.post('/promo/terminar', (req, res) => {
   endStorePromo(req.user.id);
   flash(res, 'Promo terminada: tus artículos volvieron al precio normal.');
   res.redirect('/vendedor#promo');
+});
+
+// ---------- Borrar la cuenta ----------
+const deleteLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, key: perUser, message: 'Demasiados intentos. Espera un rato.' });
+
+router.get('/borrar-cuenta', (req, res) => {
+  res.render('seller/delete-account', { title: 'Borrar mi cuenta', blockers: deletionBlockers(req.user.id), error: null });
+});
+
+router.post('/borrar-cuenta', deleteLimit, (req, res) => {
+  const blockers = deletionBlockers(req.user.id);
+  const view = (error) => res.status(400).render('seller/delete-account', { title: 'Borrar mi cuenta', blockers, error });
+  if (blockers.length) return view(null);
+  const hash = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(req.user.id)?.password_hash;
+  if (!verifyPassword(String(req.body.password ?? ''), hash)) return view('La contraseña no es correcta.');
+  if (String(req.body.confirm ?? '').trim().toUpperCase() !== 'BORRAR') return view('Escribe BORRAR para confirmar.');
+  deleteAccount(req.user.id);
+  endSession(req, res);
+  res.cookie('flash', 'Tu cuenta se borró. Gracias por haber sido parte de CowFace.', { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+  res.redirect('/');
 });
 
 // Mis ganancias: vendido, comisión, recibido, por recibir (y cuándo), por mes e historial.
@@ -313,7 +335,7 @@ router.post('/productos/:id/fotos/:imageId/portada', (req, res) => {
 router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
   const price = parsePrice(req.body.price);
   const quantity = Number.parseInt(req.body.quantity, 10);
-  if (quantity > 0 && req.product.status === 'vendido' && !canPublish(req.user)) {
+  if (quantity > 0 && req.product.status === 'vendido' && (!canPublish(req.user) || req.product.admin_hidden)) {
     flash(res, 'Tu tienda no está aprobada para vender en este momento.');
   } else if (!price || !Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
     flash(res, 'Revisa el precio (en colones) y la cantidad (0 a 999).');
@@ -328,6 +350,10 @@ router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
 // El vendedor solo pausa o reactiva; "reservado" y "vendido" los maneja el flujo de ventas.
 router.post('/productos/:id/estado', (req, res) => {
   const manual = ['disponible', 'pausado'];
+  if (req.body.status === 'disponible' && req.product.admin_hidden) {
+    flash(res, 'CowFace ocultó este artículo por un reporte. Escríbenos si crees que es un error.');
+    return res.redirect('/vendedor#articulos');
+  }
   if (req.body.status === 'disponible' && !canPublish(req.user)) {
     flash(res, 'Tu tienda no está aprobada para vender en este momento.');
     return res.redirect('/vendedor#articulos');
