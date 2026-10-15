@@ -1,0 +1,89 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/portal-nav') %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Configuración</h1>
+      <p class="muted"><%= user.email %> · <%= user.province %></p>
+    </div>
+  </div>
+
+  <nav class="pchips" aria-label="Secciones">
+    <a class="pchip" href="#perfil">Perfil</a>
+    <a class="pchip" href="#horario">Horario</a>
+    <a class="pchip" href="#tienda">Dirección y pick up</a>
+    <a class="pchip" href="#pagos">Pagos</a>
+    <a class="pchip" href="#avisos-correo">Avisos</a>
+    <a class="pchip" href="#celular">Celular</a>
+  </nav>
+
+  <section id="perfil" class="panel">
+    <div class="panel-head"><h2>Perfil de la tienda</h2><a class="small" href="/u/<%= user.id %>">Ver mi tienda →</a></div>
+    <form action="/vendedor/perfil" method="post" class="stack notify-form">
+      <label>Descripción (sale arriba en tu tienda)
+        <textarea name="store_about" rows="4" maxlength="600" placeholder="Qué vendes, tu estilo, de dónde traes la ropa, cada cuánto subes cosas nuevas…"><%= storeAbout %></textarea>
+      </label>
+      <button class="btn btn-small">Guardar</button>
+    </form>
+  </section>
+
+  <section id="horario" class="panel">
+    <div class="panel-head"><h2>Horario de atención</h2></div>
+    <p class="muted">Los compradores lo ven en tu tienda y tus artículos, con "Abierta ahora" o "Cerrada · abre a las…". Marca los días que atiendes.</p>
+    <form action="/vendedor/horario" method="post" class="hours-form">
+      <% for (const [k, label] of DAYS) { %>
+        <label class="check"><input type="checkbox" name="open_<%= k %>" value="1" <%= hours[k] ? 'checked' : '' %>> <span><%= label %></span></label>
+        <input type="time" name="from_<%= k %>" value="<%= hours[k] ? hours[k][0] : '09:00' %>" aria-label="<%= label %>: abre">
+        <input type="time" name="to_<%= k %>" value="<%= hours[k] ? hours[k][1] : '18:00' %>" aria-label="<%= label %>: cierra">
+      <% } %>
+      <button class="btn btn-small">Guardar horario</button>
+    </form>
+  </section>
+
+  <section id="tienda" class="panel">
+    <div class="panel-head"><h2>Dirección y pick up</h2></div>
+    <form action="/vendedor/tienda" method="post" class="stack notify-form">
+      <label>Dirección de la tienda (privada)
+        <textarea name="store_address" rows="2" maxlength="300" required><%= storeAddress %></textarea>
+      </label>
+      <label>Puntos de pick up o entrega en persona (uno por línea, hasta <%= maxPoints %>)
+        <textarea name="pickup_points" rows="3" maxlength="1000" required placeholder="Mall Oxígeno, Heredia — sábados 2 a 5 p. m."><%= pickupPoints.join('\n') %></textarea>
+        <span class="hint">Se muestran en tus artículos y el comprador elige uno cuando pide pick up.</span>
+      </label>
+      <button class="btn btn-small">Guardar</button>
+    </form>
+  </section>
+
+  <section id="pagos" class="panel">
+    <div class="panel-head"><h2>Pagos</h2><a class="small" href="/vendedor/ganancias">Mis ganancias →</a></div>
+    <p><% if (user.payout_phone) { %>Te pagamos por SINPE Móvil al <strong><%= user.payout_phone %></strong> (<%= user.payout_name %>). <a href="/vendedor/pagos">Cambiar</a><% } else { %><a href="/vendedor/pagos">Agrega dónde recibir tus pagos</a><% } %></p>
+    <p class="hint">💰 CowFace te transfiere <strong>ya con la comisión rebajada</strong> (y con el envío incluido, si lo hubo), <%= payoutRule() %>.</p>
+  </section>
+
+  <section id="avisos-correo" class="panel">
+    <div class="panel-head"><h2>Avisos por correo</h2></div>
+    <form action="/vendedor/avisos-correo" method="post" class="stack notify-form">
+      <label class="check">
+        <input type="checkbox" name="email_messages" value="1" <%= user.email_messages ? 'checked' : '' %>>
+        <span>Mandarme un correo a <strong><%= user.email %></strong> cuando un comprador me escriba y no lo haya leído en <%= emailWait %> minutos (máximo uno por conversación cada hora).</span>
+      </label>
+      <button class="btn btn-small">Guardar</button>
+    </form>
+  </section>
+
+  <div class="panel"><%- include('../partials/push-panel') %></div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Cuenta</h2></div>
+    <p class="small account-links"><a href="/bloqueados">Usuarios bloqueados</a> · <a href="/olvide">Cambiar contraseña</a></p>
+  </section>
+
+  <section class="danger-zone">
+    <h2>Borrar mi cuenta</h2>
+    <p class="muted">Borra tus datos personales, tus artículos y tus conversaciones sin pedido. <a href="/borrar-cuenta">Qué se borra y qué se conserva</a>.</p>
+    <a class="btn btn-small btn-danger" href="/vendedor/borrar-cuenta">Borrar mi cuenta</a>
+  </section>
+</div>
+</div>
+<%- include('../partials/footer') %>

@@ -6,6 +6,7 @@ import { loadUser } from './auth.js';
 import * as catalog from './catalog.js';
 import publicRoutes from './routes/public.js';
 import sellerRoutes from './routes/seller.js';
+import portalRoutes from './routes/portal.js';
 import attachmentRoutes from './routes/attachments.js';
 import pushRoutes from './routes/push.js';
 import { MAX_ATTACH_MB, MAX_IMAGES, MAX_PHOTO_MB } from './uploads.js';
@@ -199,6 +200,7 @@ export function createApp() {
   app.use('/pedidos', orderRoutes);
   app.use('/adjuntos', attachmentRoutes);
   app.use('/push', pushRoutes);
+  app.use('/vendedor', portalRoutes);
   app.use('/vendedor', sellerRoutes);
   app.use('/admin', adminStoreRoutes);
   app.use('/admin', adminRoutes);

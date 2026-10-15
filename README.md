@@ -236,6 +236,25 @@ volver a pedir se reemplazan.
   fecha de fin opcional. El precio baja de verdad y el de antes se muestra tachado; al vencer vuelve
   solo (revisión cada 5 min). Filtro "Solo en oferta" y link 🔥 Ofertas (`/buscar?oferta=1`).
 
+## Panel de la tienda (como el Merchant Portal de DoorDash)
+
+`src/routes/portal.js` + `src/store-portal.js`, con menú lateral (en celular, pestañas arriba):
+
+- **Inicio** (`/vendedor`): estado de la tienda (abierta/cerrada según horario) y **Pausar tienda**
+  con un aviso (sus artículos salen de la búsqueda y nadie puede comprar ni ofertar hasta que la
+  reanude), ventas de hoy / 7 / 30 días, por recibir, calificación, **Por atender** (cotizar, enviar,
+  reclamos, ofertas y chats sin leer), lista para completar la tienda y lo más visto.
+- **Pedidos** (`/vendedor/pedidos`): pestañas Por atender / En proceso / Completados / Cancelados,
+  con la etapa de cada pedido y su botón principal.
+- **Inventario** (`/vendedor/inventario`): filtros por estado (incluye "Última unidad" y "Agotados"),
+  categoría, búsqueda y orden (más vistos, menos unidades…); precio y unidades con − / + que se
+  guardan solos; interruptor A la venta / Pausado; menú ⋯ (descuento, vendida, borrar); y acciones
+  en lote. Con 0 unidades el artículo queda agotado y vuelve a la venta al subirlas.
+- **Promos**, **Ganancias**, **Reseñas** (promedio y distribución) y **Configuración** (descripción
+  de la tienda, horario, pick up, pagos, avisos, celular, borrar cuenta).
+- Visitas por artículo (`products.views`): una por persona cada 30 min; no cuentan las del dueño.
+- Quien no tiene tienda ve **Mi cuenta** de comprador (mensajes, compras, avisos) y `/vendedor/compras`.
+
 ## Chats cifrados
 
 Con `CHAT_KEY` (16+ caracteres) en Railway → Variables, el texto de los mensajes y los archivos

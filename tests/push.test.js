@@ -92,12 +92,11 @@ test('desactivar en un dispositivo deja de mandar ahí', async () => {
   assert.equal(toSeller(from).length, 0);
 });
 
-test('Mi cuenta muestra el panel y los mensajes; el sitio se puede instalar', async () => {
-  const page = await (await get('/vendedor', seller)).text();
+test('Configuración muestra el panel del celular y Mensajes las conversaciones; el sitio se puede instalar', async () => {
+  const page = await (await get('/vendedor/configuracion', seller)).text();
   assert.match(page, /Notificaciones en el celular/);
   assert.match(page, /Agregar a pantalla de inicio/);
-  assert.match(page, /Mis mensajes/);
-  assert.match(page, /Compradora/);
+  assert.match(await (await get('/mensajes', seller)).text(), /Compradora/);
   const manifest = await (await get('/manifest.webmanifest')).json();
   assert.equal(manifest.display, 'standalone');
   const sw = await get('/sw.js');

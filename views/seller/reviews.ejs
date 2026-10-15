@@ -1,0 +1,42 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/portal-nav') %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Reseñas</h1>
+      <p class="muted">Lo que dicen tus compradores. Las reseñas con comentario salen en tus artículos y en tu tienda.</p>
+    </div>
+    <a class="btn btn-small btn-ghost" href="/u/<%= user.id %>#resenas">Ver en mi tienda</a>
+  </div>
+
+  <div class="rating-board panel">
+    <div class="rating-big">
+      <span class="rating-n"><%= summary.count ? summary.avg.toFixed(1) : '—' %></span>
+      <span class="stars"><%= summary.count ? '★'.repeat(Math.round(summary.avg)) + '☆'.repeat(5 - Math.round(summary.avg)) : '☆☆☆☆☆' %></span>
+      <span class="muted small"><%= summary.count %> reseña<%= summary.count === 1 ? '' : 's' %></span>
+    </div>
+    <div class="rating-bars">
+      <% const max = Math.max(1, ...dist.map((d) => d.count)); %>
+      <% for (const d of dist) { %>
+        <div class="rating-bar"><span><%= d.n %> ★</span><span class="bar"><span data-width="<%= Math.round(d.count / max * 100) %>"></span></span><span class="muted small"><%= d.count %></span></div>
+      <% } %>
+    </div>
+  </div>
+
+  <% if (!reviews.length) { %>
+    <div class="empty"><p>Todavía no tienes reseñas en <%= siteName %>.</p><p class="muted small">Cuando un comprador confirme que recibió su pedido, le pedimos que te califique.</p></div>
+  <% } else { %>
+    <div class="review-list">
+      <% for (const r of reviews) { %>
+        <div class="review">
+          <div class="review-head"><span class="stars"><%= '★'.repeat(r.rating) %><%= '☆'.repeat(5 - r.rating) %></span><strong><%= r.author_name %></strong><span class="muted small"><%= timeAgo(r.created_at) %></span></div>
+          <% if (r.comment) { %><p><%= r.comment %></p><% } %>
+          <div class="muted small">Compró: <%= r.product_title %></div>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+</div>
+<%- include('../partials/footer') %>

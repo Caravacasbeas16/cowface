@@ -1,0 +1,141 @@
+<%- include('../partials/header') %>
+<% const qs = (extra) => '?' + new URLSearchParams(Object.entries({ ...f, ...extra }).filter(([k, v]) => v && !(k === 'estado' && v === 'todos') && !(k === 'orden' && v === 'recientes'))).toString(); %>
+<div class="portal">
+<%- include('../partials/portal-nav') %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Inventario</h1>
+      <p class="muted">Tus prendas, zapatos y accesorios: cambia precio y unidades al instante, pausa o activa, y edita varios a la vez.</p>
+    </div>
+    <div class="head-actions">
+      <a class="btn btn-small" href="/vendedor/productos/nuevo">+ Agregar artículo</a>
+    </div>
+  </div>
+
+  <nav class="pchips" aria-label="Filtrar por estado">
+    <% for (const [key, label] of Object.entries(INVENTORY_FILTERS)) { %>
+      <a href="/vendedor/inventario<%= qs({ estado: key }) %>" class="pchip <%= f.estado === key ? 'is-active' : '' %>"><%= label %> <span><%= counts[key] %></span></a>
+    <% } %>
+  </nav>
+
+  <form class="inv-toolbar" action="/vendedor/inventario" method="get" role="search">
+    <% if (f.estado !== 'todos') { %><input type="hidden" name="estado" value="<%= f.estado %>"><% } %>
+    <input type="search" name="q" value="<%= f.q %>" placeholder="Buscar por nombre, marca o talla" aria-label="Buscar en mi inventario">
+    <select name="categoria" aria-label="Categoría">
+      <option value="">Todas las categorías</option>
+      <% for (const [k, c] of Object.entries(CATEGORIES)) { %><option value="<%= k %>" <%= f.categoria === k ? 'selected' : '' %>><%= c.label %></option><% } %>
+    </select>
+    <select name="orden" aria-label="Ordenar">
+      <% for (const [k, label] of Object.entries(INVENTORY_SORTS)) { %><option value="<%= k %>" <%= f.orden === k ? 'selected' : '' %>><%= label %></option><% } %>
+    </select>
+    <button class="btn btn-small btn-ghost">Filtrar</button>
+  </form>
+
+  <% if (!items.length) { %>
+    <div class="empty">
+      <% if (counts.todos) { %>
+        <p>Nada coincide con este filtro.</p>
+        <a class="btn btn-small btn-ghost" href="/vendedor/inventario">Ver todo el inventario</a>
+      <% } else { %>
+        <p>Tu inventario está vacío.</p>
+        <a class="btn" href="/vendedor/productos/nuevo">Agregar mi primer artículo</a>
+      <% } %>
+    </div>
+  <% } else { %>
+    <form id="bulk" class="bulk-bar" action="/vendedor/inventario/lote" method="post" data-bulk>
+      <input type="hidden" name="back" value="<%= back %>">
+      <label class="check"><input type="checkbox" data-select-all aria-label="Seleccionar todos"> <span data-bulk-count>Seleccionar todos</span></label>
+      <select name="action" aria-label="Acción para los seleccionados">
+        <option value="">Con los seleccionados…</option>
+        <% for (const [k, label] of Object.entries(BULK_ACTIONS)) { %><option value="<%= k %>"><%= label %></option><% } %>
+      </select>
+      <button class="btn btn-small" data-bulk-apply>Aplicar</button>
+    </form>
+
+    <p class="muted small"><%= items.length %> artículo<%= items.length === 1 ? '' : 's' %></p>
+    <div class="inv-list">
+      <% for (const p of items) { %>
+        <% const off = discountPct(p); const editable = !p.locked && ['disponible', 'pausado', 'vendido'].includes(p.status); %>
+        <div class="inv-row <%= p.status !== 'disponible' ? 'is-off' : '' %>" data-inv-row>
+          <input class="inv-check" type="checkbox" name="ids" value="<%= p.id %>" form="bulk" aria-label="Seleccionar <%= p.title %>">
+          <a class="inv-thumb" href="<%= p.status === 'borrador' ? `/vendedor/productos/${p.id}/editar` : `/p/${p.id}` %>"><img src="<%= imageUrl(p) %>" alt="" loading="lazy"></a>
+          <div class="inv-main">
+            <a class="inv-title" href="/vendedor/productos/<%= p.id %>/editar"><%= p.title %></a>
+            <div class="muted small"><%= [p.brand, p.item_type, `Talla ${p.size}`].filter(Boolean).join(' · ') %></div>
+            <div class="inv-badges">
+              <span class="status status-<%= p.status %>"><%= statusLabel(p) %></span>
+              <% if (p.status === 'disponible' && p.quantity === 1) { %><span class="pill pill-warn">Última unidad</span><% } %>
+              <% if (off) { %><span class="sale-pill">−<%= off %> %</span><% } %>
+              <% if (p.locked) { %><span class="pill">Pedido en curso</span><% } %>
+              <% if (p.admin_hidden) { %><span class="pill pill-danger">Oculto por CowFace</span><% } %>
+              <span class="muted small" title="Visitas">👁 <%= p.views %></span>
+            </div>
+          </div>
+
+          <% if (editable) { %>
+            <form class="inv-quick" action="/vendedor/productos/<%= p.id %>/rapido" method="post" data-quick>
+              <input type="hidden" name="back" value="<%= back %>">
+              <label><span><%= off ? 'Precio normal' : 'Precio' %></span>
+                <span class="money-input">₡<input name="price" inputmode="numeric" value="<%= off ? p.compare_at_price : p.price %>" aria-label="Precio de <%= p.title %>"></span>
+              </label>
+              <label><span>Unidades</span>
+                <span class="stepper">
+                  <button type="button" data-step="-1" aria-label="Una menos">−</button>
+                  <input name="quantity" type="number" min="0" max="999" value="<%= p.quantity %>" aria-label="Unidades de <%= p.title %>">
+                  <button type="button" data-step="1" aria-label="Una más">+</button>
+                </span>
+              </label>
+              <button class="btn btn-small btn-ghost" data-quick-save>Guardar</button>
+            </form>
+          <% } else { %>
+            <div class="inv-quick inv-static">
+              <span><strong><%= money(p.price) %></strong></span>
+              <span class="muted small"><%= p.quantity %> u.</span>
+            </div>
+          <% } %>
+
+          <div class="inv-actions">
+            <% if (['disponible', 'pausado'].includes(p.status) && !p.locked) { %>
+              <form action="/vendedor/productos/<%= p.id %>/estado" method="post">
+                <input type="hidden" name="back" value="<%= back %>">
+                <button class="switch <%= p.status === 'disponible' ? 'is-on' : '' %>" name="status" value="<%= p.status === 'disponible' ? 'pausado' : 'disponible' %>"
+                  role="switch" aria-checked="<%= p.status === 'disponible' %>" title="<%= p.status === 'disponible' ? 'A la venta: toca para pausar' : 'Pausado: toca para ponerlo a la venta' %>">
+                  <span class="switch-knob"></span><span class="switch-text"><%= p.status === 'disponible' ? 'A la venta' : 'Pausado' %></span>
+                </button>
+              </form>
+            <% } else if (p.status === 'vendido') { %>
+              <span class="muted small">Sube las unidades para volver a venderlo</span>
+            <% } else if (p.status === 'borrador') { %>
+              <a class="btn btn-small" href="/vendedor/productos/<%= p.id %>/editar"><%= canPublish ? 'Terminar y publicar' : 'Seguir editando' %></a>
+            <% } %>
+            <details class="more">
+              <summary aria-label="Más acciones">⋯</summary>
+              <div class="more-menu">
+                <a href="/vendedor/productos/<%= p.id %>/editar">Editar todo</a>
+                <% if (p.status !== 'borrador') { %><a href="/p/<%= p.id %>">Ver como comprador</a><% } %>
+                <% if (!p.locked && ['disponible', 'pausado'].includes(p.status)) { %>
+                  <% if (off && !p.promo_store) { %>
+                    <form action="/vendedor/productos/<%= p.id %>/descuento/quitar" method="post"><input type="hidden" name="back" value="<%= back %>"><button>Quitar descuento (−<%= off %> %)</button></form>
+                  <% } else if (!off) { %>
+                    <form action="/vendedor/productos/<%= p.id %>/descuento" method="post" class="more-discount">
+                      <input type="hidden" name="back" value="<%= back %>">
+                      <label>Descuento <input name="pct" type="number" min="5" max="80" placeholder="%" required aria-label="Porcentaje de descuento"></label>
+                      <button>Aplicar</button>
+                    </form>
+                  <% } %>
+                  <form action="/vendedor/productos/<%= p.id %>/vendida" method="post" data-confirm="¿La vendiste por otro lado? Se quita de la venta y las ofertas pendientes quedan sin efecto."><input type="hidden" name="back" value="<%= back %>"><button>✓ Marcar como vendida</button></form>
+                <% } %>
+                <% if (!p.locked) { %>
+                  <form action="/vendedor/productos/<%= p.id %>/borrar" method="post" data-confirm="¿Borrar «<%= p.title %>»? No se puede deshacer."><input type="hidden" name="back" value="<%= back %>"><button class="danger">Borrar</button></form>
+                <% } %>
+              </div>
+            </details>
+          </div>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+</div>
+<%- include('../partials/footer') %>

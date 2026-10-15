@@ -68,7 +68,7 @@ test('los mensajes del vendedor no le avisan a él mismo', async () => {
 });
 
 test('el vendedor lo puede apagar y volver a encender desde Mi cuenta', async () => {
-  assert.match(await (await get('/vendedor', seller)).text(), /name="email_messages" value="1" checked/);
+  assert.match(await (await get('/vendedor/configuracion', seller)).text(), /name="email_messages" value="1" checked/);
   assert.match(flashOf(await post('/vendedor/avisos-correo', seller, {})), /Ya no te mandaremos/);
   db.prepare('UPDATE conversations SET seller_notified_at = NULL WHERE id = ?').run(convId);
   await post(`/mensajes/${convId}`, buyer, { body: '¿Me la apartas?' }, true);

@@ -9,6 +9,9 @@ const normalizeQuery = (q) => normalizeText(q).split(' ').filter(Boolean).slice(
 export const PAGE_SIZE = 24;
 
 // Tienda destacada por el admin (vigente): sus artículos van primero en "Más recientes" y en la portada.
+// Tienda activa y sin pausa: sus artículos salen en la búsqueda, la portada y las sugerencias.
+export const LIVE_SELLER = "u.active = 1 AND u.store_paused = ''";
+
 export const FEATURED_SQL = "(u.featured_until IS NOT NULL AND u.featured_until > strftime('%Y-%m-%dT%H:%M:%fZ', 'now'))";
 
 const CARD_COLUMNS = `
@@ -60,7 +63,7 @@ function refreshSearchText(id) {
 
 export function searchProducts(f) {
   fillSearchText();
-  const where = ["p.status = 'disponible'", 'u.active = 1'];
+  const where = ["p.status = 'disponible'", LIVE_SELLER];
   const params = [];
   if (f.viewerId) { where.push(notBlockedSql('p.seller_id')); params.push(f.viewerId, f.viewerId); }
   if (f.onlyId) { where.push('p.id = ?'); params.push(f.onlyId); }
@@ -106,21 +109,21 @@ export function latestProducts(limit = 12, viewerId = null) {
   const hide = viewerId ? `AND ${notBlockedSql('p.seller_id')}` : '';
   return db.prepare(`
     SELECT ${CARD_COLUMNS} FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND u.active = 1 ${hide} ORDER BY ${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC LIMIT ?
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER} ${hide} ORDER BY ${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC LIMIT ?
   `).all(...(viewerId ? [viewerId, viewerId] : []), limit);
 }
 
 export function countByCategory() {
   const rows = db.prepare(`
     SELECT p.category, COUNT(*) AS n FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND u.active = 1 GROUP BY p.category
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER} GROUP BY p.category
   `).all();
   return Object.fromEntries(rows.map((r) => [r.category, r.n]));
 }
 
 export function getProduct(id) {
   const product = db.prepare(`
-    SELECT p.*, COALESCE(u.store_name, u.name) AS store_name, u.name AS seller_name, u.province, u.active AS seller_active, ${FEATURED_SQL} AS featured
+    SELECT p.*, COALESCE(u.store_name, u.name) AS store_name, u.name AS seller_name, u.province, u.active AS seller_active, u.store_paused, ${FEATURED_SQL} AS featured
     FROM products p JOIN users u ON u.id = p.seller_id WHERE p.id = ?
   `).get(id);
   if (!product) return null;
@@ -232,7 +235,7 @@ export function categoryCovers() {
     SELECT p.category, p.id, COALESCE(i.thumb, i.filename) AS image
     FROM products p JOIN users u ON u.id = p.seller_id
     JOIN product_images i ON i.product_id = p.id AND i.position = (SELECT MIN(position) FROM product_images WHERE product_id = p.id)
-    WHERE p.status = 'disponible' AND u.active = 1
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER}
     ORDER BY p.created_at DESC
   `).all();
   const covers = {};
@@ -252,7 +255,7 @@ export function searchSuggestions(q) {
   const out = [];
   const live = db.prepare(`
     SELECT p.category, p.item_type, COUNT(*) AS n FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND u.active = 1 GROUP BY p.category, p.item_type
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER} GROUP BY p.category, p.item_type
   `).all();
   for (const [key, c] of Object.entries(CATEGORIES)) {
     const n = live.filter((r) => r.category === key).reduce((a, r) => a + r.n, 0);
@@ -266,7 +269,7 @@ export function searchSuggestions(q) {
   }
   const brands = db.prepare(`
     SELECT p.brand, COUNT(*) AS n FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND u.active = 1 AND p.brand != '' GROUP BY lower(p.brand) ORDER BY n DESC LIMIT 400
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER} AND p.brand != '' GROUP BY lower(p.brand) ORDER BY n DESC LIMIT 400
   `).all();
   for (const b of brands) {
     if (matches(b.brand) || normalizeText(b.brand).replace(/[^a-z0-9]/g, '').startsWith(words.join(''))) {
@@ -285,4 +288,15 @@ export function markSoldElsewhere(id) {
     db.prepare("UPDATE offers SET status = 'expirada', responded_at = ? WHERE product_id = ? AND status = 'pendiente'").run(new Date().toISOString(), id);
     return convs;
   });
+}
+
+// Visitas de un artículo (para "Lo más visto" del panel). La misma persona cuenta una vez cada 30 min.
+const recentViews = new Map();
+const VIEW_WINDOW_MS = 30 * 60_000;
+export function countView(productId, viewerKey, nowMs = Date.now()) {
+  const key = `${viewerKey}:${productId}`;
+  if (nowMs - (recentViews.get(key) || 0) < VIEW_WINDOW_MS) return;
+  if (recentViews.size > 50_000) recentViews.clear();
+  recentViews.set(key, nowMs);
+  db.prepare('UPDATE products SET views = views + 1 WHERE id = ?').run(productId);
 }

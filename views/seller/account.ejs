@@ -1,0 +1,78 @@
+<%- include('../partials/header') %>
+<div class="page-head">
+  <div>
+    <h1>Mi cuenta</h1>
+    <p class="muted"><%= user.name %> · <%= user.email %></p>
+  </div>
+  <div class="head-actions">
+    <a class="btn btn-ghost" href="/vendedor/compras">Mis compras</a>
+    <a class="btn" href="/buscar">Explorar</a>
+  </div>
+</div>
+
+<div class="sell-cta">
+  <div>
+    <strong>¿Tienes una tienda o ropa para vender?</strong>
+    <p class="muted small">Abre tu tienda en <%= siteName %>: panel de pedidos, inventario, promos y pagos por SINPE con pago protegido.</p>
+  </div>
+  <a class="btn btn-small" href="/vendedor/solicitud">Vender en <%= siteName %></a>
+</div>
+
+<section id="mensajes">
+  <div class="section-head">
+    <h2>Mis mensajes</h2>
+    <a class="btn btn-small btn-ghost" href="/mensajes">Ver todos</a>
+  </div>
+  <% if (!conversations.length) { %>
+    <p class="muted">Todavía no tienes conversaciones. Cuando le escribas a una tienda por una prenda, aparece aquí.</p>
+  <% } else { %>
+    <div class="inbox">
+      <% for (const c of conversations) { %>
+        <a class="inbox-row <%= c.unread ? 'unread' : '' %>" href="/mensajes/<%= c.id %>">
+          <img src="<%= c.product_id ? imageUrl({ id: c.product_id, category: c.category, image: c.image }) : '/sin-foto/x/0.svg' %>" alt="">
+          <div class="inbox-main">
+            <div class="inbox-top"><strong><%= c.other_name %></strong><span class="muted small"><%= when(c.last_message_at) %></span></div>
+            <div class="muted small"><%= c.role === 'comprador' ? 'Le escribiste a la tienda' : 'Te escribieron' %> · <%= c.product_title %></div>
+            <div class="inbox-last"><%= c.last_text && c.last_text.startsWith('Oferta: ') ? `Oferta: ${money(c.last_text.slice(8))}` : (c.last_text || '') %></div>
+          </div>
+          <% if (c.unread) { %><span class="dot" aria-label="Sin leer"></span><% } %>
+        </a>
+      <% } %>
+    </div>
+  <% } %>
+</section>
+
+<section id="compras">
+  <div class="section-head">
+    <h2>Últimas compras</h2>
+    <a class="btn btn-small btn-ghost" href="/vendedor/compras">Ver todas y mis avisos</a>
+  </div>
+  <% if (!purchases.length) { %>
+    <p class="muted">Aún no has comprado nada. <a href="/buscar">Explorar artículos</a></p>
+  <% } else { %>
+    <div class="list">
+      <% for (const o of purchases) { %>
+        <a class="list-row" href="<%= o.conversation_id ? `/mensajes/${o.conversation_id}` : '/vendedor/compras' %>">
+          <div class="list-main"><strong><%= o.product_title %></strong><div class="muted small"><%= o.code %> · <%= o.store_name %> · <%= money(o.total || o.price) %></div></div>
+          <span class="status status-<%= o.status %>"><%= ORDER_STATUS[o.status] %></span>
+        </a>
+      <% } %>
+    </div>
+  <% } %>
+</section>
+
+<%- include('../partials/push-panel') %>
+
+<section id="avisos-correo">
+  <h2>Avisos por correo</h2>
+  <form action="/vendedor/avisos-correo" method="post" class="stack notify-form">
+    <label class="check">
+      <input type="checkbox" name="email_messages" value="1" <%= user.email_messages ? 'checked' : '' %>>
+      <span>Mandarme un correo a <strong><%= user.email %></strong> cuando me escriban y no lo haya leído en <%= emailWait %> minutos.</span>
+    </label>
+    <button class="btn btn-small">Guardar</button>
+  </form>
+</section>
+
+<p class="small account-links"><a href="/bloqueados">Usuarios bloqueados</a> · <a href="/vendedor/borrar-cuenta">Borrar mi cuenta</a></p>
+<%- include('../partials/footer') %>

@@ -1,0 +1,57 @@
+<%- include('../partials/header') %>
+<% const inPortal = locals.portal; %>
+<% if (inPortal) { %><div class="portal"><%- include('../partials/portal-nav') %><div class="portal-main"><% } %>
+  <div class="page-head">
+    <div>
+      <% if (!inPortal) { %><p class="muted small"><a href="/vendedor">← Mi cuenta</a></p><% } %>
+      <h1>Mis compras</h1>
+      <p class="muted">Lo que compraste en <%= siteName %> y tus avisos de búsqueda.</p>
+    </div>
+  </div>
+
+  <section id="compras">
+    <% if (!purchases.length) { %>
+      <p class="muted">Aún no has comprado nada. <a href="/buscar">Explorar artículos</a></p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Pedido</th><th>Artículo</th><th>Tienda</th><th>Precio</th><th>Estado</th><th></th></tr></thead>
+          <tbody>
+            <% for (const o of purchases) { %>
+              <tr>
+                <td><strong><%= o.code %></strong><div class="muted small"><%= when(o.created_at, true) %></div></td>
+                <td><%= o.product_title %></td>
+                <td><%= o.store_name %></td>
+                <td><%= money(o.total || o.price) %></td>
+                <td><span class="status status-<%= o.status %>"><%= ORDER_STATUS[o.status] %></span></td>
+                <td><% if (o.conversation_id) { %><a class="btn btn-small btn-ghost" href="/mensajes/<%= o.conversation_id %>">Ver</a><% } %></td>
+              </tr>
+            <% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+
+  <section id="avisos">
+    <h2>Mis avisos</h2>
+    <% if (!searches.length) { %>
+      <p class="muted">No tienes avisos. En cualquier búsqueda toca <strong>"Avísame cuando haya"</strong> y te mandamos un correo cuando se publique algo que coincida.</p>
+    <% } else { %>
+      <div class="list">
+        <% for (const s of searches) { %>
+          <div class="list-row">
+            <div class="list-main">
+              <a href="/buscar?<%= s.query %>"><strong><%= s.label %></strong></a>
+              <div class="muted small">Creado <%= timeAgo(s.created_at) %><%= s.last_notified_at ? ` · último aviso ${timeAgo(s.last_notified_at)}` : '' %></div>
+            </div>
+            <form action="/vendedor/avisos/<%= s.id %>/borrar" method="post" class="inline">
+              <button class="btn btn-small btn-ghost">Borrar aviso</button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+<% if (inPortal) { %></div></div><% } %>
+<%- include('../partials/footer') %>

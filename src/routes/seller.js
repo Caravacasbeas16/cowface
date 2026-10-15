@@ -1,33 +1,29 @@
 import { Router } from 'express';
 import { requireRole } from '../auth.js';
 import { db, commissionRate } from '../db.js';
-import { ORDER_STATUS, PRODUCT_STATUS } from '../catalog.js';
 import {
-  createProduct, deleteImage, deleteProduct, getProduct, imageCount, quickUpdate, sellerProducts, setCoverImage,
+  createProduct, deleteImage, deleteProduct, getProduct, imageCount, quickUpdate, setCoverImage,
   markSoldElsewhere, setProductStatus, updateProduct,
 } from '../products.js';
-import { listConversations } from '../chat.js';
 import { systemNote } from '../messages.js';
-import { sellerEarnings } from '../seller-earnings.js';
 import { deleteAccount, deletionBlockers } from '../account-deletion.js';
 import { endSession, verifyPassword } from '../auth.js';
 import {
   MAX_PCT, MIN_PCT, applyStorePromoTo, discountPct, endStorePromo, parsePct, parseUntil, reapplyAfterPriceChange,
-  removeProductDiscount, setProductDiscount, startStorePromo, storePromoOf, untilLabel,
+  removeProductDiscount, setProductDiscount, startStorePromo, untilLabel,
 } from '../promos.js';
-import { OPEN_STATUSES, buyerOrders, paymentConfig, sellerOrders } from '../orders.js';
+import { OPEN_STATUSES, paymentConfig } from '../orders.js';
 import { perUser, rateLimit } from '../rate-limit.js';
 import { normalizePhone, parsePrice, validateProduct } from '../validate.js';
 import { logFlagged } from '../moderation.js';
 import { MAX_IMAGES, REQUEST_MAX_PHOTOS, discardRequestPhotos, photoFiles, photos, requestPhotos } from '../uploads.js';
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
-import { deleteSearch, listSearches, notifyMatches } from '../alerts.js';
+import { deleteSearch, notifyMatches } from '../alerts.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
-import { WAIT_MINUTES } from '../seller-notify.js';
 import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
-import { MAX_POINTS, pickupPointsOf, saveStoreLocation, storeAddressOf, validateStoreLocation } from '../pickup.js';
-import { DAYS, hoursOf, parseHours, saveHours } from '../store-hours.js';
+import { MAX_POINTS, pickupPointsOf, saveStoreLocation, validateStoreLocation } from '../pickup.js';
+import { parseHours, saveHours } from '../store-hours.js';
 
 // Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
 function announce(req, id, title) {
@@ -41,6 +37,8 @@ const listingLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 30, key: perUser
 
 const removeFiles = (names) => removeFrom(UPLOAD_DIR, names);
 const flash = (res, message) => res.cookie('flash', message, { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+// Después de una acción sobre un artículo se vuelve al inventario (con los mismos filtros, si los traía).
+const backTo = (req) => (typeof req.body?.back === 'string' && /^\/vendedor\/inventario(\?\S*)?$/.test(req.body.back) ? req.body.back : '/vendedor/inventario');
 
 // Con un pedido en curso, el artículo no se edita ni se borra: es la evidencia si hay un reclamo.
 const hasOpenOrder = (productId) => Boolean(db.prepare(
@@ -50,7 +48,7 @@ function lockedWhileOrdered(req, res, next) {
   if (!hasOpenOrder(req.product.id)) return next();
   removeFiles(photoFiles(req));
   flash(res, 'Este artículo tiene un pedido en curso: no se puede editar ni borrar hasta que se complete o se cancele.');
-  return res.redirect('/vendedor#articulos');
+  return res.redirect(backTo(req));
 }
 
 // Si la publicación traía teléfono, redes o enlaces, queda registrado para el admin.
@@ -77,28 +75,6 @@ router.param('id', (req, res, next, id) => {
   next();
 });
 
-router.get('/', (req, res) => {
-  const products = sellerProducts(req.user.id);
-  const orders = sellerOrders(req.user.id);
-  const purchases = buyerOrders(req.user.id);
-  const unreadSelling = listConversations(req.user.id).filter((c) => c.role === 'vendedor' && c.unread).length;
-  const done = orders.filter((o) => o.status === 'completado');
-  const stats = {
-    available: products.filter((p) => p.status === 'disponible').length,
-    drafts: products.filter((p) => p.status === 'borrador').length,
-    unreadSelling,
-    toShip: orders.filter((o) => o.status === 'pagado').length,
-    soldTotal: done.reduce((s, o) => s + o.price, 0),
-    payoutPending: done.filter((o) => o.payout_status === 'pendiente').reduce((s, o) => s + o.payout_amount, 0),
-  };
-  res.render('seller/dashboard', {
-    title: 'Mi cuenta', products, orders, purchases, stats, searches: listSearches(req.user.id), PRODUCT_STATUS, ORDER_STATUS,
-    emailWait: WAIT_MINUTES, conversations: listConversations(req.user.id).slice(0, 6), sellerState: sellerStatus(req.user),
-    storeAddress: storeAddressOf(req.user.id), pickupPoints: pickupPointsOf(req.user.id), maxPoints: MAX_POINTS,
-    hours: hoursOf(req.user.id), DAYS, storePromo: storePromoOf(req.user.id), untilLabel, discountPct, MIN_PCT, MAX_PCT,
-  });
-});
-
 // ---------- Promos y descuentos ----------
 router.post('/productos/:id/descuento', lockedWhileOrdered, (req, res) => {
   const pct = parsePct(req.body.pct);
@@ -110,13 +86,13 @@ router.post('/productos/:id/descuento', lockedWhileOrdered, (req, res) => {
     setProductDiscount(req.product.id, pct, until);
     flash(res, `"${req.product.title}" con ${pct} % de descuento${until ? ` ${untilLabel(until)}` : ''}.`);
   }
-  res.redirect('/vendedor#articulos');
+  res.redirect(backTo(req));
 });
 
 router.post('/productos/:id/descuento/quitar', lockedWhileOrdered, (req, res) => {
   if (req.product.promo_store) flash(res, 'Este descuento es de la promo de toda la tienda: termínala en "Promoción en toda la tienda".');
   else { removeProductDiscount(req.product.id); flash(res, 'Descuento quitado: volvió al precio normal.'); }
-  res.redirect('/vendedor#articulos');
+  res.redirect(backTo(req));
 });
 
 router.post('/promo', (req, res) => {
@@ -128,13 +104,13 @@ router.post('/promo', (req, res) => {
     startStorePromo(req.user.id, pct, until, req.body.label);
     flash(res, `¡Promo activa! ${pct} % en toda tu tienda${until ? ` ${untilLabel(until)}` : ''}.`);
   }
-  res.redirect('/vendedor#promo');
+  res.redirect('/vendedor/promos');
 });
 
 router.post('/promo/terminar', (req, res) => {
   endStorePromo(req.user.id);
   flash(res, 'Promo terminada: tus artículos volvieron al precio normal.');
-  res.redirect('/vendedor#promo');
+  res.redirect('/vendedor/promos');
 });
 
 // ---------- Borrar la cuenta ----------
@@ -157,11 +133,6 @@ router.post('/borrar-cuenta', deleteLimit, (req, res) => {
   res.redirect('/');
 });
 
-// Mis ganancias: vendido, comisión, recibido, por recibir (y cuándo), por mes e historial.
-router.get('/ganancias', (req, res) => {
-  res.render('seller/earnings', { title: 'Mis ganancias', e: sellerEarnings(req.user.id) });
-});
-
 // Datos para recibir los pagos de CowFace (SINPE Móvil). Se piden antes de publicar.
 router.get('/pagos', (req, res) => {
   res.render('seller/payout', { title: 'Datos para recibir pagos', commissionRateNow: commissionRate(), error: null, form: req.user, next: req.query.next === 'publicar' ? 'publicar' : '' });
@@ -173,29 +144,29 @@ router.post('/horario', (req, res) => {
   const { hours, error } = parseHours(req.body);
   if (error) {
     flash(res, error);
-    return res.redirect('/vendedor#horario');
+    return res.redirect('/vendedor/configuracion#horario');
   }
   saveHours(req.user.id, hours);
   flash(res, Object.keys(hours).length ? 'Horario guardado.' : 'Horario borrado: tu tienda ya no muestra horario.');
-  res.redirect('/vendedor#horario');
+  res.redirect('/vendedor/configuracion#horario');
 });
 
 router.post('/tienda', (req, res) => {
   const { address, points, errors } = validateStoreLocation(req.body);
   if (Object.keys(errors).length) {
     flash(res, Object.values(errors).join(' '));
-    return res.redirect('/vendedor#tienda');
+    return res.redirect('/vendedor/configuracion#tienda');
   }
   saveStoreLocation(req.user.id, address, points);
   flash(res, 'Dirección y puntos de entrega guardados.');
-  res.redirect('/vendedor#tienda');
+  res.redirect('/vendedor/configuracion#tienda');
 });
 
 router.post('/avisos-correo', (req, res) => {
   const on = req.body.email_messages === '1';
   db.prepare('UPDATE users SET email_messages = ? WHERE id = ?').run(on ? 1 : 0, req.user.id);
   flash(res, on ? 'Te avisaremos por correo cuando te escriban.' : 'Ya no te mandaremos correos por mensajes nuevos.');
-  res.redirect('/vendedor#avisos-correo');
+  res.redirect('/vendedor/configuracion#avisos-correo');
 });
 
 router.post('/pagos', (req, res) => {
@@ -332,19 +303,30 @@ router.post('/productos/:id/fotos/:imageId/portada', (req, res) => {
 });
 
 // Edición rápida de precio y cantidad desde "Mi cuenta".
+// Desde el inventario se guarda con fetch (Accept: application/json) sin recargar la página.
 router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
   const price = parsePrice(req.body.price);
   const quantity = Number.parseInt(req.body.quantity, 10);
-  if (quantity > 0 && req.product.status === 'vendido' && (!canPublish(req.user) || req.product.admin_hidden)) {
-    flash(res, 'Tu tienda no está aprobada para vender en este momento.');
+  let ok = false;
+  let message;
+  if (!['disponible', 'pausado', 'vendido'].includes(req.product.status)) {
+    message = 'Este artículo no se puede editar desde aquí.';
+  } else if (quantity > 0 && req.product.status === 'vendido' && (!canPublish(req.user) || req.product.admin_hidden)) {
+    message = req.product.admin_hidden ? 'CowFace ocultó este artículo por un reporte.' : 'Tu tienda no está aprobada para vender en este momento.';
   } else if (!price || !Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
-    flash(res, 'Revisa el precio (en colones) y la cantidad (0 a 999).');
+    message = 'Revisa el precio (en colones) y las unidades (0 a 999).';
   } else {
     quickUpdate(req.product.id, price, quantity);
     if (discountPct(req.product)) reapplyAfterPriceChange(req.product.id, req.product);
-    flash(res, `"${req.product.title}" actualizado.`);
+    ok = true;
+    message = `"${req.product.title}" actualizado.`;
   }
-  res.redirect('/vendedor#articulos');
+  if (req.accepts(['html', 'json']) === 'json') {
+    const now = getProduct(req.product.id);
+    return res.status(ok ? 200 : 400).json({ ok, message, statusChanged: now.status !== req.product.status, status: now.status, quantity: now.quantity });
+  }
+  flash(res, message);
+  res.redirect(backTo(req));
 });
 
 // El vendedor solo pausa o reactiva; "reservado" y "vendido" los maneja el flujo de ventas.
@@ -352,34 +334,34 @@ router.post('/productos/:id/estado', (req, res) => {
   const manual = ['disponible', 'pausado'];
   if (req.body.status === 'disponible' && req.product.admin_hidden) {
     flash(res, 'CowFace ocultó este artículo por un reporte. Escríbenos si crees que es un error.');
-    return res.redirect('/vendedor#articulos');
+    return res.redirect(backTo(req));
   }
   if (req.body.status === 'disponible' && !canPublish(req.user)) {
     flash(res, 'Tu tienda no está aprobada para vender en este momento.');
-    return res.redirect('/vendedor#articulos');
+    return res.redirect(backTo(req));
   }
   if (manual.includes(req.product.status) && manual.includes(req.body.status) && req.product.quantity > 0) {
     setProductStatus(req.product.id, req.body.status);
   }
-  res.redirect('/vendedor#articulos');
+  res.redirect(backTo(req));
 });
 
 // Marcar como vendida (se pide hacerlo apenas se venda por otro lado, para no vender dos veces).
 router.post('/productos/:id/vendida', lockedWhileOrdered, (req, res) => {
-  if (!['disponible', 'pausado'].includes(req.product.status)) return res.redirect('/vendedor#articulos');
+  if (!['disponible', 'pausado'].includes(req.product.status)) return res.redirect(backTo(req));
   for (const conv of markSoldElsewhere(req.product.id)) systemNote(conv, 'Este artículo ya se vendió; tu oferta quedó sin efecto.');
   flash(res, `"${req.product.title}" quedó como vendida. ¡Felicidades!`);
-  res.redirect(req.body.back === 'producto' ? `/p/${req.product.id}` : '/vendedor#articulos');
+  res.redirect(req.body.back === 'producto' ? `/p/${req.product.id}` : backTo(req));
 });
 
 router.post('/productos/:id/borrar', lockedWhileOrdered, (req, res) => {
   removeFiles(deleteProduct(req.product.id));
-  res.redirect('/vendedor#articulos');
+  res.redirect(backTo(req));
 });
 
 router.post('/avisos/:searchId/borrar', (req, res) => {
   deleteSearch(req.user.id, Number(req.params.searchId));
-  res.redirect('/vendedor#avisos');
+  res.redirect('/vendedor/compras#avisos');
 });
 
 export default router;

@@ -75,7 +75,7 @@
     busy(btn, true);
     try {
       if (btn.matches('[data-push-enable]')) {
-        if (iOS && !standalone) { window.location.assign('/vendedor#celular'); return; }
+        if (iOS && !standalone) { window.location.assign('/vendedor/configuracion#celular'); return; }
         const r = await enable();
         if (r.error === 'denied') show('denied');
         else if (!r.ok) show('off', r.error || 'No se pudo activar. Intenta de nuevo.');

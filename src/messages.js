@@ -71,3 +71,9 @@ export function systemNote(conversationId, text) {
   addMessage(conv, null, 'sistema', text);
   announce(conv);
 }
+
+// Tienda en pausa (vacaciones, sin poder enviar): no se puede comprar ni ofertar hasta que la reanude.
+export function assertStoreOpen(sellerId) {
+  const paused = db.prepare('SELECT store_paused FROM users WHERE id = ?').get(sellerId)?.store_paused;
+  if (paused) throw new UserError(`Esta tienda está en pausa («${paused}»). Puedes escribirle o guardar el artículo y comprar cuando vuelva.`);
+}

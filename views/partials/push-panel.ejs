@@ -1,0 +1,33 @@
+<section id="celular" class="push-panel" data-push-panel>
+  <h2>Notificaciones en el celular</h2>
+  <p class="muted">Te llega un aviso como el de una app cuando te escriben, te hacen una oferta o cambia un pedido.</p>
+  <div data-state="off">
+    <button class="btn" type="button" data-push-enable>🔔 Activar en este dispositivo</button>
+    <p class="hint">Tu celular te va a preguntar si permites notificaciones: toca <strong>Permitir</strong>. Actívalas en cada celular o computadora donde uses CowFace.</p>
+  </div>
+  <div data-state="on" hidden>
+    <p><strong>✓ Activadas en este dispositivo.</strong></p>
+    <div class="push-actions">
+      <button class="btn btn-small" type="button" data-push-test>Mandarme una de prueba</button>
+      <button class="btn btn-small btn-ghost" type="button" data-push-disable>Desactivar aquí</button>
+    </div>
+  </div>
+  <div data-state="ios" hidden>
+    <p><strong>En iPhone se activan desde el ícono de CowFace:</strong></p>
+    <ol class="push-steps">
+      <li>Abre esta página en <strong>Safari</strong>.</li>
+      <li>Toca el botón <strong>Compartir</strong> (el cuadrito con la flecha hacia arriba).</li>
+      <li>Elige <strong>"Agregar a pantalla de inicio"</strong> y toca <strong>Agregar</strong>.</li>
+      <li>Abre CowFace <strong>desde ese ícono</strong>, entra a Mi cuenta y toca "Activar".</li>
+    </ol>
+    <p class="hint">Necesitas iOS 16.4 o más reciente. Así lo exige Apple para cualquier sitio web.</p>
+  </div>
+  <div data-state="denied" hidden>
+    <p><strong>Las notificaciones están bloqueadas para CowFace en este navegador.</strong></p>
+    <p class="hint">Para activarlas: en Android, toca el candado junto a la dirección → Permisos → Notificaciones → Permitir. En iPhone: Ajustes → Notificaciones → CowFace. Después recarga esta página.</p>
+  </div>
+  <div data-state="unsupported" hidden>
+    <p class="muted">Este navegador no permite notificaciones. Prueba con Chrome en Android o en la computadora. Igual te avisamos por correo.</p>
+  </div>
+  <p class="hint" data-push-msg hidden></p>
+</section>

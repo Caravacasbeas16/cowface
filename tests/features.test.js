@@ -184,7 +184,7 @@ test('pick up no cobra envío y se paga sin esperar cotización; si la tienda no
 test('avisos: guardar una búsqueda y recibir un correo cuando se publica algo que coincide', async () => {
   const saved = await post('/avisos', buyer, { query: 'categoria=zapatos&talla=US+9' });
   assert.match(flashOf(saved), /te avisamos por correo/i);
-  assert.match(await (await get('/vendedor', buyer)).text(), /Zapatos · talla US 9/);
+  assert.match(await (await get('/vendedor/compras', buyer)).text(), /Zapatos · talla US 9/);
 
   const before = outbox.length;
   await publish(seller, { ...POLO, title: 'Camisa que no coincide' }, [photoOf()]);

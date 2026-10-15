@@ -25,7 +25,7 @@ router.post('/quitar', (req, res) => {
 });
 
 router.post('/prueba', limit, (req, res) => {
-  pushToUser(req.user.id, { title: 'CowFace', body: '¡Listo! Así te avisaremos cuando te escriban.', url: '/vendedor#celular', tag: 'prueba' });
+  pushToUser(req.user.id, { title: 'CowFace', body: '¡Listo! Así te avisaremos cuando te escriban.', url: '/vendedor/configuracion#celular', tag: 'prueba' });
   res.json({ ok: true, devices: deviceCount(req.user.id) });
 });
 

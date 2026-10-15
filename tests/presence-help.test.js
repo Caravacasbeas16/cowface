@@ -70,7 +70,7 @@ test('la tienda guarda su horario en Mi cuenta y se ve en su perfil y sus artíc
   assert.match(profile, /Abierta ahora · cierra 11:59 p\. m\./);
   assert.match(await (await get(`/p/${productId}`)).text(), /Abierta ahora/);
   assert.match(await (await get('/tiendas')).text(), /Abierta ahora/);
-  assert.match(await (await get('/vendedor', seller)).text(), /name="open_lun" value="1" checked/);
+  assert.match(await (await get('/vendedor/configuracion', seller)).text(), /name="open_lun" value="1" checked/);
 });
 
 test('se ve si la tienda está en línea o cuándo estuvo activa', async () => {

@@ -3,7 +3,7 @@
 import { db, transaction } from './db.js';
 import { formatColones } from './catalog.js';
 import { notify } from './realtime.js';
-import { UserError, addMessage, announce, convRow, now, unreadCount } from './messages.js';
+import { UserError, addMessage, announce, assertStoreOpen, convRow, now, unreadCount } from './messages.js';
 import { createOrder, orderForConversation } from './orders.js';
 import { isBlockedEither } from './blocks.js';
 import { openText } from './crypto-box.js';
@@ -118,6 +118,7 @@ export function sendAttachment(conv, userId, attachment, caption = '') {
 export function makeOffer(conv, userId, amount) {
   expireOffers();
   assertNotBlocked(conv.buyer_id, conv.seller_id);
+  if (userId === conv.buyer_id) assertStoreOpen(conv.seller_id);
   const product = db.prepare('SELECT id, price, status, quantity FROM products WHERE id = ?').get(conv.product_id);
   if (!product || product.status !== 'disponible' || product.quantity < 1) throw new UserError('Este artículo ya no está disponible.');
   if (!Number.isInteger(amount) || amount <= 0) throw new UserError('Escribe un monto válido en colones.');
@@ -173,6 +174,7 @@ export function respondOffer(offerId, userId, action) {
 // ---------- Compra directa ----------
 
 export function buyNow(product, buyerId) {
+  assertStoreOpen(product.seller_id);
   return transaction(() => {
     const conv = convRow(getOrCreateConversation(product, buyerId));
     createOrder(conv, product.price, 'compra');

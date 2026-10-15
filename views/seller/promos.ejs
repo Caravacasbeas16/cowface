@@ -1,0 +1,71 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/portal-nav') %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Promos</h1>
+      <p class="muted">Los compradores ven el precio anterior tachado, la etiqueta "−20 %" y tus artículos salen en <a href="/buscar?oferta=1">🔥 Ofertas</a>.</p>
+    </div>
+  </div>
+
+  <section id="promo" class="panel">
+    <div class="panel-head"><h2>Promo en toda la tienda</h2></div>
+    <% if (storePromo) { %>
+      <div class="promo-banner">🔥 <strong><%= storePromo.label || 'Promo' %>:</strong> <%= storePromo.pct %> % en toda tu tienda<%= storePromo.until ? ` ${untilLabel(storePromo.until)}` : ' (sin fecha de fin)' %>.</div>
+      <p class="hint">Se aplica a todos tus artículos (y a los que publiques mientras dure). Los que tienen descuento propio se quedan con el suyo. Al terminar, todo vuelve al precio normal.</p>
+      <form action="/vendedor/promo/terminar" method="post" data-confirm="¿Terminar la promo? Tus artículos vuelven al precio normal.">
+        <button class="btn btn-small btn-ghost">Terminar promo</button>
+      </form>
+    <% } else { %>
+      <p class="muted">Un descuento en todos tus artículos a la vez, por ejemplo "20 % en todo este fin de semana".</p>
+      <div class="promo-presets" data-presets>
+        <button type="button" class="pchip" data-pct="10" data-label="Fin de semana">10 % fin de semana</button>
+        <button type="button" class="pchip" data-pct="20" data-label="Fin de temporada">20 % fin de temporada</button>
+        <button type="button" class="pchip" data-pct="30" data-label="Black Friday">30 % Black Friday</button>
+      </div>
+      <form action="/vendedor/promo" method="post" class="stack notify-form" data-promo-form>
+        <div class="row2">
+          <label>Descuento (%)<input name="pct" type="number" min="<%= MIN_PCT %>" max="<%= MAX_PCT %>" required placeholder="20"></label>
+          <label>Hasta (opcional)<input name="until" type="date"></label>
+        </div>
+        <label>Nombre de la promo (opcional)<input name="label" maxlength="40" placeholder="Ej. Black Friday, Fin de temporada"></label>
+        <button class="btn btn-small">Lanzar promo</button>
+      </form>
+    <% } %>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Artículos con descuento</h2><a class="small" href="/vendedor/inventario">Poner descuento a un artículo →</a></div>
+    <% if (!discounted.length) { %>
+      <p class="muted">Ningún artículo tiene descuento. En <a href="/vendedor/inventario">Inventario</a>, toca <strong>⋯ → Descuento</strong> en el artículo que quieras.</p>
+    <% } else { %>
+      <div class="inv-list">
+        <% for (const p of discounted) { %>
+          <div class="inv-row inv-row-simple">
+            <a class="inv-thumb" href="/p/<%= p.id %>"><img src="<%= imageUrl(p) %>" alt="" loading="lazy"></a>
+            <div class="inv-main">
+              <a class="inv-title" href="/p/<%= p.id %>"><%= p.title %></a>
+              <div class="small"><strong><%= money(p.price) %></strong> <s class="was"><%= money(p.compare_at_price) %></s> <span class="sale-pill">−<%= discountPct(p) %> %</span>
+                <span class="muted"><%= p.promo_store ? '· promo de la tienda' : (p.promo_until ? `· ${untilLabel(p.promo_until)}` : '· sin fecha de fin') %></span></div>
+            </div>
+            <% if (!p.promo_store) { %>
+              <form action="/vendedor/productos/<%= p.id %>/descuento/quitar" method="post"><input type="hidden" name="back" value="/vendedor/inventario"><button class="btn btn-small btn-ghost">Quitar</button></form>
+            <% } %>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Ideas que funcionan</h2></div>
+    <ul class="tips">
+      <li>🔁 Si un artículo lleva semanas sin ofertas, bájale 10–15 %: los descuentos salen en 🔥 Ofertas.</li>
+      <li>⏰ Las promos con fecha de fin ("hasta el domingo") venden más rápido que las que no terminan.</li>
+      <li>💬 Responde las ofertas rápido: vencen a las 48 h y el comprador se puede ir con otra tienda.</li>
+    </ul>
+  </section>
+</div>
+</div>
+<%- include('../partials/footer') %>

@@ -37,6 +37,7 @@
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap">
   <link rel="stylesheet" href="/css/base.css?v=<%= assetVersion %>">
   <link rel="stylesheet" href="/css/app.css?v=<%= assetVersion %>">
+  <% if (locals.portal) { %><link rel="stylesheet" href="/css/portal.css?v=<%= assetVersion %>"><% } %>
 </head>
 <body<% if (user && user.role === 'usuario') { %> data-live<% } %>>
 <header class="topbar">
@@ -64,10 +65,11 @@
         <a class="btn btn-small" href="/vendedor/productos/nuevo">Vender</a>
         <a href="/mensajes" class="nav-messages">Mensajes<span class="badge" data-unread <%= unread ? '' : 'hidden' %>><%= unread %></span></a>
         <a href="/vendedor">Mi cuenta</a>
-        <a href="/vendedor#articulos" class="menu-only">Mis artículos</a>
-        <a href="/vendedor#ventas" class="menu-only">Mis ventas</a>
+        <a href="/vendedor/inventario" class="menu-only">Inventario</a>
+        <a href="/vendedor/pedidos" class="menu-only">Pedidos</a>
         <a href="/vendedor/ganancias" class="menu-only">Mis ganancias</a>
-        <a href="/vendedor#celular" class="menu-only">Notificaciones</a>
+        <a href="/vendedor/compras" class="menu-only">Mis compras</a>
+        <a href="/vendedor/configuracion#celular" class="menu-only">Notificaciones</a>
       <% } else { %>
         <a class="btn btn-small" href="/vender">Vender</a>
         <a href="/entrar">Entrar</a>

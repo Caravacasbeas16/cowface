@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/portal-nav') %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Pedidos</h1>
+      <p class="muted">Cada pedido se atiende en su chat: ahí cotizas el envío, ves los datos de entrega y subes la foto del envío.</p>
+    </div>
+  </div>
+
+  <nav class="tabs" aria-label="Estado de los pedidos">
+    <% for (const [key, label] of Object.entries(ORDER_TABS)) { %>
+      <a href="/vendedor/pedidos?tab=<%= key %>" class="<%= tab === key ? 'is-active' : '' %>" <%- tab === key ? 'aria-current="page"' : '' %>>
+        <%= label %> <span class="tab-n"><%= tabs[key].length %></span>
+      </a>
+    <% } %>
+  </nav>
+
+  <% const list = tabs[tab]; %>
+  <% if (!list.length) { %>
+    <div class="empty">
+      <p><%= { atender: 'Nada por atender ahora mismo. 🎉', proceso: 'No hay pedidos en proceso.', completados: 'Todavía no tienes ventas completadas.', cancelados: 'No hay pedidos cancelados.' }[tab] %></p>
+      <% if (tab === 'atender') { %><p class="muted small">Cuando alguien compre o aceptes una oferta, el pedido aparece aquí con lo que tienes que hacer.</p><% } %>
+    </div>
+  <% } else { %>
+    <div class="order-cards">
+      <% for (const o of list) { %>
+        <article class="order-card stage-<%= o.stage %>">
+          <div class="order-card-top">
+            <span class="todo-tag tag-<%= o.stage %>"><%= o.stageLabel %></span>
+            <span class="muted small"><%= o.code %> · <%= when(o.created_at, true) %></span>
+          </div>
+          <h3><%= o.product_title %></h3>
+          <dl class="order-facts">
+            <div><dt>Comprador</dt><dd><%= o.buyer_name %></dd></div>
+            <div><dt>Precio</dt><dd><%= money(o.price) %><%= o.source === 'oferta' ? ' (oferta)' : '' %></dd></div>
+            <div><dt>Entrega</dt><dd><%= o.delivery_method ? DELIVERY_LABELS[o.delivery_method] : (o.delivery_requested ? `${DELIVERY_LABELS[o.delivery_requested]} · por cotizar` : 'Por elegir') %><%= o.shipping_cost ? ` · envío ${money(o.shipping_cost)}` : '' %></dd></div>
+            <div><dt>Recibes</dt><dd><strong><%= money(o.payout_amount) %></strong><% if (o.status === 'completado') { %> · <%= o.payout_status === 'pagado' ? 'transferido ✓' : 'por transferir' %><% } %></dd></div>
+          </dl>
+          <% if (o.stage === 'cotizar') { %><p class="order-next">👉 El comprador pidió <%= DELIVERY_LABELS[o.delivery_requested] %>. Cotiza el envío en el chat para que pueda pagar.</p><% } %>
+          <% if (o.stage === 'enviar') { %><p class="order-next">👉 CowFace confirmó el pago. Envíalo y sube la foto de la guía o del paquete<%= o.data_sent_at ? '' : ' (te mandamos los datos de entrega)' %>.</p><% } %>
+          <% if (o.stage === 'reclamo') { %><p class="order-next">⚠️ El comprador abrió un reclamo. CowFace lo está revisando: responde en el chat.</p><% } %>
+          <% if (o.conversation_id) { %>
+            <a class="btn btn-small <%= STAGE_ACTION[o.stage] ? '' : 'btn-ghost' %>" href="/mensajes/<%= o.conversation_id %>"><%= STAGE_ACTION[o.stage] || 'Ver el pedido' %></a>
+          <% } %>
+        </article>
+      <% } %>
+    </div>
+  <% } %>
+</div>
+</div>
+<%- include('../partials/footer') %>

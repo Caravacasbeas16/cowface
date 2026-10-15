@@ -6,7 +6,7 @@ import { canonicalQuery, describe, saveSearch } from '../alerts.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { categoryCovers, countByCategory, getProduct, latestProducts, parseFilters, searchProducts, searchSuggestions } from '../products.js';
+import { categoryCovers, countByCategory, countView, getProduct, latestProducts, parseFilters, searchProducts, searchSuggestions } from '../products.js';
 import { findConversation, minOffer } from '../chat.js';
 import { isBlockedEither } from '../blocks.js';
 import { paymentConfig, paymentsReady } from '../orders.js';
@@ -158,6 +158,7 @@ router.get('/p/:id', (req, res, next) => {
   if (product.status === 'borrador' && !isOwner) return next(); // los borradores solo los ve su dueño
   const conversationId = req.user && !isOwner ? findConversation(product.id, req.user.id) : null;
   const blocked = Boolean(req.user && !isOwner && isBlockedEither(req.user.id, product.seller_id));
+  if (!isOwner && req.user?.role !== 'admin') countView(product.id, req.user ? `u${req.user.id}` : req.ip);
   const cover = product.images[0];
   const og = {
     type: 'product', path: `/p/${product.id}`, price: product.price,

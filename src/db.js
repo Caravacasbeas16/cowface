@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 20;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -282,6 +282,13 @@ addColumn('products', 'promo_store', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el de
 addColumn('users', 'store_promo', "TEXT NOT NULL DEFAULT '{}'");    // JSON: { pct, until, label } promo de toda la tienda
 addColumn('users', 'deleted_at', 'TEXT');               // la persona borró su cuenta (queda anónima)
 addColumn('products', 'admin_hidden', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el admin lo ocultó por un reporte
+// Panel de la tienda (como el de DoorDash): pausar la tienda, descripción y vistas de cada artículo.
+addColumn('users', 'store_paused', "TEXT NOT NULL DEFAULT ''");     // '' = abierta; si no, el aviso (ej. "Volvemos el lunes")
+const hadStoreAbout = hasColumn('users', 'store_about');
+addColumn('users', 'store_about', "TEXT NOT NULL DEFAULT ''");      // descripción pública de la tienda
+// Una sola vez: arranca con lo que la tienda escribió en su solicitud.
+if (!hadStoreAbout) db.exec("UPDATE users SET store_about = COALESCE(json_extract(seller_request, '$.about'), '') WHERE json_valid(seller_request)");
+addColumn('products', 'views', 'INTEGER NOT NULL DEFAULT 0');       // veces que otra persona abrió el artículo
 
 // Reportes de artículos, personas y conversaciones (requisito de Google Play / App Store).
 db.exec(`

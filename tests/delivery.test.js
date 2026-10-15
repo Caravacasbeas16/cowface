@@ -131,7 +131,7 @@ test('con puntos de pick up: se muestran en el artículo y el comprador elige un
     store_address: 'Heredia, San Pablo, 100 m norte de la iglesia',
     pickup_points: 'Mall Oxígeno, Heredia — sábados 2 a 5 p. m.\nEstación del tren de Heredia — después de las 6 p. m.',
   });
-  assert.match(await (await get('/vendedor', seller)).text(), /al final del día/);
+  assert.match(await (await get('/vendedor/configuracion', seller)).text(), /al final del día/);
   const id = await publishPolo(seller, { title: 'Chaqueta', price: '18000' });
   const productPage = await (await get(`/p/${id}`)).text();
   assert.match(productPage, /Pick up: Mall Oxígeno, Heredia — sábados 2 a 5 p\. m\. · Estación del tren/);

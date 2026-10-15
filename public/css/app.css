@@ -410,3 +410,6 @@ label.check a { text-decoration: underline; }
 .report-panel form { margin-top: .5rem; max-width: 420px; }
 .danger-zone { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 .delete-list { display: flex; flex-direction: column; gap: .5rem; padding-left: 1.1rem; }
+/* Mi cuenta (comprador): invitación a abrir una tienda */
+.sell-cta { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.2rem; margin: 1rem 0; background: var(--soft); border-left: 4px solid var(--ink); }
+.sell-cta p { margin: .2rem 0 0; }

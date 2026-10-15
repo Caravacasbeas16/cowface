@@ -69,6 +69,17 @@
       <% } %>
     <% } else if (blocked) { %>
       <div class="notice">No puedes comprar ni escribirle a este vendedor porque una de las dos cuentas bloqueó a la otra.</div>
+    <% } else if (p.store_paused && p.status === 'disponible') { %>
+      <div class="notice"><strong>⏸ Tienda en pausa:</strong> «<%= p.store_paused %>». Por ahora no se puede comprar ni ofertar; puedes escribirle a la tienda.</div>
+      <% if (conversationId) { %><a class="btn btn-ghost btn-block" href="/mensajes/<%= conversationId %>">Ver mi conversación</a>
+      <% } else if (user && user.role === 'usuario') { %>
+        <form action="/p/<%= p.id %>/mensaje" method="post" class="ask-form">
+          <label>Pregúntale a la tienda
+            <textarea name="body" rows="2" maxlength="1000" required placeholder="¿Cuándo vuelven?"></textarea>
+          </label>
+          <button class="btn btn-ghost btn-block" type="submit">Enviar mensaje</button>
+        </form>
+      <% } %>
     <% } else if (p.status !== 'disponible') { %>
       <div class="notice">Este artículo ya no está disponible.</div>
       <% if (conversationId) { %><a class="btn btn-ghost btn-block" href="/mensajes/<%= conversationId %>">Ver mi conversación</a><% } %>

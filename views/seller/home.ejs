@@ -1,0 +1,125 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/portal-nav') %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Hola, <%= (user.name || '').split(' ')[0] %></h1>
+      <p class="muted">Así va <strong><%= user.store_name || user.name %></strong> hoy.</p>
+    </div>
+    <div class="head-actions">
+      <a class="btn btn-ghost btn-small" href="/vendedor/inventario">Inventario</a>
+      <a class="btn btn-small" href="/vendedor/productos/nuevo">+ Agregar artículo</a>
+    </div>
+  </div>
+
+  <% if (sellerState === 'pendiente') { %><div class="notice"><strong>Tu tienda está en revisión.</strong> Te avisamos por correo cuando la aprobemos; mientras tanto puedes ir subiendo artículos como borradores.</div><% } %>
+  <% if (sellerState === 'rechazado') { %><div class="notice">Tu tienda no está aprobada para vender en este momento. <a href="/vendedor/solicitud">Ver detalles</a></div><% } %>
+
+  <div class="store-status <%= paused ? 'is-paused' : '' %>">
+    <div>
+      <span class="store-status-label">Estado de la tienda</span>
+      <% if (paused) { %>
+        <strong>⏸ En pausa · «<%= paused %>»</strong>
+        <span class="muted small">Tus artículos no salen en la búsqueda y nadie puede comprar hasta que la reanudes.</span>
+      <% } else { %>
+        <strong>● Recibiendo pedidos<%= storeOpen.has ? ` · ${storeOpen.label}` : '' %></strong>
+        <span class="muted small"><%= storeOpen.has ? 'Tu horario se muestra en tu tienda y tus artículos.' : 'Pon tu horario para que los compradores sepan cuándo respondes.' %></span>
+      <% } %>
+    </div>
+    <% if (paused) { %>
+      <form action="/vendedor/pausa" method="post"><button class="btn btn-small" name="action" value="reanudar">Reanudar tienda</button></form>
+    <% } else { %>
+      <details class="pause-box">
+        <summary class="btn btn-small btn-ghost">Pausar tienda</summary>
+        <form action="/vendedor/pausa" method="post" class="stack compact">
+          <label>Aviso para los compradores
+            <input name="note" maxlength="<%= MAX_PAUSE_NOTE %>" placeholder="Ej. De vacaciones, volvemos el lunes">
+          </label>
+          <button class="btn btn-small" name="action" value="pausar">Pausar ahora</button>
+          <p class="hint">Útil si te vas de viaje o no puedes enviar por unos días. Los pedidos que ya tienes siguen igual.</p>
+        </form>
+      </details>
+    <% } %>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><span class="kpi-label">Hoy</span><span class="kpi-n"><%= money(s.today.amount) %></span><span class="muted small"><%= s.today.n %> venta<%= s.today.n === 1 ? '' : 's' %></span></div>
+    <div class="kpi"><span class="kpi-label">Últimos 7 días</span><span class="kpi-n"><%= money(s.week.amount) %></span><span class="muted small"><%= s.week.n %> venta<%= s.week.n === 1 ? '' : 's' %></span></div>
+    <div class="kpi"><span class="kpi-label">Últimos 30 días</span><span class="kpi-n"><%= money(s.month.amount) %></span><span class="muted small"><%= s.month.n %> venta<%= s.month.n === 1 ? '' : 's' %></span></div>
+    <a class="kpi kpi-accent" href="/vendedor/ganancias"><span class="kpi-label">Por recibir</span><span class="kpi-n"><%= money(s.payout) %></span><span class="muted small">ver mis ganancias →</span></a>
+    <a class="kpi" href="/vendedor/resenas"><span class="kpi-label">Calificación</span><span class="kpi-n"><%= s.rating.count ? `${s.rating.avg.toFixed(1)} ★` : '—' %></span><span class="muted small"><%= s.rating.count %> reseña<%= s.rating.count === 1 ? '' : 's' %> · <%= s.salesTotal %> venta<%= s.salesTotal === 1 ? '' : 's' %></span></a>
+    <a class="kpi" href="/vendedor/inventario?estado=disponible"><span class="kpi-label">Publicados</span><span class="kpi-n"><%= s.stock.live || 0 %></span><span class="muted small"><%= s.stock.views %> visita<%= s.stock.views === 1 ? '' : 's' %> en total</span></a>
+  </div>
+
+  <div class="portal-grid">
+    <section class="panel">
+      <div class="panel-head"><h2>Por atender</h2><a class="small" href="/vendedor/pedidos">Ver pedidos →</a></div>
+      <% const nothing = !s.todo.length && !s.unread && !s.offers; %>
+      <% if (nothing) { %>
+        <p class="muted">Todo al día. 🎉 Cuando entre un pedido o te escriban, aparece aquí.</p>
+      <% } %>
+      <div class="todo-list">
+        <% for (const o of s.todo) { %>
+          <a class="todo" href="/mensajes/<%= o.conversation_id %>">
+            <span class="todo-tag tag-<%= o.stage %>"><%= o.stageLabel %></span>
+            <span class="todo-main"><strong><%= o.product_title %></strong><span class="muted small"><%= o.code %> · <%= o.buyer_name %> · <%= money(o.price) %></span></span>
+            <span class="todo-go">→</span>
+          </a>
+        <% } %>
+        <% if (s.offers) { %>
+          <a class="todo" href="/mensajes"><span class="todo-tag tag-oferta">Ofertas</span><span class="todo-main"><strong><%= s.offers %> oferta<%= s.offers === 1 ? '' : 's' %> por responder</strong><span class="muted small">Vencen a las 48 h</span></span><span class="todo-go">→</span></a>
+        <% } %>
+        <% if (s.unread) { %>
+          <a class="todo" href="/mensajes"><span class="todo-tag tag-chat">Chats</span><span class="todo-main"><strong><%= s.unread %> chat<%= s.unread === 1 ? '' : 's' %> sin leer</strong><span class="muted small">Responder rápido vende más</span></span><span class="todo-go">→</span></a>
+        <% } %>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head"><h2>Inventario</h2><a class="small" href="/vendedor/inventario">Abrir →</a></div>
+      <ul class="facts">
+        <li><a href="/vendedor/inventario?estado=disponible"><span><%= s.stock.live || 0 %></span> disponibles</a></li>
+        <li><a href="/vendedor/inventario?estado=ultima"><span><%= s.stock.lastUnit || 0 %></span> con la última unidad</a></li>
+        <li><a href="/vendedor/inventario?estado=pausado"><span><%= s.stock.paused || 0 %></span> pausados</a></li>
+        <li><a href="/vendedor/inventario?estado=borrador"><span><%= s.stock.drafts || 0 %></span> borradores sin publicar</a></li>
+      </ul>
+      <% if (storePromo) { %>
+        <p class="promo-banner small">🔥 Promo activa: <strong><%= storePromo.pct %> %</strong> en toda la tienda<%= storePromo.until ? ` ${untilLabel(storePromo.until)}` : '' %>. <a href="/vendedor/promos">Ver</a></p>
+      <% } else { %>
+        <p class="small muted">¿Mucho inventario quieto? <a href="/vendedor/promos">Lanza una promo</a>.</p>
+      <% } %>
+    </section>
+  </div>
+
+  <% if (checklist.some((c) => !c.done)) { %>
+    <section class="panel">
+      <div class="panel-head"><h2>Completa tu tienda</h2><span class="muted small"><%= checklist.filter((c) => c.done).length %> de <%= checklist.length %></span></div>
+      <div class="progress"><span data-width="<%= Math.round(checklist.filter((c) => c.done).length / checklist.length * 100) %>"></span></div>
+      <ul class="checklist">
+        <% for (const c of checklist) { %>
+          <li class="<%= c.done ? 'is-done' : '' %>"><% if (c.done) { %>✓ <%= c.label %><% } else { %><a href="<%= c.href %>">○ <%= c.label %> →</a><% } %></li>
+        <% } %>
+      </ul>
+    </section>
+  <% } %>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Lo más visto</h2><a class="small" href="/vendedor/inventario?orden=vistas">Ver todo →</a></div>
+    <% if (!s.top.length) { %>
+      <p class="muted">Cuando publiques artículos, aquí ves cuáles atraen más visitas.</p>
+    <% } else { %>
+      <div class="top-list">
+        <% for (const p of s.top) { %>
+          <a class="top-item" href="/p/<%= p.id %>">
+            <img src="<%= imageUrl(p) %>" alt="" loading="lazy">
+            <span class="top-title"><%= p.title %></span>
+            <span class="muted small"><%= money(p.price) %> · 👁 <%= p.views %></span>
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>
+<%- include('../partials/footer') %>

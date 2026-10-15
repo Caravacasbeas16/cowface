@@ -1,8 +1,9 @@
 <%- include('../partials/header') %>
 <% const t = e.totals; %>
+<% if (locals.portal) { %><div class="portal"><%- include('../partials/portal-nav') %><div class="portal-main"><% } %>
 <div class="page-head">
   <div>
-    <p class="muted small"><a href="/vendedor">← Mi cuenta</a></p>
+    <% if (!locals.portal) { %><p class="muted small"><a href="/vendedor">← Mi cuenta</a></p><% } %>
     <h1>Mis ganancias</h1>
     <p class="muted">Lo que vendiste en <%= siteName %>, la comisión y tus pagos. Te pagamos por SINPE Móvil al <%= user.payout_phone || 'número que registraste' %>, ya con la comisión rebajada, <%= payoutRule() %>.</p>
   </div>
@@ -73,4 +74,5 @@
     </div>
   </section>
 <% } %>
+<% if (locals.portal) { %></div></div><% } %>
 <%- include('../partials/footer') %>
