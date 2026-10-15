@@ -73,6 +73,12 @@ router.get('/u/:id', (req, res, next) => {
   const groups = Object.entries(listings.reduce((acc, p) => { (acc[p.item_type] ||= []).push(p); return acc; }, {}))
     .sort((a, b) => b[1].length - a[1].length).map(([type, items]) => ({ type, slug: slugify(type), items }));
   const sold = all.filter((p) => p.status === 'vendido').slice(0, 12);
+  // "Lo más popular" (como "Lo más pedido" en DoorDash): con ♥ o visitas, si la tienda tiene bastantes artículos.
+  const score = Object.fromEntries(db.prepare(`
+    SELECT p.id, p.views + 5 * (SELECT COUNT(*) FROM favorites f WHERE f.product_id = p.id) AS s
+    FROM products p WHERE p.seller_id = ? AND p.status = 'disponible'
+  `).all(profile.id).map((r) => [r.id, r.s]));
+  const popular = listings.length > 6 ? listings.filter((p) => score[p.id] > 0).sort((a, b) => score[b.id] - score[a.id]).slice(0, 4) : [];
   const rating = ratingSummary(profile.id);
   const firstPhoto = listings.find((p) => p.image)?.image;
   res.render('profile', {
@@ -89,7 +95,7 @@ router.get('/u/:id', (req, res, next) => {
     storePromo: storePromoOf(profile.id), untilLabel,
     hoursInfo: storeHoursInfo(profile.id),
     reviews: reviewsAbout(profile.id),
-    listings, groups, sold, onSale: listings.filter((p) => p.compare_at_price > p.price),
+    listings, groups, sold, popular, onSale: listings.filter((p) => p.compare_at_price > p.price),
     followers: followerCount(profile.id), following: isFollowing(viewer, profile.id), reply: replyTime(profile.id),
     verified: approvalRequired() && profile.seller_status === 'aprobado' && listings.length + sold.length > 0,
     pickupPoints: pickupPointsOf(profile.id),

@@ -139,3 +139,14 @@ test('página de la tienda: secciones por tipo, buscador, vendidos y "verificada
   assert.match(page, /✓ Verificada/);
   assert.match(page, /🔥 Ofertas/, 'la polo tiene descuento');
 });
+
+test('"Lo más popular" en la tienda cuando tiene más de 6 artículos', async () => {
+  const more = [];
+  for (let i = 0; i < 5; i++) more.push(await publishPolo(seller, { title: `Polo extra ${i}` }));
+  db.exec('UPDATE products SET views = 0; DELETE FROM favorites;'); // sin lo que dejaron las pruebas anteriores
+  assert.doesNotMatch(await (await get(`/u/${sellerId}`)).text(), /Lo más popular/, 'sin visitas ni ♥ todavía');
+  await post(`/p/${more[3]}/favorito`, buyer, {}, true);
+  const page = await (await get(`/u/${sellerId}`)).text();
+  assert.match(page, /⭐ Lo más popular[\s\S]*Polo extra 3[\s\S]*<\/section>/);
+  assert.match(page, /href="#populares"/);
+});

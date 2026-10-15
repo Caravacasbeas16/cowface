@@ -52,12 +52,19 @@
       </div>
       <nav class="store-tabs" aria-label="Secciones de la tienda" data-store-tabs>
         <a href="#todo" class="is-active">Todo <span><%= listings.length %></span></a>
+        <% if (popular.length) { %><a href="#populares">⭐ Popular</a><% } %>
         <% if (onSale.length) { %><a href="#ofertas">🔥 Ofertas <span><%= onSale.length %></span></a><% } %>
         <% for (const g of groups) { %><a href="#<%= g.slug %>"><%= g.type %> <span><%= g.items.length %></span></a><% } %>
         <% if (sold.length) { %><a href="#vendidos">Vendidos</a><% } %>
       </nav>
       <span id="todo"></span>
       <p class="muted small" data-store-empty hidden>Nada coincide con tu búsqueda en esta tienda.</p>
+      <% if (popular.length) { %>
+        <section class="store-section" id="populares" data-store-section>
+          <h2>⭐ Lo más popular</h2>
+          <div class="grid"><% for (const p of popular) { %><%- include('partials/card', { p }) %><% } %></div>
+        </section>
+      <% } %>
       <% if (onSale.length && groups.length > 1) { %>
         <section class="store-section" id="ofertas" data-store-section>
           <h2>🔥 Ofertas</h2>
