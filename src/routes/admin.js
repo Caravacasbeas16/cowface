@@ -15,6 +15,8 @@ import { earningsReport, earningsCsv } from '../earnings.js';
 import path from 'node:path';
 import { encryptionEnabled, openText } from '../crypto-box.js';
 import { approvalRequired, pendingStores } from '../approval.js';
+import { adminSay, openHelpRequests, resolveHelp } from '../help.js';
+import { UserError } from '../messages.js';
 import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
 
 const router = Router();
@@ -62,7 +64,7 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS: DELIVERY_LABELS,
-    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(),
+    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(), helpRequests: openHelpRequests(),
   });
 });
 
@@ -141,7 +143,8 @@ router.get('/conversaciones/:id', (req, res, next) => {
     WHERE m.conversation_id = ? ORDER BY m.id
   `).all(conv.id).map((m) => ({ ...m, body: openText(m.body) }));
   const order = db.prepare('SELECT * FROM orders WHERE conversation_id = ? ORDER BY id DESC LIMIT 1').get(conv.id);
-  res.render('admin/conversation', { title: `Conversación · ${conv.product_title}`, conv, messages, order, ORDER_STATUS_LABEL: ORDER_STATUS });
+  const help = openHelpRequests().filter((h) => h.conversation_id === conv.id);
+  res.render('admin/conversation', { title: `Conversación · ${conv.product_title}`, conv, messages, order, help, ORDER_STATUS_LABEL: ORDER_STATUS });
 });
 
 // Respaldo de "¿Olvidaste tu contraseña?": el admin genera el enlace y se lo manda a la persona
@@ -194,6 +197,25 @@ router.get('/respaldos/:name', (req, res, next) => {
   if (!BACKUP_NAME.test(req.params.name)) return next();
   res.set('Cache-Control', 'no-store');
   res.download(path.join(BACKUP_DIR, req.params.name), req.params.name, (err) => { if (err && !res.headersSent) next(); });
+});
+
+// ---------- Ayuda: CowFace se hace cargo ----------
+router.post('/conversaciones/:id/mensaje', (req, res, next) => {
+  try {
+    if (!adminSay(Number(req.params.id), req.body.body)) return next();
+    flash(res, 'Mensaje enviado como CowFace.');
+  } catch (err) {
+    if (!(err instanceof UserError)) return next(err);
+    flash(res, err.message);
+  }
+  res.redirect(`/admin/conversaciones/${Number(req.params.id)}`);
+});
+
+router.post('/ayuda/:id/resolver', (req, res, next) => {
+  const h = resolveHelp(Number(req.params.id), req.body.note);
+  if (!h) return next();
+  flash(res, 'Solicitud de ayuda resuelta.');
+  res.redirect(req.body.back === 'conversacion' && h.conversation_id ? `/admin/conversaciones/${h.conversation_id}` : '/admin#ayuda');
 });
 
 router.post('/notificaciones', (req, res) => {

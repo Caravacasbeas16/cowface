@@ -24,6 +24,7 @@
           <span class="muted small">
             <%= s.sales.total %> venta<%= s.sales.total === 1 ? '' : 's' %> · <%= s.listings %> a la venta · <%= s.province %>
           </span>
+          <span class="status-line"><%- include('partials/presence', { presence: s.presence, hoursStatus: s.hoursStatus }) %></span>
         </div>
       </a>
     <% } %>

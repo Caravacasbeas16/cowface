@@ -7,6 +7,8 @@ import { block, hasBlocked, isBlockedEither, myBlocks, unblock } from '../blocks
 import { createReview, ratingSummary, reviewsAbout, salesSummary } from '../reviews.js';
 import { FEATURED_SQL } from '../products.js';
 import { notBlockedSql } from '../blocks.js';
+import { presenceOf } from '../presence.js';
+import { storeHoursInfo } from '../store-hours.js';
 import { sellerProducts } from '../products.js';
 import { normalizePhone, safeNext } from '../validate.js';
 import { blockedMessage, findBlocked } from '../moderation.js';
@@ -40,7 +42,7 @@ router.get('/tiendas', (req, res) => {
       AND (EXISTS (SELECT 1 FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible')
            OR u.sales_base > 0 OR EXISTS (SELECT 1 FROM orders o WHERE o.seller_id = u.id AND o.status = 'completado'))
   `).all(...(viewer ? [viewer, viewer] : []))
-    .map((s) => ({ ...s, sales: salesSummary(s.id), rating: ratingSummary(s.id) }))
+    .map((s) => ({ ...s, sales: salesSummary(s.id), rating: ratingSummary(s.id), presence: presenceOf(s.id), hoursStatus: storeHoursInfo(s.id).status }))
     .sort((a, b) => b.featured - a.featured || b.sales.total - a.sales.total || b.listings - a.listings);
   res.render('stores', {
     title: 'Tiendas', stores,
@@ -71,6 +73,8 @@ router.get('/u/:id', (req, res, next) => {
     profile,
     rating,
     sales: salesSummary(profile.id),
+    presence: presenceOf(profile.id),
+    hoursInfo: storeHoursInfo(profile.id),
     reviews: reviewsAbout(profile.id),
     listings,
     isMe: viewer === profile.id,

@@ -13,6 +13,9 @@ import { orderForConversation } from '../orders.js';
 import { formatColones } from '../catalog.js';
 import { blockedMessage, findBlocked, logFlagged } from '../moderation.js';
 import { subscribe } from '../realtime.js';
+import { markSeen, presenceOf } from '../presence.js';
+import { storeHoursInfo } from '../store-hours.js';
+import { requestHelp } from '../help.js';
 import { parsePrice } from '../validate.js';
 import { perUser, rateLimit } from '../rate-limit.js';
 import { hasBlocked, isBlockedEither } from '../blocks.js';
@@ -108,7 +111,11 @@ router.get('/mensajes', signedIn, (req, res) => {
 });
 
 // Canal en vivo (Server-Sent Events). Va antes de /mensajes/:id.
-router.get('/mensajes/eventos', signedIn, (req, res) => subscribe(req.user.id, req, res));
+router.get('/mensajes/eventos', signedIn, (req, res) => {
+  const id = req.user.id;
+  req.on('close', () => markSeen(id)); // al cerrar la pestaña queda la hora de su última actividad
+  subscribe(id, req, res);
+});
 
 function loadConversation(req, res, next) {
   const conv = getConversationForUser(Number(req.params.id), req.user.id);
@@ -123,7 +130,8 @@ router.get('/mensajes/:id', signedIn, loadConversation, (req, res) => {
   const otherId = req.conv.role === 'comprador' ? req.conv.seller_id : req.conv.buyer_id;
   res.render('chat/conversation', {
     title: req.conv.product_title, conv: req.conv, messages: threadMessages(req.conv.id), minOffer: minOffer(req.conv.price || 0),
-    otherId, otherRating: ratingSummary(otherId), blocked: isBlockedEither(req.conv.buyer_id, req.conv.seller_id),
+    otherId, otherRating: ratingSummary(otherId), otherPresence: presenceOf(otherId),
+    otherHours: req.conv.role === 'comprador' ? storeHoursInfo(otherId).status : null, blocked: isBlockedEither(req.conv.buyer_id, req.conv.seller_id),
     iBlocked: hasBlocked(req.user.id, otherId),
   });
 });
@@ -163,6 +171,20 @@ function notifyIfProof(req, caption) {
       + `${caption ? `\nMensaje: «${caption}»` : ''}\nVa adjunto. Si es el SINPE, revísalo en tu banco y confirma el pago en el panel.`,
     `/admin/conversaciones/${req.conv.id}`, { attachments: [{ path: path.join(ATTACH_DIR, req.attachment.name) }] });
 }
+
+// "Pedir ayuda a CowFace" desde la conversación (cualquiera de las dos partes, haya o no pedido).
+const helpLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 10, key: perUser, message: 'Ya nos pediste ayuda varias veces; te respondemos pronto.' });
+router.post('/mensajes/:id/ayuda', signedIn, helpLimit, loadConversation, (req, res) => {
+  const back = `/mensajes/${req.conv.id}`;
+  try {
+    requestHelp(req.user, req.conv, req.body.body);
+    res.cookie('flash', 'Listo: CowFace ya está al tanto y se hace cargo. Te respondemos por esta conversación.', { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
+    res.redirect(back);
+  } catch (err) {
+    if (err instanceof UserError) return fail(req, res, 400, err.message, back);
+    throw err;
+  }
+});
 
 router.post('/mensajes/:id/adjunto', signedIn, attachLimit, loadConversation, attachment('file'), (req, res) => {
   const back = `/mensajes/${req.conv.id}`;

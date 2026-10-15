@@ -74,6 +74,7 @@
         <div class="price-breakdown">
           <div><span>Prenda</span><span><%= money(p.price) %></span></div>
           <div><span>Entrega</span><span>Correos, Uber Flash<%= p.meetup ? ' o pick up' : '' %></span></div>
+          <p class="hint guarantee">🛡️ <strong>Garantía CowFace:</strong> si hay un problema con tu compra, nos hacemos cargo.</p>
           <p class="hint">Después de comprar eliges cómo recibirlo y la tienda te cotiza el envío (como un Uber). Ves el total exacto antes de pagar<%= p.meetup ? '; el pick up no tiene costo' : '' %>.</p>
         </div>
         <form action="/p/<%= p.id %>/comprar" method="post" data-confirm="¿Comprar «<%= p.title %>» por <%= money(p.price) %>? Luego eliges la entrega, la tienda te cotiza el envío y le pagas a CowFace por SINPE Móvil. Guardamos el dinero hasta que recibas el artículo.">
@@ -111,6 +112,7 @@
           <% if (sellerRating.count) { %><span class="stars"><%= stars(sellerRating.avg) %></span> <%= sellerRating.avg.toFixed(1) %> <span class="muted">(<%= sellerRating.count %>)</span><% } else { %><span class="muted">Sin reseñas todavía</span><% } %>
         </div>
         <div class="muted small"><%= p.province %><%= sellerSales.total ? ` · ${sellerSales.total} venta${sellerSales.total === 1 ? '' : 's'}` : '' %> · Ver perfil</div>
+        <div class="status-line"><%- include('partials/presence', { presence: sellerPresence, hoursStatus: sellerHours }) %></div>
       </div>
       <span class="seller-arrow" aria-hidden="true">→</span>
     </a>

@@ -21,6 +21,7 @@ import passwordRoutes from './routes/password.js';
 import { enabledProviders } from './oauth.js';
 import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
+import { touch } from './presence.js';
 import { DELIVERY_LABELS, DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, isPickUp, paymentConfig, payoutDayOf } from './orders.js';
 import { cutoffLabel, payoutDayLabel, todayCR } from './payout-schedule.js';
 
@@ -173,6 +174,7 @@ export function createApp() {
     res.locals.flash = typeof req.cookies.flash === 'string' ? req.cookies.flash.slice(0, 500) : null;
     if (res.locals.flash) res.clearCookie('flash');
     res.locals.unread = req.user?.role === 'usuario' ? unreadCount(req.user.id) : 0;
+    if (req.user?.role === 'usuario') touch(req.user.id);
     res.locals.adminPending = req.user?.role === 'admin' ? adminPendingCount() : 0;
     next();
   });

@@ -7,6 +7,7 @@
       <a href="/u/<%= otherId %>"><strong><%= conv.otherName %></strong></a>
       <span class="muted small"><%= conv.role === 'comprador' ? 'vendedor' : 'comprador' %></span>
       <% if (otherRating.count) { %><span class="small"><span class="stars"><%= stars(otherRating.avg) %></span> <%= otherRating.avg.toFixed(1) %></span><% } %>
+      <span class="status-line"><%- include('../partials/presence', { presence: otherPresence, hoursStatus: otherHours }) %></span>
     </div>
     <% if (iBlocked) { %>
       <form action="/u/<%= otherId %>/desbloquear" method="post"><button class="linklike small">Desbloquear</button></form>
@@ -61,6 +62,14 @@
       <span>🔔 Activa las notificaciones y entérate al instante cuando te escriban.</span>
       <button class="btn btn-small" type="button" data-push-enable>Activar</button>
     </div>
+    <details class="help-panel">
+      <summary>🛟 ¿Algún problema? Pedir ayuda a CowFace</summary>
+      <form action="/mensajes/<%= conv.id %>/ayuda" method="post" class="stack compact">
+        <textarea name="body" rows="3" required minlength="10" maxlength="1000" placeholder="Cuéntanos qué pasa: no responde, no llegó, algo no cuadra con el pago…"></textarea>
+        <button class="btn btn-small">Pedir ayuda</button>
+        <p class="hint">Si hay un problema con una compra, <strong>CowFace se hace cargo</strong>: revisamos la conversación y les respondemos por aquí. Solo lo leemos nosotros.</p>
+      </form>
+    </details>
     <p class="hint center">🔒 No compartas teléfonos, redes sociales ni enlaces: el chat los bloquea. Paga siempre a CowFace: guardamos tu dinero hasta que recibas el artículo.</p>
   </div>
 </div>

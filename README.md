@@ -201,6 +201,19 @@ volver a pedir se reemplazan.
 **Pagos a tiendas:** ya con la comisión rebajada, al final del día en que se completa la venta; si se completa después de la hora de corte (6 p. m. por defecto, se cambia en `/admin → Cobro`) o en fin de semana, el siguiente día hábil (`src/payout-schedule.js`; no descuenta feriados). En
 `/admin → Pagos a vendedores` hay un total por tienda para hacer una sola transferencia.
 
+## Horario, en línea y ayuda
+
+- **Horario** (Mi cuenta → Horario de atención): días y horas de cada tienda; el perfil muestra la
+  tabla y el perfil, los artículos y "Tiendas" dicen "Abierta ahora · cierra…" o "Cerrada · abre…"
+  (hora de Costa Rica; `src/store-hours.js`).
+- **En línea**: punto verde si tiene CowFace abierto (canal en vivo) o lo usó hace menos de 3 min;
+  si no, "Activa hace 20 min / 3 h / ayer…" (`src/presence.js`, `users.last_seen_at`). Se ve en el
+  perfil, los artículos, "Tiendas" y el chat.
+- **Pedir ayuda a CowFace** (en cada chat): cualquiera de las dos partes, haya o no pedido. Aviso al
+  admin, lista "Ayuda solicitada" en Por hacer, el admin escribe en el chat como CowFace y la marca
+  resuelta. La garantía "CowFace se hace cargo" está en el artículo, el pedido, Cómo funciona y los
+  términos.
+
 ## Chats cifrados
 
 Con `CHAT_KEY` (16+ caracteres) en Railway → Variables, el texto de los mensajes y los archivos

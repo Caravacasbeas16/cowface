@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -273,6 +273,24 @@ addColumn('users', 'seller_request', "TEXT NOT NULL DEFAULT '{}'"); // JSON: { i
 addColumn('users', 'seller_note', "TEXT NOT NULL DEFAULT ''");       // motivo si se rechazó
 addColumn('users', 'store_address', "TEXT NOT NULL DEFAULT ''");     // dirección de la tienda (privada: solo el admin)
 addColumn('users', 'pickup_points', "TEXT NOT NULL DEFAULT '[]'");   // JSON: puntos públicos para pick up / entrega en persona
+addColumn('users', 'store_hours', "TEXT NOT NULL DEFAULT '{}'");     // JSON: { lun: ["09:00","18:00"], … } horario de atención
+addColumn('users', 'last_seen_at', 'TEXT');             // última vez que usó el sitio (para "activa hace…")
+
+// "Pedir ayuda a CowFace": cualquier problema con una compra o conversación; el admin se hace cargo.
+db.exec(`
+CREATE TABLE IF NOT EXISTS help_requests (
+  id              INTEGER PRIMARY KEY,
+  user_id         INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  conversation_id INTEGER REFERENCES conversations(id) ON DELETE SET NULL,
+  order_id        INTEGER REFERENCES orders(id) ON DELETE SET NULL,
+  body            TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'abierta' CHECK (status IN ('abierta', 'resuelta')),
+  admin_note      TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+  resolved_at     TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_help_status ON help_requests (status, id);
+`);
 if (!hadSellerStatus) {
   db.exec(`UPDATE users SET seller_status = 'aprobado' WHERE role = 'usuario' AND (payout_phone IS NOT NULL
     OR EXISTS (SELECT 1 FROM products p WHERE p.seller_id = users.id) OR sales_base > 0)`);

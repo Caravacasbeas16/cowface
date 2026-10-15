@@ -19,6 +19,7 @@ import { notifyAdmin } from '../admin-notify.js';
 import { WAIT_MINUTES } from '../seller-notify.js';
 import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
 import { MAX_POINTS, pickupPointsOf, saveStoreLocation, storeAddressOf, validateStoreLocation } from '../pickup.js';
+import { DAYS, hoursOf, parseHours, saveHours } from '../store-hours.js';
 
 // Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
 function announce(req, id, title) {
@@ -86,6 +87,7 @@ router.get('/', (req, res) => {
     title: 'Mi cuenta', products, orders, purchases, stats, searches: listSearches(req.user.id), PRODUCT_STATUS, ORDER_STATUS,
     emailWait: WAIT_MINUTES, conversations: listConversations(req.user.id).slice(0, 6), sellerState: sellerStatus(req.user),
     storeAddress: storeAddressOf(req.user.id), pickupPoints: pickupPointsOf(req.user.id), maxPoints: MAX_POINTS,
+    hours: hoursOf(req.user.id), DAYS,
   });
 });
 
@@ -95,6 +97,18 @@ router.get('/pagos', (req, res) => {
 });
 
 // Dirección de la tienda y puntos de pick up (se piden en la solicitud y se pueden cambiar aquí).
+// Horario de atención (qué días y de qué hora a qué hora responde y entrega).
+router.post('/horario', (req, res) => {
+  const { hours, error } = parseHours(req.body);
+  if (error) {
+    flash(res, error);
+    return res.redirect('/vendedor#horario');
+  }
+  saveHours(req.user.id, hours);
+  flash(res, Object.keys(hours).length ? 'Horario guardado.' : 'Horario borrado: tu tienda ya no muestra horario.');
+  res.redirect('/vendedor#horario');
+});
+
 router.post('/tienda', (req, res) => {
   const { address, points, errors } = validateStoreLocation(req.body);
   if (Object.keys(errors).length) {

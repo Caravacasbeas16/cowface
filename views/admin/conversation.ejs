@@ -33,4 +33,21 @@
   <% } %>
   <% if (!messages.length) { %><p class="muted">Sin mensajes.</p><% } %>
 </div>
+<section class="admin-reply">
+  <% for (const h of help) { %>
+    <div class="notice">
+      🛟 <strong><%= h.who %></strong> pidió ayuda (<%= when(h.created_at, true) %>): «<%= h.body %>»
+      <form action="/admin/ayuda/<%= h.id %>/resolver" method="post" class="reject-form">
+        <input type="hidden" name="back" value="conversacion">
+        <input name="note" maxlength="1000" placeholder="Cómo se resolvió (opcional; lo ven en el chat)">
+        <button class="btn btn-small">Marcar resuelto</button>
+      </form>
+    </div>
+  <% } %>
+  <h2>Escribir como CowFace</h2>
+  <form action="/admin/conversaciones/<%= conv.id %>/mensaje" method="post" class="stack">
+    <textarea name="body" rows="3" maxlength="1000" required placeholder="Lo ven el comprador y la tienda en el chat, y les llega la notificación."></textarea>
+    <button class="btn btn-small">Enviar mensaje</button>
+  </form>
+</section>
 <%- include('../partials/footer') %>

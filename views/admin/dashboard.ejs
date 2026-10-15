@@ -29,8 +29,29 @@
 
 <section id="pagos">
   <h2>Por hacer</h2>
-  <% const empty = !storesToApprove.length && !queues.toVerify.length && !queues.toShip.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
+  <% const empty = !helpRequests.length && !storesToApprove.length && !queues.toVerify.length && !queues.toShip.length && !queues.disputes.length && !queues.refunds.length && !queues.payouts.length; %>
   <% if (empty) { %><p class="muted">Todo al día. 🎉</p><% } %>
+
+  <% if (helpRequests.length) { %>
+    <h3 id="ayuda">🛟 Ayuda solicitada <span class="badge"><%= helpRequests.length %></span></h3>
+    <p class="hint">Te pidieron que te hagas cargo. Lee la conversación, escríbeles como CowFace y márcalo resuelto.</p>
+    <div class="task-list">
+      <% for (const h of helpRequests) { %>
+        <div class="task task-ship">
+          <div class="task-main">
+            <strong><%= h.who %></strong> · «<%= h.product_title || 'conversación' %>»<%= h.order_code ? ` · pedido ${h.order_code} (${ORDER_STATUS[h.order_status] || h.order_status})` : '' %>
+            <div class="muted small"><%= h.email %> · <%= when(h.created_at, true) %></div>
+            <div class="flag-body">«<%= h.body %>»</div>
+            <% if (h.conversation_id) { %><a class="file-link" href="/admin/conversaciones/<%= h.conversation_id %>">Abrir la conversación y responder</a><% } %>
+          </div>
+          <form action="/admin/ayuda/<%= h.id %>/resolver" method="post" class="reject-form">
+            <input name="note" maxlength="1000" placeholder="Cómo se resolvió (opcional; lo ven en el chat)" aria-label="Cómo se resolvió">
+            <button class="btn btn-small">Marcar resuelto</button>
+          </form>
+        </div>
+      <% } %>
+    </div>
+  <% } %>
 
   <% if (storesToApprove.length) { %>
     <h3 id="tiendas-por-aprobar">Tiendas por aprobar <span class="badge"><%= storesToApprove.length %></span></h3>

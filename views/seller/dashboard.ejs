@@ -199,6 +199,19 @@
 </section>
 
 <% if (sellerState !== 'nuevo') { %>
+<section id="horario">
+  <h2>Horario de atención</h2>
+  <p class="muted">Los compradores lo ven en tu perfil y tus artículos, con "Abierta ahora" o "Cerrada · abre a las…". Marca los días que atiendes.</p>
+  <form action="/vendedor/horario" method="post" class="hours-form">
+    <% for (const [k, label] of DAYS) { %>
+      <label class="check"><input type="checkbox" name="open_<%= k %>" value="1" <%= hours[k] ? 'checked' : '' %>> <span><%= label %></span></label>
+      <input type="time" name="from_<%= k %>" value="<%= hours[k] ? hours[k][0] : '09:00' %>" aria-label="<%= label %>: abre">
+      <input type="time" name="to_<%= k %>" value="<%= hours[k] ? hours[k][1] : '18:00' %>" aria-label="<%= label %>: cierra">
+    <% } %>
+    <button class="btn btn-small">Guardar horario</button>
+  </form>
+</section>
+
 <section id="tienda">
   <h2>Tu tienda: dirección y pick up</h2>
   <form action="/vendedor/tienda" method="post" class="stack notify-form">

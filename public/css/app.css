@@ -361,3 +361,19 @@ label.check a { text-decoration: underline; }
 .ref-photos { display: flex; flex-wrap: wrap; gap: 6px; margin: .4rem 0; }
 .ref-photos img { width: 84px; height: 84px; object-fit: cover; border: 1px solid var(--line); border-radius: 6px; display: block; }
 .ref-label { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-top: .4rem; }
+
+/* ---------- En línea y horario ---------- */
+.presence { display: inline-flex; align-items: center; gap: .35rem; font-size: .8rem; color: var(--muted); }
+.presence-dot { width: 8px; height: 8px; border-radius: 50%; background: #b9b6ae; flex-shrink: 0; }
+.presence-on { color: var(--ok); font-weight: 700; }
+.presence-on .presence-dot { background: #1fa855; box-shadow: 0 0 0 3px rgba(31, 168, 85, .18); }
+.hours-pill { display: inline-block; font-size: .75rem; padding: .1rem .5rem; border-radius: 999px; background: var(--soft); color: var(--muted); margin-left: .4rem; }
+.hours-open { background: var(--ok-soft); color: var(--ok); font-weight: 700; }
+.status-line { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin-top: .35rem; }
+.hours-table { border-collapse: collapse; font-size: .88rem; }
+.hours-table td { padding: .25rem 1rem .25rem 0; }
+.hours-form { display: grid; grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr); gap: .4rem .6rem; align-items: center; max-width: 460px; }
+.hours-form input[type="time"] { padding: .35rem; width: 100%; min-width: 0; }
+.help-panel summary { cursor: pointer; font-size: .85rem; font-weight: 700; }
+.help-panel form { margin-top: .5rem; }
+.admin-reply { margin: 1.5rem 0; max-width: 720px; }
