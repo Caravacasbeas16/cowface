@@ -92,7 +92,7 @@ export async function approve(id) {
   await mailUser(u, '¡Tu tienda fue aprobada!', [
     `${u.store_name} ya puede vender en ${SITE_NAME}.`,
     'Publica tus artículos (y los borradores que ya tengas) desde Mi cuenta.',
-    'Tus pagos: te transferimos por SINPE Móvil al final del día en que se completa cada venta, ya con la comisión rebajada.',
+    'Tus pagos: te transferimos por SINPE Móvil, ya con la comisión rebajada, al final del día en que se completa cada venta (si es en la noche o en fin de semana, el siguiente día hábil).',
   ], { label: 'Publicar ahora', path: '/vendedor/productos/nuevo' });
   return u;
 }

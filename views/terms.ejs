@@ -49,7 +49,7 @@
   <ul>
     <li>Cuando el artículo llega, el comprador toca "Lo recibí". Si no lo hace, el pago se libera automáticamente <strong><%= pay.releaseDays %> días después</strong> de que el vendedor marcó el envío, siempre que no haya un reclamo abierto.</li>
     <li>Si el paquete se atrasa, el comprador debe abrir un reclamo <strong>antes</strong> de que venza ese plazo; mientras haya un reclamo abierto el pago no se libera. <%= siteName %> puede extender el plazo si la guía muestra que el envío sigue en camino.</li>
-    <li>Con la venta completada, <%= siteName %> transfiere al vendedor por SINPE Móvil el precio menos la comisión, más el envío, <strong>al final del día</strong> en que se completa la venta (si se completa en la noche o en un día no hábil, el siguiente día hábil).</li>
+    <li>Con la venta completada, <%= siteName %> transfiere al vendedor por SINPE Móvil el precio menos la comisión, más el envío, <strong><%= payoutRule() %></strong>.</li>
   </ul>
 
   <h2 id="reclamos">8. Reclamos, reembolsos y devoluciones</h2>

@@ -21,7 +21,8 @@ import passwordRoutes from './routes/password.js';
 import { enabledProviders } from './oauth.js';
 import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
-import { DELIVERY_LABELS, DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, isPickUp, paymentConfig } from './orders.js';
+import { DELIVERY_LABELS, DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, isPickUp, paymentConfig, payoutDayOf } from './orders.js';
+import { cutoffLabel, payoutDayLabel, todayCR } from './payout-schedule.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -127,6 +128,10 @@ export function createApp() {
   app.locals.DELIVERY_METHODS = DELIVERY_METHODS;
   app.locals.DELIVERY_LABELS = DELIVERY_LABELS;
   app.locals.isPickUp = isPickUp;
+  // Cuándo se le paga a la tienda ("hoy al final del día", "el lunes 20 oct al final del día") y la regla en palabras.
+  app.locals.payoutWhen = (o) => payoutDayLabel(payoutDayOf(o));
+  app.locals.todayCR = () => todayCR();
+  app.locals.payoutRule = () => `al final del día en que se completa la venta; si se completa después de las ${cutoffLabel(paymentConfig().cutoffHour)} o en fin de semana, el siguiente día hábil`;
   app.locals.OPEN_STATUSES = OPEN_STATUSES;
   const contact = (process.env.CONTACT_EMAIL || '').trim();
   app.locals.contactEmail = /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(contact) ? contact : '';

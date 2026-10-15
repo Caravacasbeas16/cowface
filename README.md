@@ -198,7 +198,7 @@ La solicitud pide además: **dirección de la tienda** (privada, solo el admin),
 hecho envíos"). Las fotos son adjuntos privados y cifrados que solo ven la tienda y el admin; al
 volver a pedir se reemplazan.
 
-**Pagos a tiendas:** al final del día en que se completa la venta, ya con la comisión rebajada. En
+**Pagos a tiendas:** ya con la comisión rebajada, al final del día en que se completa la venta; si se completa después de la hora de corte (6 p. m. por defecto, se cambia en `/admin → Cobro`) o en fin de semana, el siguiente día hábil (`src/payout-schedule.js`; no descuenta feriados). En
 `/admin → Pagos a vendedores` hay un total por tienda para hacer una sola transferencia.
 
 ## Chats cifrados

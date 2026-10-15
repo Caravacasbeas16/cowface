@@ -3,7 +3,7 @@
   <h1>¿Dónde te pagamos?</h1>
   <p class="muted">
     Cuando vendes, el comprador le paga a CowFace y nosotros guardamos el dinero hasta que recibe el artículo.
-    Luego te transferimos por SINPE Móvil <strong>al final del día</strong> el precio de venta <strong>ya con la comisión de <%= +(commissionRateNow * 100).toFixed(2) %> % rebajada</strong> (más el envío, si lo hubo).
+    Luego te transferimos por SINPE Móvil (<%= payoutRule() %>) el precio de venta <strong>ya con la comisión de <%= +(commissionRateNow * 100).toFixed(2) %> % rebajada</strong> (más el envío, si lo hubo).
   </p>
   <% if (error) { %><div class="alert"><%= error %></div><% } %>
   <form action="/vendedor/pagos" method="post" class="stack">

@@ -199,9 +199,9 @@
         <button class="linklike small">No puedo entregarlo</button>
       </form>
     <% } else if (o.status === 'enviado') { %>
-      <p>📦 <%= pickUp ? 'Entregado' : 'Enviado' %>. <%- fileLink(o.shipping_proof, 'Ver tu comprobante') %> Recibirás <strong><%= money(o.payout_amount) %></strong> (ya con la comisión rebajada) al final del día en que el comprador confirme, o automáticamente si no hay reclamo (<%= when(o.auto_release_at, true) %>).</p>
+      <p>📦 <%= pickUp ? 'Entregado' : 'Enviado' %>. <%- fileLink(o.shipping_proof, 'Ver tu comprobante') %> Recibirás <strong><%= money(o.payout_amount) %></strong> (ya con la comisión rebajada) <%= payoutRule() %>: cuando el comprador confirme, o automáticamente si no hay reclamo (<%= when(o.auto_release_at, true) %>).</p>
     <% } else if (o.status === 'completado') { %>
-      <p>✅ Venta completada. <%= o.payout_status === 'pagado' ? `CowFace te transfirió ${money(o.payout_amount)} (${when(o.payout_paid_at, true)})` : `CowFace te transfiere ${money(o.payout_amount)} por SINPE al ${user.payout_phone || 'número que registraste'} al final del día, ya con la comisión rebajada.` %></p>
+      <p>✅ Venta completada. <%= o.payout_status === 'pagado' ? `CowFace te transfirió ${money(o.payout_amount)} (${when(o.payout_paid_at, true)})` : `CowFace te transfiere ${money(o.payout_amount)} por SINPE al ${user.payout_phone || 'número que registraste'} ${payoutWhen(o)}, ya con la comisión rebajada.` %></p>
       <p class="hint"><%= money(o.price) %> − comisión CowFace <%= +(o.commission_rate * 100).toFixed(2) %> % (<%= money(o.commission_amount) %>)<%= ship ? ` + envío ${money(ship)}` : '' %> = <%= money(o.payout_amount) %></p>
     <% } else if (o.status === 'en_disputa') { %>
       <p>⚠️ El comprador abrió un reclamo: «<%= o.dispute_reason %>». <%- fileLink(o.dispute_evidence, 'Ver su evidencia') %> El pago queda retenido mientras CowFace lo revisa (máximo 2 días hábiles). Responde por este chat y envía fotos si te ayudan.</p>

@@ -146,26 +146,35 @@
 
   <% if (queues.payouts.length) { %>
     <h3>4. Pagos a vendedores <span class="badge"><%= queues.payouts.length %></span></h3>
-    <p class="hint">Se pagan <strong>al final del día</strong>. Transfiere por SINPE Móvil y marca cada pedido. Tu comisión ya está descontada del monto (y el envío, si lo hubo, ya está sumado).</p>
-    <% const byStore = Object.values(queues.payouts.reduce((acc, o) => {
+    <p class="hint">Se pagan <%= payoutRule() %>. Transfiere por SINPE Móvil y marca cada pedido. Tu comisión ya está descontada del monto (y el envío, si lo hubo, ya está sumado).</p>
+    <% const today = todayCR();
+       const groupBy = (list) => Object.values(list.reduce((acc, o) => {
          const k = o.payout_phone || o.store_name;
          acc[k] = acc[k] || { store: o.payout_name || o.store_name, phone: o.payout_phone, total: 0, n: 0 };
          acc[k].total += o.payout_amount; acc[k].n += 1;
          return acc;
-       }, {})); %>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Tienda</th><th>SINPE</th><th>Pedidos</th><th>Total a transferir hoy</th></tr></thead>
-        <tbody>
-          <% for (const s of byStore) { %><tr><td><%= s.store %></td><td><%= s.phone || '— sin SINPE —' %></td><td><%= s.n %></td><td><strong><%= money(s.total) %></strong></td></tr><% } %>
-        </tbody>
-      </table>
-    </div>
+       }, {}));
+       const dueNow = groupBy(queues.payouts.filter((o) => o.payout_day <= today));
+       const upcoming = queues.payouts.filter((o) => o.payout_day > today); %>
+    <% if (dueNow.length) { %>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Tienda</th><th>SINPE</th><th>Pedidos</th><th>Para pagar hoy</th></tr></thead>
+          <tbody>
+            <% for (const s of dueNow) { %><tr><td><%= s.store %></td><td><%= s.phone || '— sin SINPE —' %></td><td><%= s.n %></td><td><strong><%= money(s.total) %></strong></td></tr><% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } else { %>
+      <p class="muted small">Hoy no hay pagos pendientes; abajo están los de los próximos días.</p>
+    <% } %>
+    <% if (upcoming.length) { %><p class="muted small">Próximos días: <%= upcoming.length %> pago<%= upcoming.length === 1 ? '' : 's' %> por <%= money(upcoming.reduce((a, o) => a + o.payout_amount, 0)) %> (se completaron de noche o en fin de semana).</p><% } %>
     <div class="task-list">
       <% for (const o of queues.payouts) { %>
         <div class="task">
           <div class="task-main">
             Enviar <strong><%= money(o.payout_amount) %></strong> a <strong><%= o.payout_phone || '— sin SINPE registrado —' %></strong> (<%= o.payout_name || o.store_name %>)
+            <span class="status status-<%= o.payout_day <= today ? 'por_pagar' : 'pendiente' %>">Pagar <%= payoutWhen(o).replace(' al final del día', '') %></span>
             <div class="muted small"><%= o.code %> · venta <%= money(o.price) %> − comisión <%= money(o.commission_amount) %> · completado <%= when(o.completed_at, true) %></div>
           </div>
           <form action="/admin/pedidos/<%= o.id %>/pago-vendedor" method="post" data-confirm="¿Ya le transferiste <%= money(o.payout_amount) %> a <%= o.payout_name || o.store_name %>?"><button class="btn btn-small">Ya le pagué</button></form>
@@ -278,6 +287,14 @@
       <div class="row2">
         <label>Horas para pagar<input type="number" name="window_hours" min="1" max="168" value="<%= pay.windowHours %>"></label>
         <label>Días para liberar el pago<input type="number" name="release_days" min="1" max="30" value="<%= pay.releaseDays %>"></label>
+      </div>
+      <div class="row2">
+        <label>Hora de corte de pagos a tiendas
+          <select name="cutoff_hour">
+            <% for (let h = 12; h <= 23; h++) { %><option value="<%= h %>" <%= pay.cutoffHour === h ? 'selected' : '' %>><%= h % 12 === 0 ? 12 : h % 12 %> p. m.</option><% } %>
+          </select>
+          <span class="hint">Ventas completadas después de esta hora (o en fin de semana) se pagan el siguiente día hábil.</span>
+        </label>
       </div>
       <button class="btn">Guardar cobro</button>
     </form>

@@ -9,6 +9,7 @@ import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
 import { notifyAdmin } from './admin-notify.js';
 import { pickupPointsOf } from './pickup.js';
+import { DEFAULT_CUTOFF_HOUR, cutoffLabel, payoutDay, payoutDayLabel } from './payout-schedule.js';
 import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 
@@ -34,8 +35,18 @@ export function paymentConfig() {
     holder: getSetting('payment_holder') || '',
     windowHours: Number(getSetting('payment_window_hours')) || 24,
     releaseDays: Number(getSetting('auto_release_days')) || 3,
+    // Hora (Costa Rica) desde la que una venta completada se paga el siguiente día hábil.
+    cutoffHour: savedCutoff(),
   };
 }
+
+function savedCutoff() {
+  const h = Number.parseInt(getSetting('payout_cutoff_hour'), 10);
+  return h >= 12 && h <= 23 ? h : DEFAULT_CUTOFF_HOUR;
+}
+
+// Día en que toca pagarle a la tienda una venta completada (ver payout-schedule.js).
+export const payoutDayOf = (order) => payoutDay(order.completed_at, savedCutoff());
 
 export function paymentsReady() {
   const c = paymentConfig();
@@ -52,11 +63,15 @@ export function savePaymentConfig(body) {
   if (holder.length < 3) errors.push('Nombre del titular de la cuenta.');
   if (!(windowHours >= 1 && windowHours <= 168)) errors.push('Plazo para pagar entre 1 y 168 horas.');
   if (!(releaseDays >= 1 && releaseDays <= 30)) errors.push('Liberación automática entre 1 y 30 días.');
+  // La hora de corte es opcional en el formulario (si no viene, se deja la que estaba).
+  const cutoff = body.cutoff_hour === undefined || body.cutoff_hour === '' ? null : Number.parseInt(body.cutoff_hour, 10);
+  if (cutoff !== null && !(cutoff >= 12 && cutoff <= 23)) errors.push('Hora de corte de pagos entre 12 (mediodía) y 23.');
   if (errors.length) return errors;
   setSetting('payment_phone', phone);
   setSetting('payment_holder', holder);
   setSetting('payment_window_hours', windowHours);
   setSetting('auto_release_days', releaseDays);
+  if (cutoff !== null) setSetting('payout_cutoff_hour', cutoff);
   return [];
 }
 
@@ -151,11 +166,13 @@ function load(orderId, { buyerId, sellerId, from }) {
 }
 
 function complete(order, text) {
-  update(order, { status: 'completado', completed_at: now(), payout_status: 'pendiente' });
+  const completedAt = now();
+  update(order, { status: 'completado', completed_at: completedAt, payout_status: 'pendiente' });
   markSoldIfEmpty(order);
-  systemNote(order.conversation_id, text);
+  const when = payoutDayLabel(payoutDay(completedAt, savedCutoff()));
+  systemNote(order.conversation_id, `${text} Pago a la tienda (ya con la comisión rebajada): ${when}.`);
   notifyAdmin('vendedor', `Pagar al vendedor: ${order.code}`,
-    `El pedido ${order.code} se completó. Transfiere ${formatColones(order.payout_amount)} al vendedor por SINPE y márcalo como pagado.`, '/admin#pagos');
+    `El pedido ${order.code} se completó. Transfiere ${formatColones(order.payout_amount)} al vendedor por SINPE ${when} y márcalo como pagado.`, '/admin#pagos');
 }
 
 const MAX_SHIPPING = 100_000;
@@ -300,7 +317,7 @@ export function confirmReceived(orderId, buyerId) {
   return transaction(() => {
     const order = load(orderId, { buyerId, from: ['pagado', 'enviado'] });
     if (!order) return null;
-    complete(order, `✅ El comprador confirmó que recibió el pedido ${order.code}. ¡Trato cerrado! CowFace le transfiere el pago al vendedor al final del día, ya con la comisión rebajada.`);
+    complete(order, `✅ El comprador confirmó que recibió el pedido ${order.code}. ¡Trato cerrado!`);
     return order;
   });
 }
@@ -406,7 +423,7 @@ export function runOrderTimers() {
   }
   const due = db.prepare("SELECT * FROM orders WHERE status = 'enviado' AND auto_release_at < ?").all(ts);
   for (const order of due) {
-    transaction(() => complete(order, `✅ Pasó el plazo sin reclamos: el pedido ${order.code} se dio por recibido. CowFace le transfiere el pago al vendedor al final del día, ya con la comisión rebajada.`));
+    transaction(() => complete(order, `✅ Pasó el plazo sin reclamos: el pedido ${order.code} se dio por recibido.`));
   }
   return { expired: expired.length, released: due.length };
 }
@@ -442,7 +459,7 @@ export function adminQueues() {
     toShip: q("o.status = 'pagado'"),
     disputes: q("o.status = 'en_disputa'"),
     refunds: q("o.status = 'reembolso_pendiente'"),
-    payouts: q("o.status = 'completado' AND o.payout_status = 'pendiente'"),
+    payouts: q("o.status = 'completado' AND o.payout_status = 'pendiente'").map((o) => ({ ...o, payout_day: payoutDayOf(o) })),
   };
 }
 
@@ -465,7 +482,7 @@ export function orderDataText(o, baseUrl = '') {
     `Dirección / punto de entrega: ${o.delivery_address}`,
     `Teléfono: ${o.delivery_phone}`,
     o.shipping_cost ? `Envío pagado por el comprador: ${formatColones(o.shipping_cost)}` : null,
-    `Te pagamos ${formatColones(o.payout_amount)} por SINPE al final del día en que el comprador lo reciba (ya con la comisión rebajada).`,
+    `Te pagamos ${formatColones(o.payout_amount)} por SINPE (ya con la comisión rebajada) al final del día en que el comprador lo reciba; si es después de las ${cutoffLabel(savedCutoff())} o en fin de semana, el siguiente día hábil.`,
     'Envíalo en máximo 3 días hábiles y sube la foto del envío (guía o paquete) en el pedido: sin esa foto no se puede pagar.',
     baseUrl && o.conversation_id ? `Pedido: ${baseUrl}/mensajes/${o.conversation_id}` : null,
   ].filter(Boolean).join('\n');
