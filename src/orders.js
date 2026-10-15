@@ -83,8 +83,7 @@ const addHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
 // Devuelve la unidad reservada al inventario (cancelación o reembolso antes del envío).
 function restock(order) {
   if (!order.product_id) return;
-  // Con tallas, la unidad vuelve a su talla (y la suma del artículo se recalcula ahí).
-  const bySize = order.chosen_size && restockSize(order.product_id, order.chosen_size);
+  const bySize = order.chosen_size && restockSize(order.product_id, order.chosen_size); // con tallas, vuelve a su talla
   db.prepare(`
     UPDATE products SET quantity = quantity + ${bySize ? 0 : 1},
       status = CASE WHEN status IN ('reservado', 'vendido') THEN 'disponible' ELSE status END,
@@ -121,12 +120,10 @@ export function createOrder(conv, price, source) {
   }
 
   // Con varias tallas se reserva una unidad de la talla que eligió el comprador.
-  const size = product.has_sizes ? conv.chosen_size : null;
-  if (product.has_sizes) takeSize(product.id, size);
+  const size = product.has_sizes ? takeSize(product.id, conv.chosen_size) : null;
   const left = product.quantity - 1;
   db.prepare("UPDATE products SET quantity = ?, status = ?, updated_at = datetime('now') WHERE id = ?")
     .run(left, left === 0 ? 'reservado' : 'disponible', product.id);
-  const title = size ? `${product.title} · Talla ${size}` : product.title;
 
   // La comisión se cobra sobre el precio de la prenda. El envío todavía no existe: el comprador elige
   // cómo recibirlo y la tienda lo cotiza; ese monto se suma al total y llega completo al vendedor.
@@ -138,7 +135,7 @@ export function createOrder(conv, price, source) {
     INSERT INTO orders (code, product_id, product_title, seller_id, buyer_id, conversation_id, source, list_price, price,
       commission_rate, commission_amount, payout_amount, payment_due_at, shipping_cost, total, chosen_size)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
-  `).run(code, product.id, title, conv.seller_id, conv.buyer_id, conv.id, source, product.price, price,
+  `).run(code, product.id, size ? `${product.title} · Talla ${size}` : product.title, conv.seller_id, conv.buyer_id, conv.id, source, product.price, price,
     rate, commission, price - commission, addHours(windowHours), price, size);
   addMessage(conv, null, 'sistema',
     `🛒 Pedido ${code} creado: ${formatColones(price)}. Comprador: elige cómo quieres recibirlo `

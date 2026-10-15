@@ -74,6 +74,7 @@ export function takeSize(productId, size) {
   if (row.quantity < 1) throw new UserError(`Ya no queda la talla ${size}. Elige otra en la página del artículo.`);
   db.prepare('UPDATE product_sizes SET quantity = quantity - 1 WHERE product_id = ? AND size = ?').run(productId, size);
   syncTotals(productId);
+  return size;
 }
 
 export function restockSize(productId, size) {
