@@ -3,6 +3,7 @@ import { CATEGORIES, CONDITION_GROUPS, DEPARTMENTS, PROVINCES, SORTS, isValidSiz
 import { parsePrice } from './validate.js';
 import { notBlockedSql } from './blocks.js';
 import { buildSearchText, normalize as normalizeText, queryPatterns } from './search-text.js';
+import { clearSizes, saveSizes, sizesOf, zeroSizes } from './variants.js';
 
 const normalizeQuery = (q) => normalizeText(q).split(' ').filter(Boolean).slice(0, 4);
 
@@ -56,10 +57,21 @@ export function fillSearchText() {
   return rows.length;
 }
 
+export const refreshProductSearch = (id) => refreshSearchText(id);
+
+// Además de los campos, se busca por los detalles (modelo, SKU, colorway, material…) y por cada talla.
 function refreshSearchText(id) {
-  const p = db.prepare(`SELECT ${SEARCH_COLUMNS} FROM products WHERE id = ?`).get(id);
-  if (p) db.prepare('UPDATE products SET search_text = ? WHERE id = ?').run(buildSearchText(p), id);
+  const p = db.prepare(`SELECT ${SEARCH_COLUMNS}, details FROM products WHERE id = ?`).get(id);
+  if (!p) return;
+  const details = parseJson(p.details);
+  delete details.defectos;
+  delete details.comprobante;
+  const sizes = sizesOf(id).map((s) => `talla ${s.size}`);
+  p.extra = [...Object.values(details), ...sizes].join(' ');
+  db.prepare('UPDATE products SET search_text = ? WHERE id = ?').run(buildSearchText(p), id);
 }
+
+const parseJson = (s) => { try { return JSON.parse(s || '{}') || {}; } catch { return {}; } };
 
 export function searchProducts(f) {
   fillSearchText();
@@ -81,7 +93,12 @@ export function searchProducts(f) {
     params.push(f.department);
   }
   if (f.item_type) { where.push('p.item_type = ?'); params.push(f.item_type); }
-  if (f.sizes.length) { where.push(`p.size IN (${f.sizes.map(() => '?').join(',')})`); params.push(...f.sizes); }
+  if (f.sizes.length) {
+    // La talla del artículo, o una de sus tallas con unidades disponibles.
+    const marks = f.sizes.map(() => '?').join(',');
+    where.push(`(p.size IN (${marks}) OR EXISTS (SELECT 1 FROM product_sizes v WHERE v.product_id = p.id AND v.quantity > 0 AND v.size IN (${marks})))`);
+    params.push(...f.sizes, ...f.sizes);
+  }
   if (f.condition) {
     const group = CONDITION_GROUPS[f.condition];
     where.push(`p.condition IN (${group.map(() => '?').join(',')})`);
@@ -132,6 +149,8 @@ export function getProduct(id) {
     FROM product_images WHERE product_id = ? ORDER BY position, id
   `).all(id);
   try { product.measurements = JSON.parse(product.measurements || '{}'); } catch { product.measurements = {}; }
+  product.details = parseJson(product.details);
+  product.sizes = product.has_sizes ? sizesOf(id) : [];
   return product;
 }
 
@@ -147,14 +166,17 @@ export function createProduct(sellerId, data, photos = [], status = 'disponible'
   return transaction(() => {
     const { lastInsertRowid } = db.prepare(`
       INSERT INTO products (seller_id, title, brand, description, category, department, item_type, size, color, condition,
-        price, quantity, measurements, shipping_cost, meetup, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        price, quantity, measurements, shipping_cost, meetup, status, details, retail_price)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run(sellerId, data.title, data.brand, data.description, data.category, data.department,
       data.item_type, data.size, data.color, data.condition, data.price, data.quantity,
-      JSON.stringify(data.measurements || {}), data.shipping_cost || 0, data.meetup ?? 1, status);
-    addImages(lastInsertRowid, photos);
-    refreshSearchText(lastInsertRowid);
-    return Number(lastInsertRowid);
+      JSON.stringify(data.measurements || {}), data.shipping_cost || 0, data.meetup ?? 1, status,
+      JSON.stringify(data.details || {}), data.retail_price ?? null);
+    const id = Number(lastInsertRowid);
+    if (data.sizes) saveSizes(id, data.sizes);
+    addImages(id, photos);
+    refreshSearchText(id);
+    return id;
   });
 }
 
@@ -164,13 +186,17 @@ export function updateProduct(id, data, photos = [], { publish = false } = {}) {
     db.prepare(`
       UPDATE products SET title = ?, brand = ?, description = ?, category = ?, department = ?, item_type = ?,
         size = ?, color = ?, condition = ?, price = ?, quantity = ?, measurements = ?, shipping_cost = ?, meetup = ?,
+        details = ?, retail_price = ?,
         status = CASE WHEN ? AND status = 'borrador' THEN 'disponible' ELSE status END,
         created_at = CASE WHEN ? AND status = 'borrador' THEN datetime('now') ELSE created_at END,
         updated_at = datetime('now')
       WHERE id = ?
     `).run(data.title, data.brand, data.description, data.category, data.department, data.item_type,
       data.size, data.color, data.condition, data.price, data.quantity, JSON.stringify(data.measurements || {}),
-      data.shipping_cost || 0, data.meetup ?? 1, publish ? 1 : 0, publish ? 1 : 0, id);
+      data.shipping_cost || 0, data.meetup ?? 1, JSON.stringify(data.details || {}), data.retail_price ?? null,
+      publish ? 1 : 0, publish ? 1 : 0, id);
+    if (data.sizes) saveSizes(id, data.sizes);
+    else clearSizes(id);
     addImages(id, photos);
     refreshSearchText(id);
   });
@@ -284,6 +310,7 @@ export function searchSuggestions(q) {
 export function markSoldElsewhere(id) {
   return transaction(() => {
     db.prepare("UPDATE products SET status = 'vendido', quantity = 0, updated_at = datetime('now') WHERE id = ?").run(id);
+    zeroSizes(id);
     const convs = db.prepare("SELECT DISTINCT conversation_id FROM offers WHERE product_id = ? AND status = 'pendiente'").all(id).map((r) => r.conversation_id);
     db.prepare("UPDATE offers SET status = 'expirada', responded_at = ? WHERE product_id = ? AND status = 'pendiente'").run(new Date().toISOString(), id);
     return convs;

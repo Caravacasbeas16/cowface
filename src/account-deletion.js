@@ -7,6 +7,7 @@ import { db, transaction } from './db.js';
 import { hashPassword } from './auth.js';
 import { systemNote } from './messages.js';
 import { ATTACH_DIR, UPLOAD_DIR, removeFrom } from './storage.js';
+import { restockSize } from './variants.js';
 
 export const DELETED_NAME = 'Cuenta eliminada';
 
@@ -34,7 +35,8 @@ export function deleteAccount(userId) {
     for (const o of db.prepare("SELECT * FROM orders WHERE (buyer_id = ? OR seller_id = ?) AND status = 'por_pagar'").all(userId, userId)) {
       db.prepare("UPDATE orders SET status = 'cancelado', updated_at = datetime('now') WHERE id = ?").run(o.id);
       if (o.seller_id !== userId && o.product_id) {
-        db.prepare("UPDATE products SET quantity = quantity + 1, status = CASE WHEN status = 'reservado' THEN 'disponible' ELSE status END WHERE id = ?").run(o.product_id);
+        const bySize = o.chosen_size && restockSize(o.product_id, o.chosen_size);
+        db.prepare(`UPDATE products SET quantity = quantity + ${bySize ? 0 : 1}, status = CASE WHEN status IN ('reservado', 'vendido') THEN 'disponible' ELSE status END WHERE id = ?`).run(o.product_id);
       }
       if (o.conversation_id) notes.push([o.conversation_id, `El pedido ${o.code} se canceló porque la otra persona borró su cuenta.`]);
     }

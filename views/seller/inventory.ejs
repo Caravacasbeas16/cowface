@@ -62,7 +62,8 @@
           <a class="inv-thumb" href="<%= p.status === 'borrador' ? `/vendedor/productos/${p.id}/editar` : `/p/${p.id}` %>"><img src="<%= imageUrl(p) %>" alt="" loading="lazy"></a>
           <div class="inv-main">
             <a class="inv-title" href="/vendedor/productos/<%= p.id %>/editar"><%= p.title %></a>
-            <div class="muted small"><%= [p.brand, p.item_type, `Talla ${p.size}`].filter(Boolean).join(' · ') %></div>
+            <div class="muted small"><%= [p.brand, p.item_type, `${p.has_sizes ? 'Tallas' : 'Talla'} ${p.size}`].filter(Boolean).join(' · ') %></div>
+            <% if (p.has_sizes) { %><div class="size-chips"><% for (const x of p.sizes) { %><span class="<%= x.quantity ? '' : 'is-out' %>"><%= x.size %> · <%= x.quantity %></span><% } %></div><% } %>
             <div class="inv-badges">
               <span class="status status-<%= p.status %>"><%= statusLabel(p) %></span>
               <% if (p.status === 'disponible' && p.quantity === 1) { %><span class="pill pill-warn">Última unidad</span><% } %>
@@ -79,6 +80,9 @@
               <label><span><%= off ? 'Precio normal' : 'Precio' %></span>
                 <span class="money-input">₡<input name="price" inputmode="numeric" value="<%= off ? p.compare_at_price : p.price %>" aria-label="Precio de <%= p.title %>"></span>
               </label>
+              <% if (p.has_sizes) { %>
+                <input type="hidden" name="quantity" value="<%= p.quantity %>">
+              <% } else { %>
               <label><span>Unidades</span>
                 <span class="stepper">
                   <button type="button" data-step="-1" aria-label="Una menos">−</button>
@@ -86,6 +90,7 @@
                   <button type="button" data-step="1" aria-label="Una más">+</button>
                 </span>
               </label>
+              <% } %>
               <button class="btn btn-small btn-ghost" data-quick-save>Guardar</button>
             </form>
           <% } else { %>
@@ -96,6 +101,21 @@
           <% } %>
 
           <div class="inv-actions">
+            <% if (p.has_sizes && editable) { %>
+              <details class="sizes-edit">
+                <summary class="btn btn-small btn-ghost">Tallas · <%= p.quantity %> u.</summary>
+                <form action="/vendedor/productos/<%= p.id %>/tallas" method="post" class="sizes-edit-form">
+                  <input type="hidden" name="back" value="<%= back %>">
+                  <div class="size-stock-grid">
+                    <% for (const x of p.sizes) { %>
+                      <label class="size-stock-cell"><span><%= x.size %></span><input name="<%= x.field %>" type="number" min="0" max="999" inputmode="numeric" value="<%= x.quantity %>" aria-label="Unidades en talla <%= x.size %>"></label>
+                    <% } %>
+                  </div>
+                  <button class="btn btn-small">Guardar tallas</button>
+                  <a class="small" href="/vendedor/productos/<%= p.id %>/editar">+ Agregar otra talla</a>
+                </form>
+              </details>
+            <% } %>
             <% if (['disponible', 'pausado'].includes(p.status) && !p.locked) { %>
               <form action="/vendedor/productos/<%= p.id %>/estado" method="post">
                 <input type="hidden" name="back" value="<%= back %>">

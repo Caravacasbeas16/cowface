@@ -8,6 +8,8 @@
   const isDraft = !product || product.status === 'borrador';
   const ratePct = +(commissionRateNow * 100).toFixed(2);
   const meetupOn = f.meetup === undefined || f.meetup === 1 || f.meetup === '1';
+  const multiOn = f.multi_size === '1';
+  // Nombres de campos: vs_<categoría>_<n> (unidades por talla) y d_<categoría>_<clave> (detalles); ver variants.js y validate.js.
 %>
 <div class="listing-page">
   <div class="listing-head">
@@ -98,7 +100,7 @@
             </select>
             <%- err('item_type') %>
           </label>
-          <label>Talla de la etiqueta
+          <label data-single-size <%= multiOn ? 'hidden' : '' %>>Talla de la etiqueta
             <select name="size" required data-size-select data-selected="<%= f.size || '' %>" data-placeholder="Elige…">
               <option value="">Elige categoría primero</option>
             </select>
@@ -124,9 +126,36 @@
               <% } %>
             </select>
             <%- err('condition') %>
+            <span class="hint" data-condition-hint><%= catalog.CONDITION_HINTS[f.condition] || '' %></span>
           </label>
         </div>
         <label>Color <span class="muted">(opcional)</span><input name="color" maxlength="40" value="<%= f.color || '' %>" placeholder="Ej. Gris jaspeado"></label>
+
+        <label class="check multi-toggle">
+          <input type="checkbox" name="multi_size" value="1" data-multi-size <%= multiOn ? 'checked' : '' %>>
+          <span><strong>Tengo varias tallas de este artículo</strong> — pon cuántas unidades hay de cada una, como en StockX. Ideal para tenis o ropa nueva: el comprador elige su talla.</span>
+        </label>
+        <div class="size-stock-wrap" data-size-stock <%= multiOn ? '' : 'hidden' %>>
+          <% for (const [cat, c] of Object.entries(catalog.CATEGORIES)) { let n = 0; %>
+            <div class="size-stock" data-sizes-for="<%= cat %>" <%= f.category === cat ? '' : 'hidden' %>>
+              <% for (const [group, list] of Object.entries(c.sizes)) { %>
+                <div class="size-stock-group">
+                  <span class="size-stock-title"><%= group %></span>
+                  <div class="size-stock-grid">
+                    <% for (const size of list) { const name = `vs_${cat}_${n++}`; %>
+                      <label class="size-stock-cell"><span><%= size %></span>
+                        <input name="<%= name %>" type="number" min="0" max="999" inputmode="numeric" placeholder="0" value="<%= f[name] ?? '' %>" aria-label="Unidades en talla <%= size %>" <%= f.category === cat ? '' : 'disabled' %>>
+                      </label>
+                    <% } %>
+                  </div>
+                </div>
+              <% } %>
+            </div>
+          <% } %>
+          <p class="muted small" data-size-stock-empty <%= f.category ? 'hidden' : '' %>>Elige la categoría para ver las tallas.</p>
+          <p class="hint">Deja en blanco las tallas que no tienes. El total de unidades se calcula solo.</p>
+          <%- err('sizes') %>
+        </div>
       </section>
 
       <!-- 3. Medidas -->
@@ -147,9 +176,35 @@
         <%- err('measurements') %>
       </section>
 
-      <!-- 4. Descripción -->
+      <!-- 4. Descripción y detalles -->
       <section class="listing-step" id="paso-descripcion">
-        <h2><span class="step-n">4</span> Descripción</h2>
+        <h2><span class="step-n">4</span> Descripción y detalles</h2>
+        <% for (const [cat, list] of Object.entries(catalog.DETAILS)) { %>
+          <div class="details-grid" data-details-for="<%= cat %>" <%= f.category === cat ? '' : 'hidden' %>>
+            <% for (const d of list) { const name = `d_${cat}_${d.key}`; const off = f.category === cat ? '' : 'disabled'; %>
+              <label><%= d.label %> <span class="muted">(opcional)</span>
+                <% if (d.type === 'select') { %>
+                  <select name="<%= name %>" <%= off %>>
+                    <option value="">—</option>
+                    <% for (const o of d.options) { %><option <%= String(f[name] ?? '') === o ? 'selected' : '' %>><%= o %></option><% } %>
+                  </select>
+                <% } else { %>
+                  <input name="<%= name %>" <%= d.type === 'number' ? `inputmode="numeric" type="number" min="${d.min}" max="${d.max}"` : 'maxlength="80"' %> value="<%= f[name] ?? '' %>" placeholder="<%= d.placeholder || '' %>" <%= off %>>
+                <% } %>
+                <% if (d.hint) { %><span class="hint"><%= d.hint %></span><% } %>
+              </label>
+            <% } %>
+          </div>
+        <% } %>
+        <%- err('details') %>
+        <label>Detalles o defectos <span class="muted">(si los tiene)</span>
+          <textarea name="d_defectos" rows="2" maxlength="500" placeholder="<%= catalog.DEFECTS_FIELD.placeholder %>"><%= f.d_defectos || '' %></textarea>
+          <span class="hint">Se muestra destacado en el artículo. Ser honesto con los detalles evita reclamos.</span>
+        </label>
+        <label class="check">
+          <input type="checkbox" name="d_comprobante" value="1" <%= f.d_comprobante === '1' || f.d_comprobante === 1 ? 'checked' : '' %>>
+          <span>Tengo el <strong>comprobante de compra</strong> (recibo, factura o captura del pedido) por si el comprador lo pide.</span>
+        </label>
         <label class="sr-label">Descripción
           <textarea name="description" rows="5" maxlength="2000" placeholder="Cuenta lo que importa: corte (oversize, regular, slim), tela, año o época, y cualquier detalle o defecto (manchas, hilos, desgaste). La honestidad evita reclamos."><%= f.description || '' %></textarea>
         </label>
@@ -164,11 +219,16 @@
             <input name="price" required inputmode="numeric" value="<%= f.price || '' %>" placeholder="15000" data-price>
             <%- err('price') %>
           </label>
-          <label>Cantidad
+          <label data-single-qty <%= multiOn ? 'hidden' : '' %>>Cantidad
             <input type="number" name="quantity" min="1" max="999" required value="<%= f.quantity || 1 %>">
             <%- err('quantity') %>
           </label>
         </div>
+        <label>Precio original en tienda <span class="muted">(opcional)</span>
+          <input name="retail_price" inputmode="numeric" value="<%= f.retail_price || '' %>" placeholder="Ej. 85000">
+          <span class="hint">Si lo sabes: lo que costaba nuevo. El comprador ve cuánto ahorra.</span>
+          <%- err('retail_price') %>
+        </label>
         <label class="check">
           <input type="checkbox" name="meetup" value="1" <%= meetupOn ? 'checked' : '' %>>
           <span>Ofrezco <strong>pick up</strong>: el comprador lo puede recoger sin costo de envío (en <%= user.province %>, en un lugar público).</span>
@@ -188,7 +248,7 @@
       </div>
 
       <div class="form-actions listing-actions">
-        <a class="btn btn-ghost" href="/vendedor">Cancelar</a>
+        <a class="btn btn-ghost" href="/vendedor/inventario">Cancelar</a>
         <% if (isDraft) { %>
           <button class="btn btn-ghost" type="submit" name="action" value="borrador" formnovalidate data-busy-text="Guardando…">Guardar borrador</button>
         <% } %>
@@ -215,6 +275,7 @@
     </aside>
   </form>
 </div>
+<script id="condition-hints" type="application/json"><%- JSON.stringify(catalog.CONDITION_HINTS).replace(/</g, '\\u003c') %></script>
 <script src="/js/listing.js?v=<%= assetVersion %>" defer></script>
 <script type="module" src="/js/pdf-import.js?v=<%= assetVersion %>"></script>
 <%- include('../partials/footer') %>

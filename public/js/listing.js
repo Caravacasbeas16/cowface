@@ -91,16 +91,36 @@
   dropzone.addEventListener('drop', (e) => addFiles([...e.dataTransfer.files]));
 
   // Medidas: solo se muestran (y se envían) las de la categoría elegida.
+  // Igual con las tallas por cantidad y los detalles (modelo, SKU, material…) de cada categoría.
   const category = form.querySelector('[data-measure-switch]');
-  const syncMeasures = () => {
-    for (const group of form.querySelectorAll('[data-measure-for]')) {
-      const on = group.dataset.measureFor === category.value;
+  const showFor = (selector, attr) => {
+    for (const group of form.querySelectorAll(selector)) {
+      const on = group.dataset[attr] === category.value;
       group.hidden = !on;
-      group.querySelectorAll('input').forEach((el) => { el.disabled = !on; });
+      group.querySelectorAll('input, select').forEach((el) => { el.disabled = !on; });
     }
+  };
+  const syncMeasures = () => {
+    showFor('[data-measure-for]', 'measureFor');
+    showFor('[data-sizes-for]', 'sizesFor');
+    showFor('[data-details-for]', 'detailsFor');
     form.querySelector('[data-measure-empty]').hidden = Boolean(category.value);
+    form.querySelector('[data-size-stock-empty]').hidden = Boolean(category.value);
   };
   category.addEventListener('change', syncMeasures);
+
+  // "Tengo varias tallas": cambia la talla única y la cantidad por la cuadrícula de tallas.
+  const multi = form.querySelector('[data-multi-size]');
+  const syncMulti = () => {
+    form.querySelector('[data-size-stock]').hidden = !multi.checked;
+    for (const el of form.querySelectorAll('[data-single-size], [data-single-qty]')) el.hidden = multi.checked;
+  };
+  multi.addEventListener('change', syncMulti);
+
+  // Qué significa el estado elegido (como en Grailed).
+  const hints = JSON.parse(document.getElementById('condition-hints')?.textContent || '{}');
+  const condition = form.querySelector('select[name="condition"]');
+  condition.addEventListener('change', () => { form.querySelector('[data-condition-hint]').textContent = hints[condition.value] || ''; });
 
   // Lo que recibe el vendedor, en vivo.
   const earnings = form.querySelector('[data-earnings]');

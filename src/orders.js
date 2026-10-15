@@ -12,6 +12,7 @@ import { pickupPointsOf } from './pickup.js';
 import { DEFAULT_CUTOFF_HOUR, cutoffLabel, payoutDay, payoutDayLabel } from './payout-schedule.js';
 import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
+import { restockSize, takeSize } from './variants.js';
 
 export const MAX_UNPAID_PER_BUYER = 3;
 export const OPEN_STATUSES =['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
@@ -82,8 +83,10 @@ const addHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
 // Devuelve la unidad reservada al inventario (cancelación o reembolso antes del envío).
 function restock(order) {
   if (!order.product_id) return;
+  // Con tallas, la unidad vuelve a su talla (y la suma del artículo se recalcula ahí).
+  const bySize = order.chosen_size && restockSize(order.product_id, order.chosen_size);
   db.prepare(`
-    UPDATE products SET quantity = quantity + 1,
+    UPDATE products SET quantity = quantity + ${bySize ? 0 : 1},
       status = CASE WHEN status IN ('reservado', 'vendido') THEN 'disponible' ELSE status END,
       updated_at = datetime('now')
     WHERE id = ?
@@ -117,9 +120,13 @@ export function createOrder(conv, price, source) {
     throw new UserError(`Tienes ${unpaid} pedidos sin pagar. Paga o cancela alguno antes de comprar otro artículo.`);
   }
 
+  // Con varias tallas se reserva una unidad de la talla que eligió el comprador.
+  const size = product.has_sizes ? conv.chosen_size : null;
+  if (product.has_sizes) takeSize(product.id, size);
   const left = product.quantity - 1;
   db.prepare("UPDATE products SET quantity = ?, status = ?, updated_at = datetime('now') WHERE id = ?")
     .run(left, left === 0 ? 'reservado' : 'disponible', product.id);
+  const title = size ? `${product.title} · Talla ${size}` : product.title;
 
   // La comisión se cobra sobre el precio de la prenda. El envío todavía no existe: el comprador elige
   // cómo recibirlo y la tienda lo cotiza; ese monto se suma al total y llega completo al vendedor.
@@ -129,10 +136,10 @@ export function createOrder(conv, price, source) {
   const { windowHours } = paymentConfig();
   db.prepare(`
     INSERT INTO orders (code, product_id, product_title, seller_id, buyer_id, conversation_id, source, list_price, price,
-      commission_rate, commission_amount, payout_amount, payment_due_at, shipping_cost, total)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
-  `).run(code, product.id, product.title, conv.seller_id, conv.buyer_id, conv.id, source, product.price, price,
-    rate, commission, price - commission, addHours(windowHours), price);
+      commission_rate, commission_amount, payout_amount, payment_due_at, shipping_cost, total, chosen_size)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)
+  `).run(code, product.id, title, conv.seller_id, conv.buyer_id, conv.id, source, product.price, price,
+    rate, commission, price - commission, addHours(windowHours), price, size);
   addMessage(conv, null, 'sistema',
     `🛒 Pedido ${code} creado: ${formatColones(price)}. Comprador: elige cómo quieres recibirlo `
     + `(Correos, Uber Flash${product.meetup ? ' o pick up' : ''}); la tienda te cotiza el envío y luego pagas a CowFace.`);

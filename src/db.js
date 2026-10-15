@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -289,6 +289,22 @@ addColumn('users', 'store_about', "TEXT NOT NULL DEFAULT ''");      // descripci
 // Una sola vez: arranca con lo que la tienda escribió en su solicitud.
 if (!hadStoreAbout) db.exec("UPDATE users SET store_about = COALESCE(json_extract(seller_request, '$.about'), '') WHERE json_valid(seller_request)");
 addColumn('products', 'views', 'INTEGER NOT NULL DEFAULT 0');       // veces que otra persona abrió el artículo
+
+// Tallas con su propia cantidad (ver variants.js) y detalles por categoría (como Grailed y StockX).
+db.exec(`
+CREATE TABLE IF NOT EXISTS product_sizes (
+  product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  size       TEXT NOT NULL,
+  quantity   INTEGER NOT NULL DEFAULT 0 CHECK (quantity >= 0),
+  position   INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (product_id, size)
+);
+`);
+addColumn('products', 'has_sizes', 'INTEGER NOT NULL DEFAULT 0');   // 1 = varias tallas con su cantidad (product_sizes)
+addColumn('products', 'details', "TEXT NOT NULL DEFAULT '{}'");     // JSON: { material, modelo, sku, caja, defectos, … }
+addColumn('products', 'retail_price', 'INTEGER');                  // precio original en tienda (opcional)
+addColumn('conversations', 'chosen_size', 'TEXT');                 // talla que eligió el comprador
+addColumn('orders', 'chosen_size', 'TEXT');                        // talla vendida (para devolverla al inventario)
 
 // Reportes de artículos, personas y conversaciones (requisito de Google Play / App Store).
 db.exec(`

@@ -413,3 +413,29 @@ label.check a { text-decoration: underline; }
 /* Mi cuenta (comprador): invitación a abrir una tienda */
 .sell-cta { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: 1rem 1.2rem; margin: 1rem 0; background: var(--soft); border-left: 4px solid var(--ink); }
 .sell-cta p { margin: .2rem 0 0; }
+/* Tallas con cantidad: cuadrícula para elegir (artículo, como StockX) y para cargar unidades (formulario) */
+.size-picker { border: 0; padding: 0; margin: 1rem 0 .5rem; min-width: 0; }
+.size-picker legend { font-weight: 800; font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; margin-bottom: .5rem; }
+.size-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.size-opt { position: relative; min-width: 0; }
+.size-opt input { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; margin: 0; }
+.specs dd .measure-hint { display: block; font-weight: 400; text-align: inherit; }
+.size-opt span { display: flex; flex-direction: column; align-items: center; gap: 1px; padding: .55rem .3rem; border: 1px solid var(--line); cursor: pointer; text-align: center; }
+.size-opt small { font-size: .66rem; color: var(--muted); }
+.size-opt:hover span { border-color: var(--ink); }
+.size-opt input:checked + span { background: var(--ink); border-color: var(--ink); color: #fff; }
+.size-opt input:checked + span small { color: #ddd; }
+.size-opt input:focus-visible + span { outline: 2px solid var(--ink); outline-offset: 2px; }
+.size-opt.is-out span { opacity: .4; text-decoration: line-through; cursor: not-allowed; }
+.size-picker.needs-size .size-grid { outline: 2px solid var(--accent); outline-offset: 4px; }
+.size-picker.needs-size legend span { color: var(--accent); font-weight: 700; }
+.size-select { margin-bottom: .5rem; }
+.multi-toggle { margin-top: 1rem; padding: .8rem; background: var(--soft); }
+.size-stock-wrap { margin-top: .75rem; }
+.size-stock-group { margin-bottom: .75rem; }
+.size-stock-title { display: block; font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-bottom: .35rem; }
+.size-stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); gap: 6px; }
+.size-stock-cell { display: flex; flex-direction: column; gap: 2px; font-size: .75rem; font-weight: 700; }
+.size-stock-cell input { text-align: center; padding: .4rem .2rem; min-width: 0; }
+.details-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: .75rem 1rem; margin-bottom: .75rem; }
+.defects { margin: 1rem 0; padding: .7rem .9rem; background: var(--warn-soft); border-left: 3px solid var(--warn); font-size: .9rem; }

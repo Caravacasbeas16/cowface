@@ -1,0 +1,15 @@
+<%# Cuadrícula de tallas (como StockX): cada talla con cuántas quedan. Variables: sizes, chosen. %>
+<% if (sizes.length) { %>
+  <% const inStock = sizes.filter((s) => s.quantity > 0); const pre = chosen || (inStock.length === 1 ? inStock[0].size : ''); %>
+  <fieldset class="size-picker" data-size-picker>
+    <legend>Elige tu talla <span class="muted small" data-size-chosen><%= pre ? `· ${pre}` : '' %></span></legend>
+    <div class="size-grid">
+      <% for (const s of sizes) { %>
+        <label class="size-opt <%= s.quantity ? '' : 'is-out' %>">
+          <input type="radio" name="size_pick" value="<%= s.size %>" <%= s.quantity ? '' : 'disabled' %> <%= pre === s.size ? 'checked' : '' %>>
+          <span><strong><%= s.size %></strong><small><%= !s.quantity ? 'Agotada' : s.quantity === 1 ? 'Última' : `${s.quantity} disp.` %></small></span>
+        </label>
+      <% } %>
+    </div>
+  </fieldset>
+<% } %>

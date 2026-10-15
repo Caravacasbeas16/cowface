@@ -48,6 +48,12 @@
       <details class="composer-offer">
         <summary><%= conv.role === 'vendedor' ? 'Enviar contraoferta / oferta' : 'Hacer o mejorar mi oferta' %></summary>
         <form action="/mensajes/<%= conv.id %>/oferta" method="post" class="composer-text" data-chat-form>
+          <% if (conv.role === 'comprador' && sizes.length) { %>
+            <select name="size" required aria-label="Talla">
+              <option value="">Talla…</option>
+              <% for (const s of sizes) { %><option value="<%= s.size %>" <%= conv.chosen_size === s.size ? 'selected' : '' %> <%= s.quantity ? '' : 'disabled' %>><%= s.size %><%= s.quantity ? '' : ' (agotada)' %></option><% } %>
+            </select>
+          <% } %>
           <input name="amount" required inputmode="numeric" placeholder="Monto en ₡" aria-label="Monto de la oferta" autocomplete="off">
           <button class="btn btn-ghost" type="submit">Ofertar</button>
         </form>

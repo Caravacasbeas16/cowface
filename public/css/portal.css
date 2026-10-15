@@ -200,3 +200,14 @@ a.kpi:hover { border-color: var(--ink); text-decoration: none; }
   .inv-actions { justify-content: space-between; }
   .inv-row-simple { grid-template-columns: 60px minmax(0, 1fr) auto; }
 }
+
+/* Artículos con varias tallas en el inventario */
+.size-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: .2rem; }
+.size-chips span { font-size: .7rem; font-weight: 700; padding: .1rem .4rem; border: 1px solid var(--line); border-radius: 4px; }
+.size-chips .is-out { opacity: .45; text-decoration: line-through; }
+.sizes-edit { position: relative; }
+.sizes-edit summary { list-style: none; }
+.sizes-edit summary::-webkit-details-marker { display: none; }
+.sizes-edit-form { position: absolute; right: 0; top: calc(100% + 6px); z-index: 25; width: min(340px, 86vw); display: grid; gap: .6rem; padding: .9rem; background: #fff; border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 30px rgba(0, 0, 0, .12); }
+.sizes-edit-form .size-stock-grid { grid-template-columns: repeat(auto-fill, minmax(70px, 1fr)); }
+.sizes-edit-form a { text-decoration: underline; }

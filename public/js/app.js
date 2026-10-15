@@ -238,3 +238,30 @@ document.addEventListener('submit', (e) => {
     if (btn.dataset.busyText) btn.textContent = btn.dataset.busyText;
   }, 0);
 });
+
+// Artículos con varias tallas: la cuadrícula (como StockX) llena la talla de cada formulario.
+(() => {
+  const picker = document.querySelector('[data-size-picker]');
+  if (!picker) return;
+  const fields = [...document.querySelectorAll('[data-size-field]')];
+  const label = picker.querySelector('[data-size-chosen]');
+  for (const f of fields) f.hidden = true;
+  const set = (size) => {
+    for (const f of fields) f.querySelector('select').value = size;
+    label.textContent = size ? `· ${size}` : '';
+    picker.classList.remove('needs-size');
+  };
+  picker.addEventListener('change', (e) => { if (e.target.name === 'size_pick') set(e.target.value); });
+  const checked = picker.querySelector('input:checked');
+  if (checked) set(checked.value);
+  // Comprar u ofertar sin talla: se marca la cuadrícula (antes de la confirmación de compra).
+  document.addEventListener('submit', (e) => {
+    const select = e.target.querySelector('[data-size-field] select[required]');
+    if (!select || select.value) return;
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    picker.classList.add('needs-size');
+    label.textContent = '· elige una para continuar';
+    picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, true);
+})();

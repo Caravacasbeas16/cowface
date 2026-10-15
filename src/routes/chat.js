@@ -20,6 +20,7 @@ import { parsePrice } from '../validate.js';
 import { perUser, rateLimit } from '../rate-limit.js';
 import { hasBlocked, isBlockedEither } from '../blocks.js';
 import { ratingSummary } from '../reviews.js';
+import { chooseSize, sizesOf } from '../variants.js';
 
 const router = Router();
 const signedIn = requireRole('usuario');
@@ -70,6 +71,7 @@ router.post('/p/:id/mensaje', signedIn, messageLimit, (req, res, next) => {
   if (blocked) return fail(req, res, 422, blocked, back);
   try {
     const conv = getConversationForUser(getOrCreateConversation(product, req.user.id), req.user.id);
+    if (product.has_sizes && req.body.size) chooseSize(conv.id, product.id, String(req.body.size));
     sendText(conv, req.user.id, text);
     res.redirect(`/mensajes/${conv.id}`);
   } catch (err) {
@@ -85,6 +87,7 @@ router.post('/p/:id/ofertar', signedIn, dealLimit, (req, res, next) => {
     const amount = parsePrice(req.body.amount);
     if (!amount) throw new UserError(`Escribe un monto en colones (mínimo ${minOffer(product.price).toLocaleString('es-CR')}).`);
     const conv = getConversationForUser(getOrCreateConversation(product, req.user.id), req.user.id);
+    if (product.has_sizes && req.body.size) conv.chosen_size = chooseSize(conv.id, product.id, String(req.body.size));
     makeOffer(conv, req.user.id, amount);
     res.redirect(`/mensajes/${conv.id}`);
   } catch (err) {
@@ -97,7 +100,7 @@ router.post('/p/:id/comprar', signedIn, dealLimit, (req, res, next) => {
   const product = productFor(req);
   if (!product) return next();
   try {
-    res.redirect(`/mensajes/${buyNow(product, req.user.id)}`);
+    res.redirect(`/mensajes/${buyNow(product, req.user.id, req.body.size ? String(req.body.size) : null)}`);
   } catch (err) {
     if (err instanceof UserError) return fail(req, res, 409, err.message, `/p/${product.id}`);
     throw err;
@@ -131,6 +134,7 @@ router.get('/mensajes/:id', signedIn, loadConversation, (req, res) => {
   res.render('chat/conversation', {
     title: req.conv.product_title, conv: req.conv, messages: threadMessages(req.conv.id), minOffer: minOffer(req.conv.price || 0),
     otherId, otherRating: ratingSummary(otherId), otherPresence: presenceOf(otherId),
+    sizes: req.conv.has_sizes && req.conv.product_id ? sizesOf(req.conv.product_id) : [],
     otherHours: req.conv.role === 'comprador' ? storeHoursInfo(otherId).status : null, blocked: isBlockedEither(req.conv.buyer_id, req.conv.seller_id),
     iBlocked: hasBlocked(req.user.id, otherId),
   });
@@ -211,6 +215,9 @@ router.post('/mensajes/:id/oferta', signedIn, dealLimit, loadConversation, (req,
   try {
     const amount = parsePrice(req.body.amount);
     if (!amount) throw new UserError('Escribe un monto en colones.');
+    if (req.conv.has_sizes && req.body.size && req.conv.role === 'comprador') {
+      req.conv.chosen_size = chooseSize(req.conv.id, req.conv.product_id, String(req.body.size));
+    }
     makeOffer(req.conv, req.user.id, amount);
     if (wantsJson(req)) return res.json({ ok: true });
     res.redirect(back);

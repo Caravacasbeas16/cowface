@@ -3,7 +3,7 @@ import { requireRole } from '../auth.js';
 import { db, commissionRate } from '../db.js';
 import {
   createProduct, deleteImage, deleteProduct, getProduct, imageCount, quickUpdate, setCoverImage,
-  markSoldElsewhere, setProductStatus, updateProduct,
+  markSoldElsewhere, refreshProductSearch, setProductStatus, updateProduct,
 } from '../products.js';
 import { systemNote } from '../messages.js';
 import { deleteAccount, deletionBlockers } from '../account-deletion.js';
@@ -14,7 +14,9 @@ import {
 } from '../promos.js';
 import { OPEN_STATUSES, paymentConfig } from '../orders.js';
 import { perUser, rateLimit } from '../rate-limit.js';
-import { normalizePhone, parsePrice, validateProduct } from '../validate.js';
+import { detailField, normalizePhone, parsePrice, validateProduct } from '../validate.js';
+import { DEFECTS_FIELD, DETAILS, allSizes } from '../catalog.js';
+import { parseSizeStock, saveSizes, sizeField } from '../variants.js';
 import { logFlagged } from '../moderation.js';
 import { MAX_IMAGES, REQUEST_MAX_PHOTOS, discardRequestPhotos, photoFiles, photos, requestPhotos } from '../uploads.js';
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
@@ -57,6 +59,21 @@ function flagListing(req, errors) {
   const b = req.body;
   logFlagged({ userId: req.user.id, context: 'publicación', body: [b.title, b.description].join(' — '), matched: errors._blocked });
   delete errors._blocked;
+}
+
+// Campos del formulario a partir del artículo guardado: tallas con su cantidad, detalles y precio original.
+function savedFields(p) {
+  const out = { multi_size: p.has_sizes ? '1' : '', retail_price: p.retail_price || '' };
+  const all = allSizes(p.category);
+  for (const x of p.sizes) {
+    const i = all.indexOf(x.size);
+    if (i >= 0) out[sizeField(p.category, i)] = x.quantity;
+  }
+  for (const d of [...(DETAILS[p.category] || []), DEFECTS_FIELD]) {
+    if (p.details[d.key] != null) out[detailField(p.category, d)] = p.details[d.key];
+  }
+  if (p.details.comprobante) out.d_comprobante = '1';
+  return out;
 }
 
 const formView = (title, product, form, errors, user = null) => ({
@@ -262,6 +279,7 @@ router.get('/productos/:id/editar', lockedWhileOrdered, (req, res) => {
   // Con descuento, el formulario muestra (y edita) el precio normal; el descuento se vuelve a aplicar.
   const form = { ...req.product, price: req.product.compare_at_price && req.product.compare_at_price > req.product.price ? req.product.compare_at_price : req.product.price };
   for (const [k, v] of Object.entries(req.product.measurements || {})) form[`m_${k}`] = v;
+  Object.assign(form, savedFields(req.product));
   res.render('seller/product-form', formView(req.product.status === 'borrador' ? 'Borrador' : 'Editar artículo', req.product, form, {}, req.user));
 });
 
@@ -313,10 +331,11 @@ router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
     message = 'Este artículo no se puede editar desde aquí.';
   } else if (quantity > 0 && req.product.status === 'vendido' && (!canPublish(req.user) || req.product.admin_hidden)) {
     message = req.product.admin_hidden ? 'CowFace ocultó este artículo por un reporte.' : 'Tu tienda no está aprobada para vender en este momento.';
-  } else if (!price || !Number.isInteger(quantity) || quantity < 0 || quantity > 999) {
+  } else if (!price || (!req.product.has_sizes && (!Number.isInteger(quantity) || quantity < 0 || quantity > 999))) {
     message = 'Revisa el precio (en colones) y las unidades (0 a 999).';
   } else {
-    quickUpdate(req.product.id, price, quantity);
+    // Con varias tallas, las unidades se cambian por talla (ruta /tallas); aquí solo el precio.
+    quickUpdate(req.product.id, price, req.product.has_sizes ? req.product.quantity : quantity);
     if (discountPct(req.product)) reapplyAfterPriceChange(req.product.id, req.product);
     ok = true;
     message = `"${req.product.title}" actualizado.`;
@@ -324,6 +343,26 @@ router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
   if (req.accepts(['html', 'json']) === 'json') {
     const now = getProduct(req.product.id);
     return res.status(ok ? 200 : 400).json({ ok, message, statusChanged: now.status !== req.product.status, status: now.status, quantity: now.quantity });
+  }
+  flash(res, message);
+  res.redirect(backTo(req));
+});
+
+// Unidades por talla desde el inventario (artículos con varias tallas). Con 0 en todas queda agotado.
+router.post('/productos/:id/tallas', lockedWhileOrdered, (req, res) => {
+  const p = req.product;
+  let message;
+  if (!p.has_sizes || !['disponible', 'pausado', 'vendido'].includes(p.status)) message = 'Este artículo no tiene tallas para editar aquí.';
+  else {
+    const { sizes, error } = parseSizeStock(p.category, req.body, { keepZero: p.sizes.map((x) => x.size), allowEmpty: true });
+    const total = sizes.reduce((a, x) => a + x.quantity, 0);
+    if (error) message = error;
+    else if (total > 0 && p.status === 'vendido' && (!canPublish(req.user) || p.admin_hidden)) message = 'Este artículo no se puede volver a poner a la venta.';
+    else {
+      saveSizes(p.id, sizes);
+      refreshProductSearch(p.id);
+      message = `Tallas de "${p.title}" actualizadas: ${total} unidad${total === 1 ? '' : 'es'}.`;
+    }
   }
   flash(res, message);
   res.redirect(backTo(req));

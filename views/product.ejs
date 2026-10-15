@@ -45,7 +45,7 @@
     <% if (p.brand) { %><a class="product-brand" href="/buscar?q=<%= encodeURIComponent(p.brand) %>"><%= p.brand %></a><% } %>
     <h1><%= p.title %></h1>
     <div class="product-facts">
-      <span>Talla <strong><%= p.size %></strong></span>
+      <span><%= p.sizes.length > 1 ? 'Tallas' : 'Talla' %> <strong><%= p.size %></strong></span>
       <span><%= catalog.CONDITIONS[p.condition] %></span>
       <% if (p.color) { %><span><%= p.color %></span><% } %>
     </div>
@@ -84,12 +84,14 @@
       <div class="notice">Este artículo ya no está disponible.</div>
       <% if (conversationId) { %><a class="btn btn-ghost btn-block" href="/mensajes/<%= conversationId %>">Ver mi conversación</a><% } %>
     <% } else if (!user) { %>
+      <%- include('partials/size-picker', { sizes: p.sizes, chosen }) %>
       <div class="deal-box">
         <a class="btn btn-block" href="/entrar?next=/p/<%= p.id %>">Comprar ahora · <%= money(p.price) %></a>
         <a class="btn btn-ghost btn-block" href="/entrar?next=/p/<%= p.id %>">Hacer oferta</a>
         <p class="hint center">Entra o <a href="/registro?next=/p/<%= p.id %>">crea tu cuenta</a> para comprar, ofertar o escribirle al vendedor.</p>
       </div>
     <% } else if (user.role === 'usuario') { %>
+      <%- include('partials/size-picker', { sizes: p.sizes, chosen }) %>
       <div class="deal-box">
         <div class="price-breakdown">
           <div><span>Prenda</span><span><%= money(p.price) %></span></div>
@@ -98,11 +100,13 @@
           <p class="hint">Después de comprar eliges cómo recibirlo y la tienda te cotiza el envío (como un Uber). Ves el total exacto antes de pagar<%= p.meetup ? '; el pick up no tiene costo' : '' %>.</p>
         </div>
         <form action="/p/<%= p.id %>/comprar" method="post" data-confirm="¿Comprar «<%= p.title %>» por <%= money(p.price) %>? Luego eliges la entrega, la tienda te cotiza el envío y le pagas a CowFace por SINPE Móvil. Guardamos el dinero hasta que recibas el artículo.">
+          <% if (p.sizes.length) { %><%- include('partials/size-select', { sizes: p.sizes, chosen }) %><% } %>
           <button class="btn btn-block" type="submit">Comprar ahora</button>
         </form>
         <details class="offer-panel">
           <summary class="btn btn-ghost btn-block">Hacer oferta</summary>
           <form action="/p/<%= p.id %>/ofertar" method="post" class="offer-form">
+            <% if (p.sizes.length) { %><%- include('partials/size-select', { sizes: p.sizes, chosen }) %><% } %>
             <label>Tu oferta por la prenda (₡)
               <input name="amount" required inputmode="numeric" placeholder="<%= minOffer %>" autocomplete="off">
             </label>
@@ -114,6 +118,7 @@
           <a class="btn btn-ghost btn-block" href="/mensajes/<%= conversationId %>">Ver mi conversación</a>
         <% } else { %>
           <form action="/p/<%= p.id %>/mensaje" method="post" class="ask-form">
+            <% if (p.sizes.length) { %><%- include('partials/size-select', { sizes: p.sizes, chosen, optional: true }) %><% } %>
             <label>Pregúntale al vendedor
               <textarea name="body" rows="2" maxlength="1000" required placeholder="¿Tiene algún detalle? ¿Me mandas una foto de la etiqueta?"></textarea>
             </label>
@@ -162,14 +167,23 @@
       </dl>
     <% } %>
 
+    <% if (p.details.defectos) { %>
+      <div class="defects"><strong>Detalles o defectos:</strong> <%= p.details.defectos %></div>
+    <% } %>
+
     <h2 class="details-title">Detalles</h2>
     <dl class="specs">
       <% if (p.brand) { %><div><dt>Marca</dt><dd><%= p.brand %></dd></div><% } %>
+      <% for (const d of catalog.DETAILS[p.category] || []) { %>
+        <% if (p.details[d.key]) { %><div><dt><%= d.label %></dt><dd><%= p.details[d.key] %></dd></div><% } %>
+      <% } %>
       <div><dt>Tipo</dt><dd><%= p.item_type %></dd></div>
-      <div><dt>Talla</dt><dd><%= p.size %></dd></div>
-      <div><dt>Estado</dt><dd><%= catalog.CONDITIONS[p.condition] %></dd></div>
+      <div><dt><%= p.sizes.length > 1 ? 'Tallas' : 'Talla' %></dt><dd><%= p.sizes.length ? p.sizes.filter((x) => x.quantity).map((x) => x.size).join(' · ') || p.size : p.size %></dd></div>
+      <div><dt>Estado</dt><dd><%= catalog.CONDITIONS[p.condition] %><span class="measure-hint"><%= catalog.CONDITION_HINTS[p.condition] %></span></dd></div>
       <% if (p.color) { %><div><dt>Color</dt><dd><%= p.color %></dd></div><% } %>
       <div><dt>Para</dt><dd><%= catalog.DEPARTMENTS[p.department] %></dd></div>
+      <% if (p.retail_price) { %><div><dt>Precio original</dt><dd><%= money(p.retail_price) %><% if (p.retail_price > p.price) { %> <span class="muted small">(ahorras <%= Math.round((1 - p.price / p.retail_price) * 100) %> %)</span><% } %></dd></div><% } %>
+      <% if (p.details.comprobante) { %><div><dt>Comprobante</dt><dd>✓ La tienda tiene el comprobante de compra</dd></div><% } %>
       <div><dt>Disponibles</dt><dd><%= p.quantity %></dd></div>
     </dl>
     <% if (p.description) { %><p class="description"><%= p.description %></p><% } %>

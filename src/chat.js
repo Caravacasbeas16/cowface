@@ -4,6 +4,7 @@ import { db, transaction } from './db.js';
 import { formatColones } from './catalog.js';
 import { notify } from './realtime.js';
 import { UserError, addMessage, announce, assertStoreOpen, convRow, now, unreadCount } from './messages.js';
+import { chooseSize } from './variants.js';
 import { createOrder, orderForConversation } from './orders.js';
 import { isBlockedEither } from './blocks.js';
 import { openText } from './crypto-box.js';
@@ -47,7 +48,7 @@ export function findConversation(productId, buyerId) {
 export function getConversationForUser(id, userId) {
   expireOffers();
   const c = db.prepare(`
-    SELECT c.*, p.price, p.status AS product_status, p.category, p.size, p.quantity, p.meetup, s.province, s.pickup_points,
+    SELECT c.*, p.price, p.status AS product_status, p.category, p.size, p.quantity, p.meetup, p.has_sizes, s.province, s.pickup_points,
       (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image,
       b.name AS buyer_name, s.name AS seller_name, COALESCE(s.store_name, s.name) AS store_name
     FROM conversations c
@@ -119,8 +120,9 @@ export function makeOffer(conv, userId, amount) {
   expireOffers();
   assertNotBlocked(conv.buyer_id, conv.seller_id);
   if (userId === conv.buyer_id) assertStoreOpen(conv.seller_id);
-  const product = db.prepare('SELECT id, price, status, quantity FROM products WHERE id = ?').get(conv.product_id);
+  const product = db.prepare('SELECT id, price, status, quantity, has_sizes FROM products WHERE id = ?').get(conv.product_id);
   if (!product || product.status !== 'disponible' || product.quantity < 1) throw new UserError('Este artículo ya no está disponible.');
+  if (product.has_sizes && userId === conv.buyer_id) assertSizeAvailable(product.id, conv.chosen_size);
   if (!Number.isInteger(amount) || amount <= 0) throw new UserError('Escribe un monto válido en colones.');
   if (amount >= product.price) throw new UserError(`La oferta debe ser menor al precio (${formatColones(product.price)}). Para pagar el precio completo usa "Comprar ahora".`);
   if (userId === conv.buyer_id && amount < minOffer(product.price)) {
@@ -173,12 +175,22 @@ export function respondOffer(offerId, userId, action) {
 
 // ---------- Compra directa ----------
 
-export function buyNow(product, buyerId) {
+// size: la talla elegida en la página del artículo (si el artículo tiene varias tallas).
+export function buyNow(product, buyerId, size = null) {
   assertStoreOpen(product.seller_id);
   return transaction(() => {
-    const conv = convRow(getOrCreateConversation(product, buyerId));
+    const id = getOrCreateConversation(product, buyerId);
+    if (product.has_sizes && size) chooseSize(id, product.id, size);
+    const conv = convRow(id);
     createOrder(conv, product.price, 'compra');
     announce(conv);
     return conv.id;
   });
+}
+
+// Antes de ofertar por un artículo con tallas, el comprador tiene que haber elegido una que quede.
+function assertSizeAvailable(productId, size) {
+  const row = size && db.prepare('SELECT quantity FROM product_sizes WHERE product_id = ? AND size = ?').get(productId, size);
+  if (!row) throw new UserError('Elige tu talla en la página del artículo antes de ofertar.');
+  if (row.quantity < 1) throw new UserError(`Ya no queda la talla ${size}. Elige otra en la página del artículo.`);
 }

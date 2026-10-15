@@ -1,7 +1,8 @@
 // Panel de la tienda (inspirado en el Merchant Portal de DoorDash): inicio con lo urgente,
 // pedidos por etapa, inventario con filtros y acciones en lote, y estado de la tienda.
 import { db } from './db.js';
-import { CATEGORIES, PRODUCT_STATUS } from './catalog.js';
+import { CATEGORIES, PRODUCT_STATUS, allSizes } from './catalog.js';
+import { sizeField, sizesOf } from './variants.js';
 import { OPEN_STATUSES, sellerOrders } from './orders.js';
 import { listConversations } from './chat.js';
 import { ratingSummary, salesSummary } from './reviews.js';
@@ -171,11 +172,17 @@ export function inventory(sellerId, f) {
   if (f.categoria) { where.push('p.category = ?'); params.push(f.categoria); }
   const rows = db.prepare(`
     SELECT p.id, p.title, p.brand, p.category, p.item_type, p.size, p.price, p.compare_at_price, p.promo_until, p.promo_store,
-      p.quantity, p.status, p.views, p.admin_hidden, p.created_at, p.updated_at, p.condition,
+      p.quantity, p.status, p.views, p.admin_hidden, p.created_at, p.updated_at, p.condition, p.has_sizes,
       (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image,
       EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id AND o.status IN (${OPEN_STATUSES.map(() => '?').join(',')})) AS locked
     FROM products p WHERE ${where.join(' AND ')} ORDER BY ${SORT_SQL[f.orden]}
   `).all(...OPEN_STATUSES, ...params);
+  // Tallas con su cantidad y el nombre de su campo (vs_<categoría>_<n>) para editarlas ahí mismo.
+  for (const p of rows) {
+    if (!p.has_sizes) continue;
+    const all = allSizes(p.category);
+    p.sizes = sizesOf(p.id).map((s) => ({ ...s, field: sizeField(p.category, all.indexOf(s.size)) }));
+  }
   if (!f.q) return rows;
   // Búsqueda sin tildes por nombre, marca, tipo o talla.
   const words = normalize(f.q).split(' ').filter(Boolean);

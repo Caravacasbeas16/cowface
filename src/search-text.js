@@ -32,7 +32,7 @@ export function buildSearchText(p) {
   const text = normalize([
     p.title, p.brand, p.brand && p.brand.replace(/[^\p{L}\p{N}]/gu, ''), p.item_type, p.color,
     p.size && `talla ${p.size}`, CATEGORIES[p.category]?.label, DEPARTMENT_WORDS[p.department] || DEPARTMENTS[p.department],
-    CONDITION_WORDS[p.condition], p.description,
+    CONDITION_WORDS[p.condition], p.description, p.extra,
   ].filter(Boolean).join(' '));
   // Espacios al inicio y al final para poder buscar por palabra completa o por inicio de palabra.
   return text ? ` ${text} ` : ' ';

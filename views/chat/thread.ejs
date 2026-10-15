@@ -9,7 +9,7 @@
     <div>
       <strong><%= conv.product_title %></strong>
       <div class="muted small">
-        <% if (conv.price) { %><%= money(conv.price) %> · Talla <%= conv.size %> · <% } %>
+        <% if (conv.price) { %><%= money(conv.price) %> · <%= conv.has_sizes ? (conv.chosen_size ? `Talla elegida: ${conv.chosen_size}` : `Tallas ${conv.size}`) : `Talla ${conv.size}` %> · <% } %>
         <%= catalog.PRODUCT_STATUS[conv.product_status] || 'Ya no publicado' %>
       </div>
     </div>

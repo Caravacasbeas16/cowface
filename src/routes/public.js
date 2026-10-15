@@ -157,6 +157,8 @@ router.get('/p/:id', (req, res, next) => {
   const isOwner = req.user?.id === product.seller_id;
   if (product.status === 'borrador' && !isOwner) return next(); // los borradores solo los ve su dueño
   const conversationId = req.user && !isOwner ? findConversation(product.id, req.user.id) : null;
+  // Talla que ya eligió en su conversación (artículos con varias tallas).
+  const chosen = conversationId && product.has_sizes ? db.prepare('SELECT chosen_size FROM conversations WHERE id = ?').get(conversationId)?.chosen_size : null;
   const blocked = Boolean(req.user && !isOwner && isBlockedEither(req.user.id, product.seller_id));
   if (!isOwner && req.user?.role !== 'admin') countView(product.id, req.user ? `u${req.user.id}` : req.ip);
   const cover = product.images[0];
@@ -170,7 +172,7 @@ router.get('/p/:id', (req, res, next) => {
     image: cover ? `/fotos/${cover.thumb || cover.filename}` : undefined, imageAlt: product.title,
   };
   res.render('product', {
-    og, title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
+    og, title: product.title, product, isOwner, conversationId, chosen, minOffer: minOffer(product.price), blocked,
     sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), pickupPoints: pickupPointsOf(product.seller_id),
     sellerReviews: reviewsAbout(product.seller_id, 10).filter((r) => r.role === 'vendedor' && r.comment).slice(0, 3),
     untilLabel,

@@ -1,0 +1,10 @@
+<%# Talla dentro de cada formulario (comprar, ofertar, preguntar). Con JS se esconde y la llena la cuadrícula. Variables: sizes, chosen, optional. %>
+<% const inStock = sizes.filter((s) => s.quantity > 0); const pre = chosen || (inStock.length === 1 ? inStock[0].size : ''); %>
+<label class="size-select" data-size-field>Talla
+  <select name="size" <%= locals.optional ? '' : 'required' %>>
+    <option value=""><%= locals.optional ? 'Sin talla en particular' : 'Elige tu talla…' %></option>
+    <% for (const s of sizes) { %>
+      <option value="<%= s.size %>" <%= pre === s.size ? 'selected' : '' %> <%= s.quantity ? '' : 'disabled' %>><%= s.size %><%= s.quantity ? '' : ' (agotada)' %></option>
+    <% } %>
+  </select>
+</label>

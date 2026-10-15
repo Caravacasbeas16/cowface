@@ -81,7 +81,7 @@
 
   // Un solo menú "⋯" abierto a la vez.
   document.addEventListener('click', (e) => {
-    for (const d of document.querySelectorAll('details.more[open], details.pause-box[open]')) if (!d.contains(e.target)) d.open = false;
+    for (const d of document.querySelectorAll('details.more[open], details.pause-box[open], details.sizes-edit[open]')) if (!d.contains(e.target)) d.open = false;
   });
 
   // ---------- Promos: atajos ----------

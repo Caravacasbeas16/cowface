@@ -88,13 +88,54 @@ export const CONDITIONS = {
   nuevo_sin_etiqueta: 'Nuevo sin etiqueta',
   como_nuevo: 'Usado - como nuevo',
   usado: 'Usado - buen estado',
+  con_detalles: 'Usado - con detalles',
+};
+
+// Qué significa cada estado (se muestra al publicar y en el artículo, como en Grailed).
+export const CONDITION_HINTS = {
+  nuevo: 'Sin usar, con sus etiquetas (en zapatos: nuevos en su caja).',
+  nuevo_sin_etiqueta: 'Sin usar, pero ya sin etiquetas (o probados en casa).',
+  como_nuevo: 'Usado muy pocas veces, sin señales de uso.',
+  usado: 'Uso normal: puede tener algo de desgaste, sin daños.',
+  con_detalles: 'Tiene detalles visibles (manchas, hoyitos, desgaste fuerte): descríbelos y fotografíalos.',
 };
 
 // "nuevo" / "usado" como filtro rápido en la búsqueda.
 export const CONDITION_GROUPS = {
   nuevo: ['nuevo', 'nuevo_sin_etiqueta'],
-  usado: ['como_nuevo', 'usado'],
+  usado: ['como_nuevo', 'usado', 'con_detalles'],
 };
+
+// Detalles por categoría (todos opcionales). type: text (por defecto) | select | number.
+// Los de zapatos siguen lo que muestra StockX (modelo, código de estilo, colorway, año, caja).
+const FITS = ['Ajustado (slim)', 'Regular', 'Holgado (relaxed)', 'Oversize'];
+export const DETAILS = {
+  ropa: [
+    { key: 'material', label: 'Material', placeholder: 'Ej. 100 % algodón, denim 14 oz' },
+    { key: 'corte', label: 'Corte', type: 'select', options: FITS },
+    { key: 'epoca', label: 'Época o estilo', placeholder: 'Ej. Vintage 90s, Y2K, temporada 2023' },
+    { key: 'origen', label: 'Hecho en', placeholder: 'Ej. USA, Italia' },
+  ],
+  zapatos: [
+    { key: 'modelo', label: 'Modelo', placeholder: 'Ej. Air Jordan 1 Retro High OG' },
+    { key: 'sku', label: 'Código de estilo (SKU)', placeholder: 'Ej. 555088-134', hint: 'Viene en la etiqueta de la lengüeta o en la caja.' },
+    { key: 'colorway', label: 'Colorway', placeholder: 'Ej. Chicago, Panda, Triple Black' },
+    { key: 'anio', label: 'Año de salida', type: 'number', placeholder: '2022', min: 1950, max: 2100 },
+    { key: 'caja', label: 'Caja', type: 'select', options: ['Caja original', 'Caja de reemplazo', 'Sin caja'] },
+    { key: 'incluye', label: 'Incluye', placeholder: 'Ej. cordones extra, bolsa, recibo' },
+  ],
+  bolsos: [
+    { key: 'material', label: 'Material', placeholder: 'Ej. Cuero, lona' },
+    { key: 'modelo', label: 'Modelo', placeholder: 'Ej. Speedy 30, Saddle' },
+    { key: 'incluye', label: 'Incluye', placeholder: 'Ej. dust bag, tarjeta de autenticidad, correa' },
+  ],
+  accesorios: [
+    { key: 'material', label: 'Material', placeholder: 'Ej. Acero inoxidable, plata 925' },
+    { key: 'modelo', label: 'Modelo', placeholder: 'Ej. New Era 59FIFTY' },
+  ],
+};
+// En todas las categorías: los defectos van aparte (como en Grailed), para que nadie los pase por alto.
+export const DEFECTS_FIELD = { key: 'defectos', label: 'Detalles o defectos', placeholder: 'Ej. Mancha pequeña en la manga izquierda (ver foto 5). Si no tiene, déjalo vacío.' };
 
 export const PROVINCES = ['San José', 'Alajuela', 'Cartago', 'Heredia', 'Guanacaste', 'Puntarenas', 'Limón'];
 

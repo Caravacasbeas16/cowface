@@ -1,9 +1,13 @@
 // Validación de formularios en el borde del sistema. Cada función devuelve
 // { data, errors } — errors es un objeto { campo: mensaje } vacío si todo está bien.
-import { CATEGORIES, CONDITIONS, DEPARTMENTS, MEASUREMENTS, PROVINCES, isValidSize } from './catalog.js';
+import { CATEGORIES, CONDITIONS, DEFECTS_FIELD, DEPARTMENTS, DETAILS, MEASUREMENTS, PROVINCES, isValidSize } from './catalog.js';
+import { parseSizeStock, sizeSummary } from './variants.js';
 import { blockedMessage, findBlocked } from './moderation.js';
 
 const str = (v, max = 200) => String(v ?? '').trim().slice(0, max);
+
+// Nombre del campo de un detalle: d_zapatos_modelo… (los defectos son de todas las categorías: d_defectos).
+export const detailField = (category, d) => (d === DEFECTS_FIELD ? 'd_defectos' : `d_${category}_${d.key}`);
 
 // Teléfonos de Costa Rica: 8 dígitos, opcionalmente con +506 delante.
 export function normalizePhone(v) {
@@ -55,6 +59,10 @@ export function validateProduct(body) {
     shipping_cost: String(body.shipping_cost ?? '').trim() === '' ? 0 : Number(String(body.shipping_cost).replace(/[₡,.\s]/g, '')),
     meetup: body.meetup === '1' ? 1 : 0,
     measurements: {},
+    details: {},
+    retail_price: String(body.retail_price ?? '').trim() === '' ? null : parsePrice(body.retail_price),
+    multiSize: body.multi_size === '1',
+    sizes: null,
   };
   const errors = {};
   for (const m of MEASUREMENTS[data.category] || []) {
@@ -67,18 +75,33 @@ export function validateProduct(body) {
   if (!Number.isInteger(data.shipping_cost) || data.shipping_cost < 0 || data.shipping_cost > 50_000) {
     errors.shipping_cost = 'Costo de envío en colones, de 0 (gratis) a ₡50 000.';
   }
+  // Detalles de la categoría (modelo, SKU, material, caja…) y defectos.
+  for (const d of [...(DETAILS[data.category] || []), DEFECTS_FIELD]) {
+    const raw = str(body[detailField(data.category, d)], d === DEFECTS_FIELD ? 500 : 80);
+    if (!raw) continue;
+    if (d.type === 'select' && !d.options.includes(raw)) errors.details = `Elige una opción de la lista en "${d.label}".`;
+    else if (d.type === 'number' && !(Number.isInteger(Number(raw)) && Number(raw) >= d.min && Number(raw) <= d.max)) errors.details = `"${d.label}": un año entre ${d.min} y ${d.max}.`;
+    else data.details[d.key] = d.type === 'number' ? Number(raw) : raw;
+  }
+  if (body.d_comprobante === '1') data.details.comprobante = 1;
+  if (String(body.retail_price ?? '').trim() && !data.retail_price) errors.retail_price = 'Precio original en colones, sin decimales.';
   if (data.title.length < 3) errors.title = 'Escribe un título (ej. "Camisa polo Lacoste azul").';
   if (!CATEGORIES[data.category]) errors.category = 'Elige una categoría.';
   else {
     if (!CATEGORIES[data.category].types.includes(data.item_type)) errors.item_type = 'Elige el tipo de artículo.';
-    if (!isValidSize(data.category, data.size)) errors.size = 'Elige una talla válida para esta categoría.';
+    if (data.multiSize) {
+      // Varias tallas, cada una con su cantidad: la talla y la cantidad del artículo salen de ahí.
+      const { sizes, error } = parseSizeStock(data.category, body);
+      if (error) errors.sizes = error;
+      else Object.assign(data, { sizes, size: sizeSummary(sizes), quantity: sizes.reduce((a, x) => a + x.quantity, 0) });
+    } else if (!isValidSize(data.category, data.size)) errors.size = 'Elige una talla válida para esta categoría.';
   }
   if (!DEPARTMENTS[data.department]) errors.department = 'Elige para quién es.';
   if (!CONDITIONS[data.condition]) errors.condition = 'Elige el estado.';
   if (!data.price) errors.price = 'Precio en colones, sin decimales.';
-  if (!Number.isInteger(data.quantity) || data.quantity < 1 || data.quantity > 999) errors.quantity = 'Cantidad entre 1 y 999.';
+  if (!data.multiSize && (!Number.isInteger(data.quantity) || data.quantity < 1 || data.quantity > 999)) errors.quantity = 'Cantidad entre 1 y 999.';
   // Nada de teléfonos, redes o enlaces en la publicación.
-  const blocked = findBlocked([data.title, data.brand, data.color, data.description].join('\n'));
+  const blocked = findBlocked([data.title, data.brand, data.color, data.description, ...Object.values(data.details)].join('\n'));
   if (blocked) { errors.description = blockedMessage(blocked); errors._blocked = blocked; }
   return { data, errors };
 }

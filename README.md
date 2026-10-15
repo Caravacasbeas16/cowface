@@ -97,6 +97,18 @@ el chat en vivo, los límites de intentos y las tareas automáticas viven en ese
 - El vendedor pone el **costo de envío** (0 = gratis) y si acepta **entrega en persona** (sin costo de envío).
   El comprador ve el total exacto antes de comprar; al vendedor se le paga precio − 5 % + envío.
 - En el panel: editar precio y cantidad sin abrir el artículo (cantidad 0 lo marca vendido).
+- **Varias tallas con su cantidad** (`src/variants.js`, como StockX): "Tengo varias tallas" muestra la
+  cuadrícula de tallas de la categoría (`vs_<categoría>_<n>`). El artículo guarda la suma y un resumen
+  ("US 8 – US 11"); el comprador elige su talla en una cuadrícula con cuántas quedan, la talla queda en
+  la conversación (`chosen_size`) y en el pedido (el título dice "· Talla US 9"). Al cancelar o
+  reembolsar vuelve a su talla. El filtro de talla busca también en las tallas con unidades.
+  En Inventario: "Tallas · N u." para cambiar las unidades de cada talla.
+- **Detalles por categoría** (`DETAILS` en catalog.js, campos `d_<categoría>_<clave>`): zapatos con
+  modelo, código de estilo (SKU), colorway, año y caja; ropa con material, corte, época y origen;
+  bolsos y accesorios con material, modelo e incluye. Además "Detalles o defectos" (destacado en el
+  artículo), comprobante de compra y precio original (el comprador ve cuánto ahorra). Se busca por
+  esos detalles (por ejemplo por SKU). Estado nuevo: "Usado - con detalles", con la explicación de
+  cada estado como en Grailed.
 
 ## Chat: fotos y comprobantes
 
