@@ -349,3 +349,41 @@ document.addEventListener('submit', (e) => {
     sections.forEach((s) => io.observe(s));
   }
 })();
+
+// "Vistos recientemente" (como Grailed / StockX): se guarda solo en este navegador.
+(() => {
+  const KEY = 'cowface-recent';
+  const read = () => { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch { return []; } };
+  const write = (list) => { try { localStorage.setItem(KEY, JSON.stringify(list)); } catch { /* sin almacenamiento */ } };
+  const here = document.querySelector('[data-recent]');
+  if (here) {
+    try {
+      const item = JSON.parse(here.dataset.recent);
+      write([item, ...read().filter((x) => x.id !== item.id)].slice(0, 12));
+    } catch { /* nada */ }
+  }
+  const section = document.querySelector('[data-recent-section]');
+  if (!section) return;
+  const list = read();
+  if (!list.length) return;
+  const row = section.querySelector('[data-recent-list]');
+  for (const x of list) {
+    const a = document.createElement('a');
+    a.className = 'recent-item';
+    a.href = `/p/${Number(x.id)}`;
+    const img = document.createElement('img');
+    img.loading = 'lazy';
+    img.alt = '';
+    img.src = x.i ? `/fotos/${encodeURIComponent(x.i)}` : `/sin-foto/${encodeURIComponent(x.c || 'ropa')}/${Number(x.id)}.svg?v=2`;
+    const t = document.createElement('span');
+    t.className = 'recent-title';
+    t.textContent = x.t;
+    const pr = document.createElement('span');
+    pr.className = 'recent-price';
+    pr.textContent = `₡${Number(x.pr || 0).toLocaleString('es-CR')}`;
+    a.append(img, t, pr);
+    row.append(a);
+  }
+  section.hidden = false;
+  section.querySelector('[data-recent-clear]').addEventListener('click', () => { write([]); section.hidden = true; });
+})();

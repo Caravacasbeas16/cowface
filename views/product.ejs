@@ -201,4 +201,18 @@
     <% if (p.description) { %><p class="description"><%= p.description %></p><% } %>
   </div>
 </div>
+
+<% if (moreFromStore.length) { %>
+  <section class="related">
+    <div class="section-head"><h2>Más de <%= p.store_name %></h2><a class="small" href="/u/<%= p.seller_id %>">Ver la tienda →</a></div>
+    <div class="grid related-row"><% for (const r of moreFromStore) { %><%- include('partials/card', { p: r }) %><% } %></div>
+  </section>
+<% } %>
+<% if (similar.length) { %>
+  <section class="related">
+    <div class="section-head"><h2>También te puede gustar</h2><a class="small" href="/buscar?categoria=<%= p.category %>&tipo=<%= encodeURIComponent(p.item_type) %>">Ver más →</a></div>
+    <div class="grid related-row"><% for (const r of similar) { %><%- include('partials/card', { p: r }) %><% } %></div>
+  </section>
+<% } %>
+<span hidden data-recent="<%= JSON.stringify({ id: p.id, t: p.title, i: p.images[0] ? p.images[0].thumb : null, c: p.category, pr: p.price }) %>"></span>
 <%- include('partials/footer') %>

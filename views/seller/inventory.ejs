@@ -9,6 +9,7 @@
       <p class="muted">Tus prendas, zapatos y accesorios: cambia precio y unidades al instante, pausa o activa, y edita varios a la vez.</p>
     </div>
     <div class="head-actions">
+      <a class="btn btn-small btn-ghost" href="/vendedor/inventario.csv" download>Exportar CSV</a>
       <a class="btn btn-small" href="/vendedor/productos/nuevo">+ Agregar artículo</a>
     </div>
   </div>
@@ -134,6 +135,14 @@
               <summary aria-label="Más acciones">⋯</summary>
               <div class="more-menu">
                 <a href="/vendedor/productos/<%= p.id %>/editar">Editar todo</a>
+                <% if (p.status === 'disponible') { const b = bumpState(p); %>
+                  <% if (b.can) { %>
+                    <form action="/vendedor/productos/<%= p.id %>/subir" method="post"><input type="hidden" name="back" value="<%= back %>"><button>⬆ Subir al inicio</button></form>
+                  <% } else { %>
+                    <span class="more-note">⬆ Podrás subirlo el <%= b.next.toLocaleDateString('es-CR', { day: 'numeric', month: 'short', timeZone: 'America/Costa_Rica' }) %></span>
+                  <% } %>
+                <% } %>
+                <form action="/vendedor/productos/<%= p.id %>/duplicar" method="post"><input type="hidden" name="back" value="<%= back %>"><button>⧉ Duplicar</button></form>
                 <% if (p.status !== 'borrador') { %><a href="/p/<%= p.id %>">Ver como comprador</a><% } %>
                 <% if (!p.locked && ['disponible', 'pausado'].includes(p.status)) { %>
                   <% if (off && !p.promo_store) { %>

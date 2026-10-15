@@ -70,3 +70,13 @@
 }
 .product-meta-row { display: flex; justify-content: space-between; align-items: center; gap: .75rem; flex-wrap: wrap; }
 .store-card-logo { position: absolute; left: .7rem; bottom: .7rem; width: 54px !important; height: 54px !important; border-radius: 50%; border: 3px solid #fff; object-fit: cover; box-shadow: 0 1px 4px rgba(0, 0, 0, .2); }
+
+/* Relacionados en el artículo y "Vistos recientemente" en la portada */
+.related { margin: 3rem 0 0; }
+.related-row { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+.recent-row { display: flex; gap: 12px; overflow-x: auto; padding-bottom: .4rem; scrollbar-width: thin; }
+.recent-item { flex: 0 0 132px; display: flex; flex-direction: column; gap: .2rem; color: var(--text); }
+.recent-item:hover { text-decoration: none; }
+.recent-item img { width: 132px; height: 132px; object-fit: cover; background: var(--soft); }
+.recent-title { font-size: .8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.recent-price { font-size: .8rem; font-weight: 800; }

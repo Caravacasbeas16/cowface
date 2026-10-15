@@ -172,7 +172,7 @@ export function inventory(sellerId, f) {
   if (f.categoria) { where.push('p.category = ?'); params.push(f.categoria); }
   const rows = db.prepare(`
     SELECT p.id, p.title, p.brand, p.category, p.item_type, p.size, p.price, p.compare_at_price, p.promo_until, p.promo_store,
-      p.quantity, p.status, p.views, p.admin_hidden, p.created_at, p.updated_at, p.condition, p.has_sizes,
+      p.quantity, p.status, p.views, p.admin_hidden, p.created_at, p.updated_at, p.condition, p.has_sizes, p.bumped_at,
       (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image,
       EXISTS (SELECT 1 FROM orders o WHERE o.product_id = p.id AND o.status IN (${OPEN_STATUSES.map(() => '?').join(',')})) AS locked
     FROM products p WHERE ${where.join(' AND ')} ORDER BY ${SORT_SQL[f.orden]}

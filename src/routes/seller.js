@@ -22,6 +22,7 @@ import { MAX_IMAGES, REQUEST_MAX_PHOTOS, discardRequestPhotos, photoFiles, photo
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
 import { deleteSearch, notifyMatches } from '../alerts.js';
 import { notifyFollowers } from '../social.js';
+import { bump, bumpState, duplicateProduct } from '../listing-tools.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
 import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
@@ -368,6 +369,31 @@ router.post('/productos/:id/tallas', lockedWhileOrdered, (req, res) => {
   }
   flash(res, message);
   res.redirect(backTo(req));
+});
+
+// "Subir al inicio" (como el bump de Grailed): una vez cada 7 días, vuelve arriba en "Más recientes".
+router.post('/productos/:id/subir', (req, res) => {
+  const { can, next } = bumpState(req.product);
+  if (can) {
+    bump(req.product.id);
+    flash(res, `⬆ "${req.product.title}" subió al inicio de "Más recientes".`);
+  } else {
+    flash(res, req.product.status !== 'disponible' ? 'Solo se pueden subir artículos a la venta.'
+      : `Podrás volver a subirlo el ${next.toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Costa_Rica' })}.`);
+  }
+  res.redirect(backTo(req));
+});
+
+// Duplicar: copia como borrador (con fotos, tallas y detalles) para publicar algo parecido rápido.
+router.post('/productos/:id/duplicar', listingLimit, (req, res) => {
+  const active = db.prepare("SELECT COUNT(*) AS n FROM products WHERE seller_id = ? AND status IN ('disponible', 'pausado', 'reservado', 'borrador')").get(req.user.id).n;
+  if (active >= MAX_ACTIVE_LISTINGS) {
+    flash(res, `Puedes tener hasta ${MAX_ACTIVE_LISTINGS} artículos activos o en borrador.`);
+    return res.redirect(backTo(req));
+  }
+  const id = duplicateProduct(req.product.id);
+  flash(res, 'Copia creada como borrador: cambia lo que haga falta (talla, fotos, precio) y publícala.');
+  res.redirect(`/vendedor/productos/${id}/editar`);
 });
 
 // El vendedor solo pausa o reactiva; "reservado" y "vendido" los maneja el flujo de ventas.

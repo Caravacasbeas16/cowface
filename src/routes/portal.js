@@ -20,6 +20,8 @@ import { UPLOAD_DIR, removeFrom } from '../storage.js';
 import { perUser, rateLimit } from '../rate-limit.js';
 import { brandOf, brandPhotos, removeBrand, saveBrand } from '../store-branding.js';
 import { favoriteCounts, followerCount } from '../social.js';
+import { bumpState, inventoryCsv } from '../listing-tools.js';
+import { publicBaseUrl } from '../urls.js';
 import {
   BULK_ACTIONS, INVENTORY_FILTERS, INVENTORY_SORTS, MAX_PAUSE_NOTE, ORDER_TABS, STAGE_ACTION, bulkTargets, homeSummary, inventory,
   inventoryCounts, ordersByTab, parseInventoryQuery, pauseStore, resumeStore, setupChecklist, statusLabel,
@@ -95,8 +97,16 @@ router.get('/inventario', storeOnly, (req, res) => {
   res.render('seller/inventory', {
     title: 'Inventario', ...portalLocals(req, 'inventario'), f, items: inventory(req.user.id, f), counts: inventoryCounts(req.user.id),
     INVENTORY_FILTERS, INVENTORY_SORTS, BULK_ACTIONS, CATEGORIES, PRODUCT_STATUS, statusLabel, discountPct, untilLabel, favs: favoriteCounts(req.user.id),
-    canPublish: canPublish(req.user), back: req.originalUrl,
+    canPublish: canPublish(req.user), back: req.originalUrl, bumpState,
   });
+});
+
+// Todo el inventario en CSV (abre en Excel o Google Sheets).
+router.get('/inventario.csv', storeOnly, (req, res) => {
+  const day = new Date(Date.now() - 6 * 3600e3).toISOString().slice(0, 10);
+  res.set('Content-Type', 'text/csv; charset=utf-8');
+  res.set('Content-Disposition', `attachment; filename="inventario-cowface-${day}.csv"`);
+  res.send(inventoryCsv(req.user.id, publicBaseUrl(req)));
 });
 
 const safeBack = (v) => (typeof v === 'string' && /^\/vendedor\/inventario(\?[^\s]*)?$/.test(v) ? v : '/vendedor/inventario');

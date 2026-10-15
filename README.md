@@ -303,6 +303,12 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
   en su inventario.
 - **Seguir tiendas**: botón "+ Seguir" en la tienda; `/siguiendo` muestra lo nuevo de las tiendas
   que sigues, y al publicar se avisa por el celular a sus seguidores.
+- **En el artículo**: "Más de <tienda>" y "También te puede gustar" (otras tiendas, mismo tipo y precio
+  parecido). En la portada, **Vistos recientemente** (se guarda solo en el navegador).
+- **Herramientas de la tienda** (`src/listing-tools.js`, en el menú ⋯ del inventario):
+  **Subir al inicio** una vez cada 7 días (como el bump de Grailed; `bumped_at` cuenta como recién
+  publicado), **Duplicar** (borrador con fotos copiadas, tallas y detalles) y **Exportar CSV** de
+  todo el inventario (abre en Excel con tildes; los textos que empiezan con = + - @ se neutralizan).
 
 ## Reseñas, perfiles y bloqueos
 

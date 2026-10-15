@@ -7,7 +7,7 @@ import { canonicalQuery, describe, saveSearch } from '../alerts.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { categoryCovers, countByCategory, countView, getProduct, latestProducts, parseFilters, searchProducts, searchSuggestions } from '../products.js';
+import { categoryCovers, countByCategory, countView, getProduct, moreFromStore, similarProducts, latestProducts, parseFilters, searchProducts, searchSuggestions } from '../products.js';
 import { findConversation, minOffer } from '../chat.js';
 import { isBlockedEither } from '../blocks.js';
 import { paymentConfig, paymentsReady } from '../orders.js';
@@ -174,7 +174,9 @@ router.get('/p/:id', (req, res, next) => {
   };
   res.render('product', {
     og, title: product.title, product, isOwner, conversationId, chosen,
-    favCount: favoriteCount(product.id), isFav: req.user ? isFavorite(req.user.id, product.id) : false, minOffer: minOffer(product.price), blocked,
+    favCount: favoriteCount(product.id), isFav: req.user ? isFavorite(req.user.id, product.id) : false,
+    similar: blocked ? [] : similarProducts(product, req.user?.role === 'usuario' ? req.user.id : null),
+    moreFromStore: blocked ? [] : moreFromStore(product), minOffer: minOffer(product.price), blocked,
     sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), pickupPoints: pickupPointsOf(product.seller_id),
     sellerReviews: reviewsAbout(product.seller_id, 10).filter((r) => r.role === 'vendedor' && r.comment).slice(0, 3),
     untilLabel,

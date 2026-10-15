@@ -17,7 +17,7 @@ export const FEATURED_SQL = "(u.featured_until IS NOT NULL AND u.featured_until 
 
 const CARD_COLUMNS = `
   p.id, p.title, p.brand, p.category, p.department, p.item_type, p.size, p.color, p.condition,
-  p.price, p.compare_at_price, p.promo_until, p.status, p.created_at, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
+  p.price, p.compare_at_price, p.promo_until, p.status, p.created_at, p.bumped_at, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
   (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image
 `;
 
@@ -109,7 +109,7 @@ export function searchProducts(f) {
   if (f.max) { where.push('p.price <= ?'); params.push(f.max); }
   if (f.onSale) where.push('p.compare_at_price > p.price');
 
-  const order = { recientes: `${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC' }[f.sort];
+  const order = { recientes: `${FEATURED_SQL} DESC, COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC' }[f.sort];
   const from = `FROM products p JOIN users u ON u.id = p.seller_id WHERE ${where.join(' AND ')}`;
   const total = db.prepare(`SELECT COUNT(*) AS n ${from}`).get(...params).n;
   const items = db.prepare(`SELECT ${CARD_COLUMNS} ${from} ORDER BY ${order} LIMIT ? OFFSET ?`)
@@ -126,7 +126,7 @@ export function latestProducts(limit = 12, viewerId = null) {
   const hide = viewerId ? `AND ${notBlockedSql('p.seller_id')}` : '';
   return db.prepare(`
     SELECT ${CARD_COLUMNS} FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND ${LIVE_SELLER} ${hide} ORDER BY ${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC LIMIT ?
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER} ${hide} ORDER BY ${FEATURED_SQL} DESC, COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC LIMIT ?
   `).all(...(viewerId ? [viewerId, viewerId] : []), limit);
 }
 
@@ -157,7 +157,7 @@ export function getProduct(id) {
 export function sellerProducts(sellerId) {
   return db.prepare(`
     SELECT ${CARD_COLUMNS}, p.quantity, p.promo_store FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.seller_id = ? ORDER BY p.status = 'disponible' DESC, p.created_at DESC
+    WHERE p.seller_id = ? ORDER BY p.status = 'disponible' DESC, COALESCE(p.bumped_at, p.created_at) DESC
   `).all(sellerId);
 }
 
@@ -326,4 +326,23 @@ export function countView(productId, viewerKey, nowMs = Date.now()) {
   if (recentViews.size > 50_000) recentViews.clear();
   recentViews.set(key, nowMs);
   db.prepare('UPDATE products SET views = views + 1 WHERE id = ?').run(productId);
+}
+
+// "También te puede gustar" (como Grailed / StockX): misma categoría, primero el mismo tipo y para
+// quién, y con precio parecido. No incluye artículos de la misma tienda (esos van en "Más de…").
+export function similarProducts(p, viewerId = null, limit = 8) {
+  const hide = viewerId ? `AND ${notBlockedSql('p.seller_id')}` : '';
+  return db.prepare(`
+    SELECT ${CARD_COLUMNS} FROM products p JOIN users u ON u.id = p.seller_id
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER} AND p.category = ? AND p.id != ? AND p.seller_id != ? ${hide}
+    ORDER BY (p.item_type = ?) DESC, (p.department = ? OR p.department = 'unisex') DESC, ABS(p.price - ?) ASC, p.created_at DESC
+    LIMIT ?
+  `).all(p.category, p.id, p.seller_id, ...(viewerId ? [viewerId, viewerId] : []), p.item_type, p.department, p.price, limit);
+}
+
+export function moreFromStore(p, limit = 8) {
+  return db.prepare(`
+    SELECT ${CARD_COLUMNS} FROM products p JOIN users u ON u.id = p.seller_id
+    WHERE p.seller_id = ? AND p.status = 'disponible' AND p.id != ? ORDER BY (p.item_type = ?) DESC, p.created_at DESC LIMIT ?
+  `).all(p.seller_id, p.id, p.item_type, limit);
 }

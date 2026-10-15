@@ -33,7 +33,7 @@ export function followedStores(userId) {
 
 const CARD = `
   p.id, p.title, p.brand, p.category, p.department, p.item_type, p.size, p.color, p.condition,
-  p.price, p.compare_at_price, p.promo_until, p.status, p.created_at, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
+  p.price, p.compare_at_price, p.promo_until, p.status, p.created_at, p.bumped_at, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
   (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image
 `;
 
@@ -42,7 +42,7 @@ export function followingFeed(userId, limit = 60) {
   return db.prepare(`
     SELECT ${CARD} FROM store_follows f JOIN products p ON p.seller_id = f.store_id JOIN users u ON u.id = p.seller_id
     WHERE f.user_id = ? AND p.status = 'disponible' AND ${LIVE_SELLER} AND ${notBlockedSql('p.seller_id')}
-    ORDER BY p.created_at DESC, p.id DESC LIMIT ?
+    ORDER BY COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC LIMIT ?
   `).all(userId, userId, userId, limit);
 }
 
