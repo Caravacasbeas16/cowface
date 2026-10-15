@@ -25,8 +25,7 @@ export const COLUMNS = [
   ['estado', 'Usado', 'Nuevo con etiqueta, Nuevo sin etiqueta, Como nuevo o Usado.'],
   ['precio', '25000', 'En colones, sin decimales.'],
   ['cantidad', '1', 'Si se deja vacío, 1.'],
-  ['envio', '2500', 'Costo de envío que paga el comprador; 0 o vacío = gratis.'],
-  ['en_persona', 'Sí', 'Sí o No: si acepta entregar en persona. Vacío = Sí.'],
+  ['pick_up', 'Sí', 'Sí o No: si ofrece pick up (que lo recojan en persona). Vacío = Sí. El envío no va aquí: la tienda lo cotiza en cada pedido.'],
   ['descripcion', 'Algodón, poco uso, sin manchas.', ''],
   ['fotos', 'polo1.jpg; polo2.jpg', 'Nombres exactos de las fotos que subes, separados por ";" o ",". La primera es la portada.'],
 ];
@@ -36,7 +35,7 @@ const ALIASES = {
   brand: 'marca', category: 'categoria', 'tipo de articulo': 'tipo', departamento: 'para', genero: 'para',
   size: 'talla', condicion: 'estado', price: 'precio', stock: 'cantidad', unidades: 'cantidad',
   'costo de envio': 'envio', 'costo envio': 'envio', shipping: 'envio',
-  'entrega en persona': 'en_persona', 'en persona': 'en_persona', meetup: 'en_persona',
+  'entrega en persona': 'pick_up', 'en persona': 'pick_up', en_persona: 'pick_up', pickup: 'pick_up', 'pick up': 'pick_up', meetup: 'pick_up',
   descripción: 'descripcion', description: 'descripcion', foto: 'fotos', imagenes: 'fotos', photos: 'fotos',
 };
 const headerKey = (h) => {
@@ -144,8 +143,7 @@ export function rowToBody(values) {
     condition: mapCondition(values.estado || ''),
     price: values.precio || '',
     quantity: values.cantidad || '1',
-    shipping_cost: values.envio || '',
-    meetup: yes(values.en_persona ?? ''),
+    meetup: yes(values.pick_up ?? ''),
     description: values.descripcion || '',
   };
 }
@@ -217,7 +215,7 @@ export async function importRows({ sellerId, csv, photos, publish = true }) {
 export function templateCsv() {
   const head = COLUMNS.map(([k]) => k);
   const ex1 = COLUMNS.map(([, v]) => v);
-  const ex2 = ['Air Force 1 blancas', 'Nike', 'Zapatos', 'Tenis', 'Unisex', '9', 'Blanco', 'Como nuevo', '45000', '1', '0', 'Sí', 'Usadas dos veces.', 'af1.jpg'];
+  const ex2 = ['Air Force 1 blancas', 'Nike', 'Zapatos', 'Tenis', 'Unisex', '9', 'Blanco', 'Como nuevo', '45000', '1', 'No', 'Usadas dos veces.', 'af1.jpg'];
   const cell = (v) => (/[";\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   return `﻿${[head, ex1, ex2].map((r) => r.map(cell).join(';')).join('\r\n')}\r\n`;
 }

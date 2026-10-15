@@ -5,7 +5,7 @@ import { ORDER_STATUS } from '../catalog.js';
 import { blockedWords, saveBlockedWords } from '../moderation.js';
 import { ADMIN_LINK_HOURS, createResetToken } from '../password-reset.js';
 import { publicBaseUrl } from '../urls.js';
-import { DELIVERY_METHODS, admin, adminQueues, markDataSent, orderDataText, paymentConfig, savePaymentConfig } from '../orders.js';
+import { DELIVERY_LABELS, admin, adminQueues, markDataSent, orderDataText, paymentConfig, savePaymentConfig } from '../orders.js';
 import { sendMail } from '../mailer.js';
 import { SITE_NAME } from '../catalog.js';
 import { NOTIFY_EVENTS, notifySettings, saveNotifySettings } from '../admin-notify.js';
@@ -61,7 +61,7 @@ router.get('/', (req, res) => {
 
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
-    rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS,
+    rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS: DELIVERY_LABELS,
     notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(),
   });
 });

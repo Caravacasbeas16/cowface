@@ -1,14 +1,20 @@
 <%#
   Recuadro del pedido dentro de la conversación. Muestra a cada parte lo que le toca hacer.
   Variables: o (pedido), conv, isSeller.
+  Entrega "como un Uber": el comprador elige cómo y dónde lo quiere, la tienda cotiza el envío
+  (y lo puede ajustar mientras hablan), y recién ahí se ve el total y se paga.
 %>
 <%
   const pay = paymentConfig();
-  const methods = DELIVERY_METHODS;
+  const labels = DELIVERY_LABELS;
   const ship = o.shipping_cost || 0;
   const total = o.total || (o.price + ship);
   const meetup = conv.meetup !== 0;
+  const quoted = Boolean(o.delivery_quote_at && o.delivery_method);
+  const pickUp = isPickUp(o.delivery_method);
+  const requested = o.delivery_requested;
   const fileLink = (name, label) => name ? `<a class="file-link" href="/adjuntos/${name}" target="_blank" rel="noopener">${label}</a>` : '';
+  const shipLabel = () => pickUp ? 'Pick up · sin costo' : (ship ? money(ship) : 'Gratis');
 %>
 <div class="order-box order-<%= o.status %>">
   <div class="order-box-head">
@@ -17,50 +23,82 @@
   </div>
   <div class="order-lines">
     <div><span>Prenda<% if (o.price !== o.list_price) { %> <span class="muted small">(oferta; publicado en <%= money(o.list_price) %>)</span><% } %></span><span><%= money(o.price) %></span></div>
-    <% if (o.payment_reported_at || o.status !== 'por_pagar') { %>
-      <div><span>Envío</span><span><%= ship ? money(ship) : (o.delivery_method === 'en_persona' ? 'En persona' : 'Gratis') %></span></div>
-      <div class="order-total"><span>Total pagado</span><span><%= money(total) %></span></div>
+    <% if (quoted) { %>
+      <div><span>Entrega: <%= labels[o.delivery_method] %></span><span><%= shipLabel() %></span></div>
+      <div class="order-total"><span><%= o.payment_reported_at || o.status !== 'por_pagar' ? 'Total pagado' : 'Total a pagar' %></span><span><%= money(total) %></span></div>
+    <% } else if (o.status === 'por_pagar') { %>
+      <div class="muted small"><span>Envío</span><span><%= requested ? 'esperando la cotización de la tienda' : 'por definir' %></span></div>
     <% } %>
   </div>
 
   <% if (!isSeller) { %>
     <%# ---------- Comprador ---------- %>
     <% if (o.status === 'por_pagar' && !o.payment_reported_at) { %>
-      <form action="/pedidos/<%= o.id %>/pago" method="post" enctype="multipart/form-data" class="pay-steps stack compact" data-pay-form data-price="<%= o.price %>" data-ship="<%= ship %>">
-        <p><strong>1. ¿Cómo lo quieres recibir?</strong></p>
-        <div class="method-options">
-          <% for (const [k, label] of Object.entries(methods)) { %>
-            <% if (k === 'en_persona' && !meetup) continue; %>
-            <label class="method-option">
-              <input type="radio" name="method" value="<%= k %>" required data-method-cost="<%= k === 'en_persona' ? 0 : ship %>">
-              <span><strong><%= label %></strong><span class="muted small"><%= k === 'en_persona' ? `Sin costo · en ${conv.province || 'la provincia del vendedor'}` : (ship ? `Envío ${money(ship)}` : 'Envío gratis') %></span></span>
+      <% if (!quoted) { %>
+        <form action="/pedidos/<%= o.id %>/entrega" method="post" class="pay-steps stack compact">
+          <p><strong>1. ¿Cómo lo quieres recibir?</strong></p>
+          <div class="method-options">
+            <% for (const [k, label] of Object.entries(DELIVERY_METHODS)) { %>
+              <% if (k === 'pick_up' && !meetup) continue; %>
+              <label class="method-option">
+                <input type="radio" name="method" value="<%= k %>" required <%= requested === k ? 'checked' : '' %>>
+                <span><strong><%= label %></strong><span class="muted small"><%= { correos: 'A todo el país · la tienda te cotiza el envío', uber_flash: 'Rápido, el mismo día · la tienda te cotiza el viaje', pick_up: `Sin costo · lo recoges en ${conv.province || 'la zona de la tienda'}` }[k] %></span></span>
+              </label>
+            <% } %>
+          </div>
+          <label>¿A dónde lo enviamos? <span class="muted">(no hace falta para pick up)</span>
+            <textarea name="address" rows="2" maxlength="500" placeholder="Provincia, cantón, distrito y señas exactas (para Uber Flash, lo más preciso posible)."><%= o.delivery_address && o.delivery_address !== 'Pick up' ? o.delivery_address : '' %></textarea>
+          </label>
+          <button class="btn btn-block"><%= requested ? 'Actualizar' : 'Continuar' %></button>
+          <% if (requested) { %><p class="hint">⏳ Le pedimos a la tienda la cotización de <%= labels[requested] %>. Te avisamos cuando responda; también pueden hablarlo por aquí.</p><% } %>
+        </form>
+      <% } else { %>
+        <div class="quote-card">
+          <strong>Entrega: <%= labels[o.delivery_method] %><%= pickUp ? '' : ` · ${ship ? money(ship) : 'envío gratis'}` %></strong>
+          <% if (o.delivery_note) { %><span class="muted small">Nota de la tienda: «<%= o.delivery_note %>»</span><% } %>
+          <% if (pickUp) { %><span class="muted small">La tienda te dice por este chat dónde y cuándo recogerlo.</span><% } %>
+          <details class="change-delivery">
+            <summary class="linklike small">Cambiar la forma de entrega</summary>
+            <form action="/pedidos/<%= o.id %>/entrega" method="post" class="stack compact">
+              <div class="method-options">
+                <% for (const [k, label] of Object.entries(DELIVERY_METHODS)) { %>
+                  <% if (k === 'pick_up' && !meetup) continue; %>
+                  <label class="method-option"><input type="radio" name="method" value="<%= k %>" required> <span><strong><%= label %></strong></span></label>
+                <% } %>
+              </div>
+              <textarea name="address" rows="2" maxlength="500" placeholder="Dirección (si es envío)"><%= o.delivery_address && o.delivery_address !== 'Pick up' ? o.delivery_address : '' %></textarea>
+              <button class="btn btn-small btn-ghost">Pedir otra cotización</button>
+            </form>
+          </details>
+        </div>
+        <form action="/pedidos/<%= o.id %>/pago" method="post" enctype="multipart/form-data" class="pay-steps stack compact">
+          <p><strong>2. Paga a CowFace por SINPE Móvil</strong></p>
+          <div class="pay-card">
+            <div><span class="muted small">Número</span><strong class="copy" data-copy="<%= pay.phone %>"><%= pay.phone %></strong></div>
+            <div><span class="muted small">A nombre de</span><strong><%= pay.holder %></strong></div>
+            <div><span class="muted small">Monto exacto</span><strong><%= money(total) %></strong></div>
+            <div><span class="muted small">Detalle</span><strong class="copy" data-copy="<%= o.code %>"><%= o.code %></strong></div>
+          </div>
+          <p class="hint">🔒 CowFace guarda tu dinero y se lo pasa a la tienda solo cuando confirmes que recibiste el artículo. Plazo para pagar: <%= when(o.payment_due_at, true) %></p>
+          <p><strong>3. Avísanos</strong></p>
+          <label>Número de comprobante del SINPE
+            <input name="reference" required maxlength="40" inputmode="numeric" autocomplete="off">
+          </label>
+          <label>Captura del comprobante <span class="muted">(recomendado: acelera la verificación)</span>
+            <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf">
+          </label>
+          <% if (!pickUp) { %>
+            <label>Dirección de entrega
+              <textarea name="address" rows="2" required maxlength="500"><%= o.delivery_address || '' %></textarea>
             </label>
           <% } %>
-        </div>
-        <p><strong>2. Paga a CowFace por SINPE Móvil</strong></p>
-        <div class="pay-card">
-          <div><span class="muted small">Número</span><strong class="copy" data-copy="<%= pay.phone %>"><%= pay.phone %></strong></div>
-          <div><span class="muted small">A nombre de</span><strong><%= pay.holder %></strong></div>
-          <div><span class="muted small">Monto exacto</span><strong data-pay-total><%= ship ? `${money(o.price + ship)} con envío` : money(o.price) %></strong></div>
-          <div><span class="muted small">Detalle</span><strong class="copy" data-copy="<%= o.code %>"><%= o.code %></strong></div>
-        </div>
-        <p class="hint">🔒 CowFace guarda tu dinero y se lo pasa al vendedor solo cuando confirmes que recibiste el artículo. Plazo para pagar: <%= when(o.payment_due_at, true) %></p>
-        <p><strong>3. Avísanos</strong></p>
-        <label>Número de comprobante del SINPE
-          <input name="reference" required maxlength="40" inputmode="numeric" autocomplete="off">
-        </label>
-        <label>Captura del comprobante <span class="muted">(recomendado: acelera la verificación)</span>
-          <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf">
-        </label>
-        <label>Dirección o punto de entrega
-          <textarea name="address" rows="2" required maxlength="500" placeholder="Provincia, cantón, distrito y señas. Para entrega en persona: lugar público y horario."></textarea>
-        </label>
-        <label>Teléfono para la entrega
-          <input name="phone" required inputmode="tel" value="<%= user.phone || '' %>">
-          <span class="hint">Solo lo ve el vendedor después de confirmar tu pago.</span>
-        </label>
-        <button class="btn btn-block">Ya pagué</button>
-      </form>
+          <label>Teléfono para la entrega
+            <input name="phone" required inputmode="tel" value="<%= user.phone || '' %>">
+            <span class="hint">Solo lo ve la tienda después de confirmar tu pago.</span>
+          </label>
+          <button class="btn btn-block">Ya pagué <%= money(total) %></button>
+        </form>
+      <% } %>
       <form action="/pedidos/<%= o.id %>/cancelar" method="post" data-confirm="¿Cancelar este pedido?">
         <button class="linklike small">Cancelar pedido</button>
       </form>
@@ -68,12 +106,12 @@
       <p>⏳ Estamos verificando tu pago (comprobante <%= o.payment_reference %>). Normalmente lo confirmamos en pocas horas, máximo 1 día hábil. <%- fileLink(o.payment_proof, 'Ver tu captura') %></p>
     <% } else if (o.status === 'pagado' || o.status === 'enviado') { %>
       <% if (o.status === 'pagado') { %>
-        <p>✅ Pago confirmado. CowFace lo tiene guardado mientras el vendedor te envía el artículo (debe enviarlo en máximo 3 días hábiles).</p>
+        <p>✅ Pago confirmado. CowFace lo tiene guardado mientras la tienda <%= pickUp ? 'coordina contigo el pick up' : 'te envía el artículo' %> (máximo 3 días hábiles).</p>
       <% } else { %>
-        <p>📦 El vendedor lo marcó como <%= o.delivery_method === 'en_persona' ? 'entregado' : 'enviado' %><%= o.shipping_note ? `: «${o.shipping_note}»` : '' %>. <%- fileLink(o.shipping_proof, 'Ver comprobante de envío') %></p>
-        <p class="hint">Revisa el artículo al recibirlo. Si no reportas un problema, el pago se libera al vendedor automáticamente (<%= when(o.auto_release_at, true) %>).</p>
+        <p>📦 La tienda lo marcó como <%= pickUp ? 'entregado' : 'enviado' %><%= o.shipping_note ? `: «${o.shipping_note}»` : '' %>. <%- fileLink(o.shipping_proof, 'Ver comprobante de envío') %></p>
+        <p class="hint">Revisa el artículo al recibirlo. Si no reportas un problema, el pago se libera a la tienda automáticamente (<%= when(o.auto_release_at, true) %>).</p>
       <% } %>
-      <form action="/pedidos/<%= o.id %>/recibido" method="post" data-confirm="¿Confirmas que recibiste el artículo y está bien? Se libera el pago al vendedor.">
+      <form action="/pedidos/<%= o.id %>/recibido" method="post" data-confirm="¿Confirmas que recibiste el artículo y está bien? Se libera el pago a la tienda.">
         <button class="btn btn-small">Lo recibí, todo bien</button>
       </form>
       <details class="dispute">
@@ -98,41 +136,65 @@
     <% } %>
 
   <% } else { %>
-    <%# ---------- Vendedor ---------- %>
-    <% if (o.status === 'por_pagar') { %>
-      <p>⏳ Esperando que el comprador pague a CowFace<%= o.payment_reported_at ? ' (ya avisó; lo estamos verificando)' : ` (hasta el ${when(o.payment_due_at, true)})` %>. <strong>No envíes nada todavía.</strong></p>
-      <% if (!o.payment_reported_at) { %>
-        <form action="/pedidos/<%= o.id %>/cancelar" method="post" data-confirm="¿Cancelar este pedido? El artículo vuelve a estar disponible.">
-          <button class="linklike small">Cancelar pedido</button>
-        </form>
+    <%# ---------- Tienda ---------- %>
+    <% if (o.status === 'por_pagar' && !o.payment_reported_at) { %>
+      <% if (requested && !quoted) { %>
+        <p>📦 El comprador lo quiere por <strong><%= labels[requested] %></strong><%= o.delivery_address ? ` en: «${o.delivery_address}»` : '' %>. Cotízale el envío:</p>
+      <% } else if (!quoted) { %>
+        <p>⏳ Esperando que el comprador elija cómo recibirlo. Si ya lo hablaron, puedes cotizarle tú directamente:</p>
+      <% } else { %>
+        <p>🧾 Cotizaste: <strong><%= labels[o.delivery_method] %></strong><%= pickUp ? '' : ` · ${ship ? money(ship) : 'envío gratis'}` %> · total <%= money(total) %>. Esperando el pago del comprador (hasta el <%= when(o.payment_due_at, true) %>). <strong>No envíes nada todavía.</strong></p>
       <% } %>
+      <form action="/pedidos/<%= o.id %>/cotizar" method="post" class="quote-form stack compact">
+        <div class="row2">
+          <label>Forma de entrega
+            <select name="method" required>
+              <% for (const [k, label] of Object.entries(DELIVERY_METHODS)) { %>
+                <% if (k === 'pick_up' && !meetup) continue; %>
+                <option value="<%= k %>" <%= (o.delivery_method || requested || 'correos') === k ? 'selected' : '' %>><%= label %></option>
+              <% } %>
+            </select>
+          </label>
+          <label>Costo del envío (₡)
+            <input name="cost" inputmode="numeric" placeholder="Ej. 2800 (pick up: vacío)" value="<%= quoted && !pickUp ? ship : '' %>">
+          </label>
+        </div>
+        <input name="note" maxlength="200" placeholder="Nota opcional (ej. Uber Flash hoy a las 4 p. m.)" value="<%= o.delivery_note || '' %>">
+        <p class="hint">El envío lo paga el comprador y te llega completo con tu pago. En Uber Flash, cotiza lo que te marca la app para esa dirección.</p>
+        <button class="btn btn-small"><%= quoted ? 'Actualizar cotización' : 'Enviar cotización' %></button>
+      </form>
+      <form action="/pedidos/<%= o.id %>/cancelar" method="post" data-confirm="¿Cancelar este pedido? El artículo vuelve a estar disponible.">
+        <button class="linklike small">Cancelar pedido</button>
+      </form>
+    <% } else if (o.status === 'por_pagar') { %>
+      <p>⏳ El comprador avisó que pagó <%= money(total) %>; lo estamos verificando. <strong>No envíes nada todavía.</strong></p>
     <% } else if (o.status === 'pagado') { %>
-      <p>✅ <strong>Pago confirmado y guardado por CowFace.</strong> Envíalo en máximo 3 días hábiles:</p>
+      <p>✅ <strong>Pago confirmado y guardado por CowFace.</strong> <%= pickUp ? 'Coordina el pick up' : 'Envíalo' %> en máximo 3 días hábiles:</p>
       <dl class="delivery">
         <div><dt>Comprador</dt><dd><%= conv.buyer_name %></dd></div>
-        <div><dt>Entrega</dt><dd><%= methods[o.delivery_method] %></dd></div>
-        <div><dt>Dirección</dt><dd><%= o.delivery_address %></dd></div>
+        <div><dt>Entrega</dt><dd><%= labels[o.delivery_method] || o.delivery_method %><%= !pickUp && ship ? ` · envío ${money(ship)}` : '' %></dd></div>
+        <% if (!pickUp) { %><div><dt>Dirección</dt><dd><%= o.delivery_address %></dd></div><% } %>
         <div><dt>Teléfono</dt><dd><%= o.delivery_phone %></dd></div>
       </dl>
       <form action="/pedidos/<%= o.id %>/enviado" method="post" enctype="multipart/form-data" class="stack compact">
-        <% if (o.delivery_method === 'en_persona') { %>
+        <% if (pickUp) { %>
           <input name="note" maxlength="300" placeholder="Cómo y dónde lo entregaste (opcional)">
         <% } else { %>
-          <label>Foto de la guía, del recibo o del paquete enviado (obligatoria)
+          <label><%= o.delivery_method === 'uber_flash' ? 'Captura del viaje de Uber Flash (obligatoria)' : 'Foto de la guía, del recibo o del paquete enviado (obligatoria)' %>
             <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf" required>
           </label>
           <label>Número de guía o seguimiento (opcional)
-            <input name="note" maxlength="300" placeholder="Ej. Correos CR: RR123456789CR">
+            <input name="note" maxlength="300" placeholder="<%= o.delivery_method === 'uber_flash' ? 'Ej. viaje de las 4 p. m.' : 'Ej. Correos CR: RR123456789CR' %>">
           </label>
           <p class="hint"><strong>El pago de esta venta se te hace después de que subas la foto del envío</strong> y el comprador lo reciba (o pasen <%= pay.releaseDays %> días sin reclamo). La foto también es tu prueba si hay un reclamo.</p>
         <% } %>
-        <button class="btn btn-small"><%= o.delivery_method === 'en_persona' ? 'Marcar como entregado' : 'Marcar como enviado' %></button>
+        <button class="btn btn-small"><%= pickUp ? 'Marcar como entregado' : 'Marcar como enviado' %></button>
       </form>
       <form action="/pedidos/<%= o.id %>/no-puedo-entregar" method="post" data-confirm="¿Seguro? CowFace le devolverá el dinero al comprador y el artículo vuelve a estar disponible.">
         <button class="linklike small">No puedo entregarlo</button>
       </form>
     <% } else if (o.status === 'enviado') { %>
-      <p>📦 <%= o.delivery_method === 'en_persona' ? 'Entregado' : 'Enviado' %>. <%- fileLink(o.shipping_proof, 'Ver tu comprobante') %> Recibirás <strong><%= money(o.payout_amount) %></strong> cuando el comprador confirme, o automáticamente si no hay reclamo (<%= when(o.auto_release_at, true) %>).</p>
+      <p>📦 <%= pickUp ? 'Entregado' : 'Enviado' %>. <%- fileLink(o.shipping_proof, 'Ver tu comprobante') %> Recibirás <strong><%= money(o.payout_amount) %></strong> cuando el comprador confirme, o automáticamente si no hay reclamo (<%= when(o.auto_release_at, true) %>).</p>
     <% } else if (o.status === 'completado') { %>
       <p>✅ Venta completada. <%= o.payout_status === 'pagado' ? `CowFace te transfirió ${money(o.payout_amount)} (${when(o.payout_paid_at, true)})` : `CowFace te transferirá ${money(o.payout_amount)} por SINPE al ${user.payout_phone || 'número que registraste'} en máximo 2 días hábiles.` %></p>
       <p class="hint"><%= money(o.price) %> − comisión CowFace <%= +(o.commission_rate * 100).toFixed(2) %> % (<%= money(o.commission_amount) %>)<%= ship ? ` + envío ${money(ship)}` : '' %> = <%= money(o.payout_amount) %></p>

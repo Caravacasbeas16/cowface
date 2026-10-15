@@ -2,7 +2,6 @@
 <%
   const p = product;
   const measureList = (catalog.MEASUREMENTS[p.category] || []).filter((m) => p.measurements && p.measurements[m.key]);
-  const shipText = p.shipping_cost ? `${money(p.shipping_cost)} a todo el país` : 'Envío gratis a todo el país';
 %>
 <nav class="crumbs">
   <a href="/buscar" class="back-to-results" data-back-results hidden>← Volver a los resultados</a>
@@ -52,8 +51,8 @@
     </div>
     <div class="price"><%= money(p.price) %></div>
     <div class="ship-line">
-      <span>🚚 <%= shipText %></span>
-      <% if (p.meetup) { %><span>🤝 Entrega en persona sin costo en <%= p.province %></span><% } %>
+      <span>🚚 Correos de Costa Rica o Uber Flash</span>
+      <% if (p.meetup) { %><span>📍 Pick up en <%= p.province %></span><% } %>
     </div>
     <div class="muted small">Publicado <%= timeAgo(p.created_at) %> · <%= p.province %></div>
 
@@ -74,11 +73,10 @@
       <div class="deal-box">
         <div class="price-breakdown">
           <div><span>Prenda</span><span><%= money(p.price) %></span></div>
-          <div><span>Envío</span><span><%= p.shipping_cost ? money(p.shipping_cost) : 'Gratis' %><%= p.meetup && p.shipping_cost ? ' (₡0 en persona)' : '' %></span></div>
-          <div class="price-breakdown-total"><span>Total</span><span><%= money(p.price + (p.shipping_cost || 0)) %><%= p.meetup && p.shipping_cost ? ` · ${money(p.price)} en persona` : '' %></span></div>
-          <p class="hint">Sin cargos extra para el comprador. Eliges envío o entrega en persona al pagar.</p>
+          <div><span>Entrega</span><span>Correos, Uber Flash<%= p.meetup ? ' o pick up' : '' %></span></div>
+          <p class="hint">Después de comprar eliges cómo recibirlo y la tienda te cotiza el envío (como un Uber). Ves el total exacto antes de pagar<%= p.meetup ? '; el pick up no tiene costo' : '' %>.</p>
         </div>
-        <form action="/p/<%= p.id %>/comprar" method="post" data-confirm="¿Comprar «<%= p.title %>»? Total <%= money(p.price + (p.shipping_cost || 0)) %><%= p.meetup && p.shipping_cost ? ` (o ${money(p.price)} si lo recibes en persona)` : '' %>. Le pagas a CowFace por SINPE Móvil y guardamos el dinero hasta que recibas el artículo.">
+        <form action="/p/<%= p.id %>/comprar" method="post" data-confirm="¿Comprar «<%= p.title %>» por <%= money(p.price) %>? Luego eliges la entrega, la tienda te cotiza el envío y le pagas a CowFace por SINPE Móvil. Guardamos el dinero hasta que recibas el artículo.">
           <button class="btn btn-block" type="submit">Comprar ahora</button>
         </form>
         <details class="offer-panel">

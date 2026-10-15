@@ -3,7 +3,7 @@
   solo (GET /mensajes/:id/hilo) para refrescar en vivo. Los botones dependen de quién mira.
 %>
 <% const me = user.id; const isSeller = conv.role === 'vendedor'; const o = conv.order; %>
-<div class="deal-panel" data-deal-state="<%= conv.product_status %>|<%= o ? [o.id, o.status, o.payment_reported_at ? 1 : 0, o.payout_status].join('-') : '' %>">
+<div class="deal-panel" data-deal-state="<%= conv.product_status %>|<%= o ? [o.id, o.status, o.payment_reported_at ? 1 : 0, o.payout_status, o.delivery_requested, o.delivery_quote_at, o.shipping_cost].join('-') : '' %>">
   <a class="deal-product" href="<%= conv.product_id ? `/p/${conv.product_id}` : '#' %>">
     <img src="<%= conv.product_id ? imageUrl({ id: conv.product_id, category: conv.category, image: conv.image }) : '/sin-foto/x/0.svg' %>" alt="">
     <div>

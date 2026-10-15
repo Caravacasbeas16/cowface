@@ -148,7 +148,8 @@ test('el CSV acepta ";" o ",", comillas, tildes y valores como los escribe una p
   assert.equal(rowToBody({ categoria: 'Ropa', tipo: 'jeans', talla: '32' }).size, 'Cintura 32');
   assert.equal(rowToBody({ categoria: 'Bolsos', tipo: 'mochila' }).item_type, 'Mochilas');
   assert.equal(rowToBody({ estado: 'Usado - como nuevo' }).condition, 'como_nuevo');
-  assert.equal(rowToBody({ en_persona: 'No' }).meetup, '');
+  assert.equal(rowToBody({ pick_up: 'No' }).meetup, '');
+  assert.equal(parseCsv('titulo;en persona\nGorra;no\n').headers[1], 'pick_up', 'la columna vieja "en persona" sigue sirviendo');
   assert.equal(parseCsv('titulo,precio\nCamisa,"25,000"\n').rows[0].values.precio, '25,000');
 });
 
@@ -215,7 +216,6 @@ test('carga rápida: crea los válidos, explica los errores y pone las fotos en 
     ['Bolso sin fotos', 'borrador', 'Pequeño'],
   ]);
   assert.equal(items[0].price, 18000);
-  assert.equal(items[0].shipping_cost, 2500);
   assert.equal(items[1].meetup, 0);
   const jeanPhotos = db.prepare('SELECT filename FROM product_images WHERE product_id = ? ORDER BY position').all(items[0].id);
   assert.equal(jeanPhotos.length, 2);

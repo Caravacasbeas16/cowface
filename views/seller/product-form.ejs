@@ -158,16 +158,11 @@
 
       <!-- 5. Precio y envío -->
       <section class="listing-step" id="paso-precio">
-        <h2><span class="step-n">5</span> Precio y envío</h2>
-        <div class="row3">
+        <h2><span class="step-n">5</span> Precio y entrega</h2>
+        <div class="row2">
           <label>Precio (₡)
             <input name="price" required inputmode="numeric" value="<%= f.price || '' %>" placeholder="15000" data-price>
             <%- err('price') %>
-          </label>
-          <label>Envío que paga el comprador (₡)
-            <input name="shipping_cost" inputmode="numeric" value="<%= f.shipping_cost ?? '' %>" placeholder="0 = envío gratis" data-shipping>
-            <span class="hint">Por Correos o mensajero a todo el país.</span>
-            <%- err('shipping_cost') %>
           </label>
           <label>Cantidad
             <input type="number" name="quantity" min="1" max="999" required value="<%= f.quantity || 1 %>">
@@ -176,12 +171,12 @@
         </div>
         <label class="check">
           <input type="checkbox" name="meetup" value="1" <%= meetupOn ? 'checked' : '' %>>
-          <span>También entrego en persona sin costo de envío (en <%= user.province %>, en un lugar público).</span>
+          <span>Ofrezco <strong>pick up</strong>: el comprador lo puede recoger sin costo de envío (en <%= user.province %>, en un lugar público).</span>
         </label>
+        <p class="hint">🚚 El envío no se pone aquí: cuando alguien compra, elige Correos de Costa Rica, Uber Flash<%= ' ' %>o pick up, y tú le cotizas el envío en el pedido (como un Uber). Ese monto lo paga el comprador y te llega completo.</p>
         <div class="earnings" data-earnings data-rate="<%= commissionRateNow %>">
           <div><span>Precio</span><strong data-e-price>—</strong></div>
           <div><span>Comisión <%= siteName %> (<%= ratePct %> %)</span><strong data-e-fee>—</strong></div>
-          <div><span>Envío (lo paga el comprador, te llega a ti)</span><strong data-e-ship>—</strong></div>
           <div class="earnings-total"><span>Recibes por SINPE</span><strong data-e-total>—</strong></div>
           <p class="hint">Te pagamos después de que subas la foto del envío y el comprador confirme que lo recibió (o <%= releaseDays %> días después, si no hay reclamo). En entregas en persona, cuando el comprador confirma.</p>
         </div>

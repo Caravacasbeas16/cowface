@@ -108,15 +108,12 @@
   const toInt = (v) => Number(String(v).replace(/[₡,.\s]/g, '')) || 0;
   const syncEarnings = () => {
     const price = toInt(form.querySelector('[data-price]').value);
-    const ship = toInt(form.querySelector('[data-shipping]').value);
     const fee = Math.round(price * Number(earnings.dataset.rate));
     earnings.querySelector('[data-e-price]').textContent = price ? money(price) : '—';
     earnings.querySelector('[data-e-fee]').textContent = price ? `− ${money(fee)}` : '—';
-    earnings.querySelector('[data-e-ship]').textContent = ship ? `+ ${money(ship)}` : 'Envío gratis';
-    earnings.querySelector('[data-e-total]').textContent = price ? money(price - fee + ship) : '—';
+    earnings.querySelector('[data-e-total]').textContent = price ? `${money(price - fee)} + envío` : '—';
   };
   form.querySelector('[data-price]').addEventListener('input', syncEarnings);
-  form.querySelector('[data-shipping]').addEventListener('input', syncEarnings);
   syncEarnings();
 
   // Envío con barra de progreso. Los botones de las fotos ya guardadas (portada/quitar) usan su

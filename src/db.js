@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -258,6 +258,12 @@ addColumn('users', 'reviews_base_count', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'reviews_base_avg', 'REAL NOT NULL DEFAULT 0');
 addColumn('users', 'history_source', "TEXT NOT NULL DEFAULT ''");  // de dónde viene (ej. "Instagram")
 addColumn('orders', 'data_sent_at', 'TEXT');           // cuándo el admin le mandó a la tienda los datos de entrega
+// Entrega "como un Uber": el comprador pide una forma de entrega y la tienda cotiza el envío.
+addColumn('orders', 'delivery_requested', 'TEXT');     // lo que pidió el comprador (correos, uber_flash, pick_up)
+addColumn('orders', 'delivery_quote_at', 'TEXT');      // cuándo quedó definida la entrega (cotización o pick up)
+addColumn('orders', 'delivery_note', "TEXT NOT NULL DEFAULT ''"); // nota de la tienda en la cotización
+// Pedidos ya pagados o con pago avisado tenían la entrega definida.
+db.exec("UPDATE orders SET delivery_quote_at = COALESCE(payment_reported_at, created_at) WHERE delivery_quote_at IS NULL AND delivery_method IS NOT NULL");
 
 // Aprobación de tiendas: 'nuevo' (no ha pedido vender), 'pendiente', 'aprobado' o 'rechazado'.
 // Al crear la columna, quien ya venía vendiendo (artículos, ventas o datos de pago) queda aprobado.

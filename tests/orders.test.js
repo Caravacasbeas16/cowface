@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  adminLogin, db, flashOf, get, post, publishPolo, setSetting, shipWithPhoto, signup, signupSeller, startServer, stopServer,
+  adminLogin, db, flashOf, get, post, publishPolo, quoted, setSetting, shipWithPhoto, signup, signupSeller, startServer, stopServer,
 } from './helpers.js';
 
 const { runOrderTimers } = await import('../src/orders.js');
@@ -57,7 +57,8 @@ test('flujo completo: oferta aceptada → pago → verificación → envío → 
   assert.equal(o.payout_amount, 19600);
   assert.deepEqual(product(id), { quantity: 0, status: 'reservado' });
 
-  // El comprador ve el SINPE de CowFace, nunca el del vendedor.
+  // Con la entrega cotizada, el comprador ve el SINPE de CowFace, nunca el del vendedor.
+  quoted(o.id, 'correos');
   const buyerPage = await (await get(`/mensajes/${o.conversation_id}`, buyer)).text();
   assert.match(buyerPage, /60001111/);
   assert.doesNotMatch(buyerPage, /88881234/);

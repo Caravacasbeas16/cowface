@@ -111,15 +111,6 @@
 
 })();
 
-// Al pagar: el monto exacto cambia según cómo se recibe el artículo (en persona no se cobra envío).
-document.addEventListener('change', (e) => {
-  const radio = e.target.closest('[data-pay-form] input[name="method"]');
-  if (!radio) return;
-  const form = radio.closest('[data-pay-form]');
-  const total = Number(form.dataset.price) + Number(radio.dataset.methodCost || 0);
-  const cost = Number(radio.dataset.methodCost || 0);
-  form.querySelector('[data-pay-total]').textContent = '₡' + total.toLocaleString('es-CR') + (cost ? ' con envío' : '');
-});
 
 // Volver a los resultados de búsqueda conservando los filtros (si se llegó desde /buscar).
 (() => {

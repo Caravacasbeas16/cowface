@@ -43,10 +43,24 @@ export const POLO = {
 
 export const get = (url, cookie = '') => fetch(`${ctx.base}${url}`, { headers: { cookie }, redirect: 'manual' });
 
-export const post = (url, cookie = '', data = {}, json = false) => fetch(`${ctx.base}${url}`, {
-  method: 'POST', redirect: 'manual', body: form(data),
-  headers: { cookie, ...(json ? { Accept: 'application/json' } : {}) },
-});
+// Deja la entrega de un pedido ya definida (como si la tienda la hubiera cotizado), para las pruebas
+// que no son de la entrega. Las de la entrega usan /entrega y /cotizar (ver delivery.test.js).
+const LEGACY = { en_persona: 'pick_up', mensajero: 'uber_flash' };
+export function quoted(orderId, method = 'correos', cost = 0) {
+  const m = LEGACY[method] || method;
+  db.prepare(`UPDATE orders SET delivery_method = ?, delivery_requested = ?, delivery_quote_at = datetime('now'),
+    shipping_cost = ?, total = price + ?, payout_amount = price - commission_amount + ? WHERE id = ? AND delivery_quote_at IS NULL`)
+    .run(m, m, cost, cost, cost, orderId);
+}
+
+export const post = (url, cookie = '', data = {}, json = false) => {
+  const pay = url.match(/^\/pedidos\/(\d+)\/pago$/);
+  if (pay && data.method) quoted(Number(pay[1]), data.method);
+  return fetch(`${ctx.base}${url}`, {
+    method: 'POST', redirect: 'manual', body: form(data),
+    headers: { cookie, ...(json ? { Accept: 'application/json' } : {}) },
+  });
+};
 
 export async function signup(email, name, phone = '8888-1234') {
   const res = await post('/registro', '', { name, store_name: '', email, phone, province: 'Heredia', password: 'clave-segura-1' });

@@ -21,7 +21,7 @@ import passwordRoutes from './routes/password.js';
 import { enabledProviders } from './oauth.js';
 import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
-import { DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, paymentConfig } from './orders.js';
+import { DELIVERY_LABELS, DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, isPickUp, paymentConfig } from './orders.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -125,6 +125,8 @@ export function createApp() {
   // ★★★★☆ para un promedio o calificación.
   app.locals.stars = (n) => { const r = Math.round(Number(n) || 0); return '★'.repeat(r) + '☆'.repeat(5 - r); };
   app.locals.DELIVERY_METHODS = DELIVERY_METHODS;
+  app.locals.DELIVERY_LABELS = DELIVERY_LABELS;
+  app.locals.isPickUp = isPickUp;
   app.locals.OPEN_STATUSES = OPEN_STATUSES;
   const contact = (process.env.CONTACT_EMAIL || '').trim();
   app.locals.contactEmail = /^[\w.+-]+@[\w-]+(\.[\w-]+)+$/.test(contact) ? contact : '';

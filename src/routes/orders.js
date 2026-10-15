@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireRole } from '../auth.js';
 import { UserError } from '../messages.js';
 import {
-  cancelUnpaid, confirmReceived, markShipped, openDispute, reportPayment, sellerCannotDeliver,
+  cancelUnpaid, confirmReceived, markShipped, openDispute, quoteDelivery, reportPayment, requestDelivery, sellerCannotDeliver,
 } from '../orders.js';
 import { perUser, rateLimit } from '../rate-limit.js';
 import { attachment, discardAttachment } from '../uploads.js';
@@ -14,6 +14,8 @@ router.use(rateLimit({ windowMs: 60 * 60 * 1000, max: 60, key: perUser, message:
 // Cada acción recibe el archivo opcional del formulario (campo "comprobante"): captura del SINPE,
 // foto de la guía de envío o foto del problema en un reclamo. Se guarda como adjunto privado.
 const ACTIONS = {
+  entrega: (id, user, body) => requestDelivery(id, user.id, body),
+  cotizar: (id, user, body) => quoteDelivery(id, user.id, body),
   pago: (id, user, body, file) => reportPayment(id, user.id, body, file),
   cancelar: (id, user) => cancelUnpaid(id, user.id),
   enviado: (id, user, body, file) => markShipped(id, user.id, body.note, file),

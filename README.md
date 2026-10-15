@@ -172,6 +172,18 @@ dominio de Railway; si se cambia a dominio propio, definir `PUBLIC_URL`.
 - **Datos por enviar a tiendas** (en "Por hacer"): después de confirmar el SINPE, el admin le manda
   a la tienda por correo los datos de entrega (o los copia para WhatsApp y los marca como enviados).
 
+## Entrega "como un Uber"
+
+El artículo no lleva costo de envío: solo dice si la tienda ofrece pick up. Después de comprar:
+1. El comprador elige **Correos de Costa Rica**, **Uber Flash** o **pick up** y da la dirección
+   (`POST /pedidos/:id/entrega`). Pick up queda listo para pagar, sin costo.
+2. La tienda **cotiza** forma de entrega y costo (`POST /pedidos/:id/cotizar`) y lo puede ajustar
+   mientras hablan; el comprador puede pedir otra forma (vuelve a cotizarse).
+3. Con la entrega definida aparecen el total exacto y el SINPE; el plazo para pagar corre desde la
+   cotización. Después de avisar el pago ya no se cambia.
+El envío llega completo a la tienda (no paga comisión). Para enviar se exige foto (guía o captura del
+viaje de Uber Flash); el pick up no.
+
 ## Aprobación de tiendas
 
 Comprar no necesita nada. Para vender: datos de SINPE → **solicitud de tienda** (nombre, Instagram

@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  adminLogin, ctx, db, flashOf, get, post, publishPolo, signup, signupSeller, startServer, stopServer,
+  adminLogin, ctx, db, flashOf, get, post, publishPolo, quoted, signup, signupSeller, startServer, stopServer,
 } from './helpers.js';
 
 const { outbox } = await import('../src/mailer.js');
@@ -167,7 +167,8 @@ test('captura del SINPE: llega adjunta, por el aviso de pago o por el chat', asy
   await settle();
   assert.equal(mailsTo(from).length, 0);
 
-  // 2. Con el aviso "Ya pagué".
+  // 2. Con el aviso "Ya pagué" (con la entrega ya cotizada).
+  quoted(o.id, 'correos');
   from = outbox.length;
   await send(`/pedidos/${o.id}/pago`, buyer, { reference: String(++receipt), method: 'correos', address: 'Heredia centro', phone: '8777-0000' }, 'comprobante');
   await settle();

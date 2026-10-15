@@ -351,3 +351,8 @@ label.check a { text-decoration: underline; }
 .reject-form { display: flex; flex-direction: column; gap: .3rem; }
 .reject-form input { font-size: .8rem; padding: .35rem .5rem; }
 .approval-form { margin: 1rem 0; }
+
+/* ---------- Entrega cotizada ---------- */
+.quote-card { display: flex; flex-direction: column; gap: .3rem; padding: .7rem .9rem; border: 1px solid var(--ink); border-radius: 12px; background: #fff; }
+.quote-card .change-delivery { margin-top: .3rem; }
+.quote-form .row2 { gap: .6rem; }

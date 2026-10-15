@@ -13,11 +13,17 @@ import { isBlockedEither } from './blocks.js';
 
 export const MAX_UNPAID_PER_BUYER = 3;
 export const OPEN_STATUSES =['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
+// Formas de entrega que se pueden elegir. El costo del envío no se fija al publicar: la tienda lo
+// cotiza en cada pedido (como un Uber), después de que el comprador dice cómo y dónde lo quiere.
 export const DELIVERY_METHODS = {
   correos: 'Correos de Costa Rica',
-  mensajero: 'Mensajero / envío a domicilio',
-  en_persona: 'Entrega en persona (lugar público)',
+  uber_flash: 'Uber Flash',
+  pick_up: 'Pick up (recoger en persona)',
 };
+// Para mostrar pedidos viejos que usaban otras formas de entrega.
+export const DELIVERY_LABELS = { ...DELIVERY_METHODS, mensajero: 'Mensajero', en_persona: 'Entrega en persona' };
+// Sin envío: no se cobra y no se exige foto del envío.
+export const isPickUp = (method) => method === 'pick_up' || method === 'en_persona';
 
 // ---------- Configuración de pagos (la llena el admin en su panel) ----------
 
@@ -99,23 +105,21 @@ export function createOrder(conv, price, source) {
   db.prepare("UPDATE products SET quantity = ?, status = ?, updated_at = datetime('now') WHERE id = ?")
     .run(left, left === 0 ? 'reservado' : 'disponible', product.id);
 
-  // La comisión se cobra sobre el precio de la prenda. El envío lo paga el comprador y llega
-  // completo al vendedor (que es quien paga el courier). Se toma el costo de envío del artículo en
-  // este momento; si el comprador elige entrega en persona al pagar, el envío queda en cero.
+  // La comisión se cobra sobre el precio de la prenda. El envío todavía no existe: el comprador elige
+  // cómo recibirlo y la tienda lo cotiza; ese monto se suma al total y llega completo al vendedor.
   const rate = commissionRate();
   const commission = Math.round(price * rate);
-  const shipping = product.shipping_cost || 0;
   const code = newOrderCode();
   const { windowHours } = paymentConfig();
   db.prepare(`
     INSERT INTO orders (code, product_id, product_title, seller_id, buyer_id, conversation_id, source, list_price, price,
       commission_rate, commission_amount, payout_amount, payment_due_at, shipping_cost, total)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)
   `).run(code, product.id, product.title, conv.seller_id, conv.buyer_id, conv.id, source, product.price, price,
-    rate, commission, price - commission + shipping, addHours(windowHours), shipping, price + shipping);
+    rate, commission, price - commission, addHours(windowHours), price);
   addMessage(conv, null, 'sistema',
-    `🛒 Pedido ${code} creado: ${formatColones(price)}${shipping ? ` + envío ${formatColones(shipping)}` : ' (envío gratis)'}. ` +
-    `El comprador tiene ${windowHours} h para pagar a CowFace; el vendedor envía cuando confirmemos el pago.`);
+    `🛒 Pedido ${code} creado: ${formatColones(price)}. Comprador: elige cómo quieres recibirlo `
+    + `(Correos, Uber Flash${product.meetup ? ' o pick up' : ''}); la tienda te cotiza el envío y luego pagas a CowFace.`);
 
   // Si era la última unidad, las demás ofertas por este artículo quedan sin efecto.
   if (left === 0) {
@@ -153,11 +157,74 @@ function complete(order, text) {
     `El pedido ${order.code} se completó. Transfiere ${formatColones(order.payout_amount)} al vendedor por SINPE y márcalo como pagado.`, '/admin#pagos');
 }
 
-// Lo que paga el comprador según cómo reciba el artículo (en persona no se cobra envío).
-export function totalsFor(order, method) {
-  const shipping = method === 'en_persona' ? 0 : order.shipping_cost || 0;
-  return { shipping, total: order.price + shipping, payout: order.price - order.commission_amount + shipping };
+const MAX_SHIPPING = 100_000;
+const productMeetup = (order) => (order.product_id ? db.prepare('SELECT meetup FROM products WHERE id = ?').get(order.product_id)?.meetup !== 0 : true);
+
+// Monto, total y pago al vendedor con un costo de envío dado (el envío llega completo al vendedor).
+const withShipping = (order, shipping) => ({
+  shipping_cost: shipping, total: order.price + shipping, payout_amount: order.price - order.commission_amount + shipping,
+});
+
+// Paso 1 (comprador): cómo y dónde lo quiere. Pick up no tiene costo: queda listo para pagar.
+// Correos y Uber Flash esperan la cotización de la tienda.
+export function requestDelivery(orderId, buyerId, body) {
+  return transaction(() => {
+    const order = load(orderId, { buyerId, from: ['por_pagar'] });
+    if (!order) return null;
+    if (order.payment_reported_at) throw new UserError('Ya avisaste el pago: la entrega ya no se puede cambiar.');
+    const method = DELIVERY_METHODS[body.method] ? body.method : null;
+    const address = String(body.address ?? '').trim().slice(0, 500);
+    if (!method) throw new UserError('Elige cómo quieres recibir el artículo.');
+    if (method === 'pick_up' && !productMeetup(order)) throw new UserError('Esta tienda no ofrece pick up: elige Correos o Uber Flash.');
+    if (method !== 'pick_up' && address.length < 5) {
+      throw new UserError(method === 'uber_flash' ? 'Escribe la dirección exacta para el Uber Flash (con señas).' : 'Escribe la dirección para el envío por Correos.');
+    }
+    const { windowHours } = paymentConfig();
+    if (method === 'pick_up') {
+      update(order, {
+        delivery_requested: method, delivery_method: method, delivery_address: address || 'Pick up', delivery_note: '',
+        delivery_quote_at: now(), payment_due_at: laterOf(order.payment_due_at, addHours(windowHours)), ...withShipping(order, 0),
+      });
+      systemNote(order.conversation_id, `📍 El comprador va a recoger el pedido ${order.code} (pick up, sin costo de envío). Tienda: dile dónde y cuándo por este chat. Total a pagar: ${formatColones(order.price)}.`);
+    } else {
+      update(order, {
+        delivery_requested: method, delivery_address: address, delivery_method: null, delivery_quote_at: null, delivery_note: '',
+        ...withShipping(order, 0),
+      });
+      systemNote(order.conversation_id, `📦 El comprador quiere recibir el pedido ${order.code} por ${DELIVERY_METHODS[method]} en: «${address}». Tienda: cotiza el envío aquí arriba.`);
+    }
+    return order;
+  });
 }
+
+// Paso 2 (tienda): forma de entrega y costo del envío. Se puede volver a cotizar mientras no paguen.
+export function quoteDelivery(orderId, sellerId, body) {
+  return transaction(() => {
+    const order = load(orderId, { sellerId, from: ['por_pagar'] });
+    if (!order) return null;
+    if (order.payment_reported_at) throw new UserError('El comprador ya avisó el pago: la cotización ya no se puede cambiar.');
+    const method = DELIVERY_METHODS[body.method] ? body.method : null;
+    if (!method) throw new UserError('Elige la forma de entrega.');
+    if (method === 'pick_up' && !productMeetup(order)) throw new UserError('Este artículo no tiene pick up activado.');
+    const raw = String(body.cost ?? '').replace(/[₡,.\s]/g, '');
+    const cost = method === 'pick_up' ? 0 : Number(raw);
+    if (method !== 'pick_up' && (!raw || !Number.isInteger(cost) || cost < 0 || cost > MAX_SHIPPING)) {
+      throw new UserError('Escribe el costo del envío en colones (0 si lo envías gratis).');
+    }
+    const note = String(body.note ?? '').trim().slice(0, 200);
+    const { windowHours } = paymentConfig();
+    update(order, {
+      delivery_method: method, delivery_note: note, delivery_quote_at: now(),
+      payment_due_at: laterOf(order.payment_due_at, addHours(windowHours)), ...withShipping(order, cost),
+    });
+    const total = order.price + cost;
+    systemNote(order.conversation_id, `🧾 La tienda cotizó la entrega del pedido ${order.code}: ${DELIVERY_METHODS[method]}`
+      + `${method === 'pick_up' ? '' : ` · envío ${cost ? formatColones(cost) : 'gratis'}`}${note ? ` (${note})` : ''}. Total a pagar: ${formatColones(total)}.`);
+    return order;
+  });
+}
+
+const laterOf = (a, b) => (!a || b > a ? b : a);
 
 // proof: nombre del comprobante (foto/PDF) ya guardado como adjunto privado, o null.
 export function reportPayment(orderId, buyerId, body, proof = null) {
@@ -165,25 +232,23 @@ export function reportPayment(orderId, buyerId, body, proof = null) {
     const order = load(orderId, { buyerId, from: ['por_pagar'] });
     if (!order) return null;
     if (order.payment_reported_at) throw new UserError('Ya nos avisaste de este pago; lo estamos verificando.');
+    // Se paga el total que ya quedó definido con la entrega (cotizada por la tienda, o pick up).
+    if (!order.delivery_quote_at || !order.delivery_method) {
+      throw new UserError('Primero elijan la forma de entrega: la tienda te cotiza el envío y ahí ves el total exacto.');
+    }
     const reference = String(body.reference ?? '').replace(/\s/g, '').slice(0, 40);
-    const method = DELIVERY_METHODS[body.method] ? body.method : null;
-    const address = String(body.address ?? '').trim().slice(0, 500);
+    const address = String(body.address ?? order.delivery_address ?? '').trim().slice(0, 500);
     const phone = normalizePhone(body.phone);
     if (!/^[\w-]{4,40}$/.test(reference)) throw new UserError('Escribe el número de comprobante del SINPE.');
     // Un comprobante solo puede respaldar un pedido (evita pagar una vez y reportarlo en varios).
     const reused = db.prepare("SELECT 1 FROM orders WHERE payment_reference = ? AND id != ? AND status != 'cancelado'").get(reference, order.id);
     if (reused) throw new UserError('Ese comprobante ya se usó en otro pedido. Revisa el número; si crees que es un error, escríbenos.');
-    if (!method) throw new UserError('Elige cómo quieres recibir el artículo.');
-    if (method === 'en_persona') {
-      const product = order.product_id && db.prepare('SELECT meetup FROM products WHERE id = ?').get(order.product_id);
-      if (product && !product.meetup) throw new UserError('Este vendedor no hace entregas en persona: elige envío.');
-    }
-    if (address.length < 5) throw new UserError(method === 'en_persona' ? 'Indica dónde y cuándo te queda bien recibirlo.' : 'Escribe la dirección de entrega.');
+    if (!isPickUp(order.delivery_method) && address.length < 5) throw new UserError('Escribe la dirección de entrega.');
     if (!phone) throw new UserError('Teléfono de contacto para la entrega (8 dígitos).');
-    const t = totalsFor(order, method);
+    const t = { total: order.total };
     update(order, {
-      payment_reported_at: now(), payment_reference: reference, delivery_method: method, delivery_address: address,
-      delivery_phone: phone, payment_proof: proof, shipping_cost: t.shipping, total: t.total, payout_amount: t.payout,
+      payment_reported_at: now(), payment_reference: reference, delivery_address: address || 'Pick up',
+      delivery_phone: phone, payment_proof: proof,
     });
     systemNote(order.conversation_id, `💸 El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code}. CowFace está verificando el pago.`);
     notifyAdmin('pago', `Pago por verificar: ${order.code} · ${formatColones(t.total)}${proof ? ' · con captura' : ''}`,
@@ -214,7 +279,7 @@ export function markShipped(orderId, sellerId, note, proof = null) {
     const order = load(orderId, { sellerId, from: ['pagado'] });
     if (!order) return null;
     const text = String(note ?? '').trim().slice(0, 300);
-    if (order.delivery_method !== 'en_persona' && !proof) {
+    if (!isPickUp(order.delivery_method) && !proof) {
       throw new UserError('Sube una foto de la guía, del recibo o del paquete enviado. Sin la foto del envío no podemos pagarte la venta.');
     }
     const { releaseDays } = paymentConfig();
@@ -389,7 +454,7 @@ export function orderDataText(o, baseUrl = '') {
   return [
     `Pedido ${o.code} en CowFace: pago confirmado ✅`,
     `Artículo: ${o.product_title}`,
-    `Entrega: ${DELIVERY_METHODS[o.delivery_method] || o.delivery_method}`,
+    `Entrega: ${DELIVERY_LABELS[o.delivery_method] || o.delivery_method}`,
     `Nombre: ${o.buyer_name}`,
     `Dirección / punto de entrega: ${o.delivery_address}`,
     `Teléfono: ${o.delivery_phone}`,

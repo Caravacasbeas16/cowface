@@ -60,19 +60,20 @@ test('borrador: se guarda sin fotos, nadie más lo ve, y se publica después con
   assert.equal(db.prepare('SELECT status FROM products WHERE id = ?').get(id).status, 'disponible');
 });
 
-test('medidas, envío y entrega en persona se guardan y se muestran al comprador', async () => {
-  const res = await publish(seller, { ...POLO, title: 'Hoodie con medidas', category: 'ropa', m_pecho: '58,5', m_largo: '72', shipping_cost: '₡2.500', meetup: '' },
+test('medidas y pick up se guardan; el artículo no muestra costo de envío ni total con envío', async () => {
+  const res = await publish(seller, { ...POLO, title: 'Hoodie con medidas', category: 'ropa', m_pecho: '58,5', m_largo: '72', meetup: '' },
     [photoOf()]);
   const id = productIdFrom(res);
-  const p = db.prepare('SELECT measurements, shipping_cost, meetup FROM products WHERE id = ?').get(id);
+  const p = db.prepare('SELECT measurements, meetup FROM products WHERE id = ?').get(id);
   assert.deepEqual(JSON.parse(p.measurements), { pecho: 58.5, largo: 72 });
-  assert.equal(p.shipping_cost, 2500);
   assert.equal(p.meetup, 0);
   const page = await (await get(`/p/${id}`, buyer)).text();
   assert.match(page, /58\.5 cm/);
-  assert.match(page, /₡2\s?500 a todo el país/);
-  assert.match(page, /Total<\/span><span>₡27\s?500/);
-  assert.doesNotMatch(page, /Entrega en persona sin costo/);
+  assert.match(page, /Correos de Costa Rica o Uber Flash/);
+  assert.match(page, /la tienda te cotiza el envío/);
+  assert.doesNotMatch(page, /Pick up en/, 'sin pick up activado');
+  assert.doesNotMatch(page, /Total<\/span>/, 'no hay total antes de elegir la entrega');
+  assert.doesNotMatch(await (await get('/vendedor/productos/nuevo', seller)).text(), /name="shipping_cost"/, 'publicar ya no pide el envío');
 
   const bad = await publish(seller, { ...POLO, m_pecho: 'mucho' }, [photoOf()]);
   assert.match(await bad.text(), /centímetros/);
@@ -121,15 +122,19 @@ test('fotos y PDF en el chat: privados, sin metadatos, y el texto pasa por el fi
 
 // ---------- Pedidos ----------
 
-test('total con envío o en persona, captura del SINPE, guía de envío y evidencia del reclamo', async () => {
-  const id = productIdFrom(await publish(seller, { ...POLO, price: '20000', shipping_cost: '3000' }, [photoOf()]));
+test('envío cotizado por la tienda, captura del SINPE, guía de envío y evidencia del reclamo', async () => {
+  const id = productIdFrom(await publish(seller, { ...POLO, price: '20000' }, [photoOf()]));
   await post(`/p/${id}/comprar`, buyer);
   let o = lastOrder();
-  assert.deepEqual([o.shipping_cost, o.total, o.payout_amount], [3000, 23000, 20000 - 400 + 3000]);
+  assert.deepEqual([o.shipping_cost, o.total, o.payout_amount], [0, 20000, 20000 - 400]);
 
-  // Paga eligiendo envío por Correos y sube la captura.
+  // El comprador pide Correos; la tienda cotiza ₡3 000; recién ahí paga y sube la captura.
+  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'correos', address: 'Heredia centro, casa azul' });
+  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'correos', cost: '3000' });
+  o = lastOrder();
+  assert.deepEqual([o.shipping_cost, o.total, o.payout_amount], [3000, 23000, 20000 - 400 + 3000]);
   const paid = await multipart(`/pedidos/${o.id}/pago`, buyer,
-    { reference: String(++receipt), method: 'correos', address: 'Heredia centro, casa azul', phone: '8777-0000' },
+    { reference: String(++receipt), address: 'Heredia centro, casa azul', phone: '8777-0000' },
     [{ field: 'comprobante', data: pngWithGps, type: 'image/png', name: 'sinpe.png' }]);
   assert.equal(paid.status, 302);
   o = lastOrder();
@@ -156,18 +161,20 @@ test('total con envío o en persona, captura del SINPE, guía de envío y eviden
   assert.equal((await get(`/admin/conversaciones/${o.conversation_id}`, buyer)).status, 403);
 });
 
-test('en persona no se cobra envío; si el vendedor no lo acepta, se rechaza', async () => {
-  const id = productIdFrom(await publish(seller, { ...POLO, price: '15000', shipping_cost: '2000' }, [photoOf()]));
+test('pick up no cobra envío y se paga sin esperar cotización; si la tienda no lo ofrece, se rechaza', async () => {
+  const id = productIdFrom(await publish(seller, { ...POLO, price: '15000' }, [photoOf()]));
   await post(`/p/${id}/comprar`, buyer);
   const o = lastOrder();
-  await post(`/pedidos/${o.id}/pago`, buyer, { reference: String(++receipt), method: 'en_persona', address: 'Mall Oxígeno, sábado 2 p. m.', phone: '8777-0000' });
-  assert.deepEqual(Object.values(db.prepare('SELECT shipping_cost, total, payout_amount FROM orders WHERE id = ?').get(o.id)), [0, 15000, 15000 - 300]);
+  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'pick_up' });
+  await post(`/pedidos/${o.id}/pago`, buyer, { reference: String(++receipt), phone: '8777-0000' });
+  assert.deepEqual(Object.values(db.prepare('SELECT shipping_cost, total, payout_amount, delivery_method FROM orders WHERE id = ?').get(o.id)), [0, 15000, 15000 - 300, 'pick_up']);
+  assert.ok(db.prepare('SELECT payment_reported_at FROM orders WHERE id = ?').get(o.id).payment_reported_at);
 
   const noMeet = productIdFrom(await publish(seller, { ...POLO, meetup: '' }, [photoOf()]));
   await post(`/p/${noMeet}/comprar`, buyer);
   const o2 = lastOrder();
-  const res = await post(`/pedidos/${o2.id}/pago`, buyer, { reference: String(++receipt), method: 'en_persona', address: 'Algún lugar', phone: '8777-0000' });
-  assert.match(flashOf(res), /no hace entregas en persona/);
+  const res = await post(`/pedidos/${o2.id}/entrega`, buyer, { method: 'pick_up' });
+  assert.match(flashOf(res), /no ofrece pick up/);
   await post(`/pedidos/${o2.id}/cancelar`, buyer);
   await post(`/pedidos/${o.id}/cancelar`, buyer).catch(() => {});
 });
