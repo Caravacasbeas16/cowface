@@ -11,13 +11,14 @@ import { findConversation, minOffer } from '../chat.js';
 import { isBlockedEither } from '../blocks.js';
 import { paymentConfig, paymentsReady } from '../orders.js';
 import { enabledProviders } from '../oauth.js';
-import { ratingSummary, salesSummary } from '../reviews.js';
+import { ratingSummary, reviewsAbout, salesSummary } from '../reviews.js';
 import { safeNext, validateSignup } from '../validate.js';
 import { rateLimit } from '../rate-limit.js';
 import { adminEmail } from '../admin-account.js';
 import { mailProvider } from '../mailer.js';
 import { notifyAdmin } from '../admin-notify.js';
 import { pickupPointsOf } from '../pickup.js';
+import { untilLabel } from '../promos.js';
 import { presenceOf } from '../presence.js';
 import { storeHoursInfo } from '../store-hours.js';
 
@@ -111,6 +112,7 @@ router.get('/buscar', (req, res) => {
   if (filters.province) chips.push({ label: filters.province, href: without('provincia') });
   if (filters.min) chips.push({ label: `Desde ${formatColones(filters.min)}`, href: without('min') });
   if (filters.max) chips.push({ label: `Hasta ${formatColones(filters.max)}`, href: without('max') });
+  if (filters.onSale) chips.push({ label: 'En oferta', href: without('oferta') });
   res.render('search', {
     title: 'Buscar', filters, ...result, baseQuery: params.toString(), chips,
     alertLabel: describe(canonicalQuery(req.query)), counts: result.total ? null : countByCategory(),
@@ -148,6 +150,8 @@ router.get('/p/:id', (req, res, next) => {
   res.render('product', {
     og, title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
     sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), pickupPoints: pickupPointsOf(product.seller_id),
+    sellerReviews: reviewsAbout(product.seller_id, 10).filter((r) => r.role === 'vendedor' && r.comment).slice(0, 3),
+    untilLabel,
     sellerPresence: presenceOf(product.seller_id), sellerHours: storeHoursInfo(product.seller_id).status, justPublished: isOwner && req.query.publicado === '1',
   });
 });

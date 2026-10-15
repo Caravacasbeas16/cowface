@@ -15,6 +15,7 @@
         <div class="store-cover">
           <% if (s.cover) { %><img src="/fotos/<%= s.cover %>" alt="" loading="lazy"><% } else { %><span class="avatar avatar-lg"><%= s.store_name.charAt(0).toUpperCase() %></span><% } %>
           <% if (s.featured) { %><span class="tag">★ Destacada</span><% } %>
+          <% if (s.promo) { %><span class="tag tag-sale tag-right">−<%= s.promo.pct %> % en todo</span><% } %>
         </div>
         <div class="store-body">
           <strong class="store-name"><%= s.store_name %></strong>

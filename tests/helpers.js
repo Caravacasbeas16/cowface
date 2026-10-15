@@ -11,6 +11,8 @@ process.env.UPLOAD_DIR = path.join(tmp, 'uploads');
 
 export const { createApp } = await import('../src/app.js');
 export const { db, setSetting } = await import('../src/db.js');
+// Las pruebas calculan con 2 % (sus montos están escritos así); el sitio cobra 5 % (ver commission.test.js).
+setSetting('commission_rate', '0.02');
 export const { hashPassword } = await import('../src/auth.js');
 
 export const ctx = { base: '' };

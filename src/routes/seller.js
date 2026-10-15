@@ -4,9 +4,15 @@ import { db, commissionRate } from '../db.js';
 import { ORDER_STATUS, PRODUCT_STATUS } from '../catalog.js';
 import {
   createProduct, deleteImage, deleteProduct, getProduct, imageCount, quickUpdate, sellerProducts, setCoverImage,
-  setProductStatus, updateProduct,
+  markSoldElsewhere, setProductStatus, updateProduct,
 } from '../products.js';
 import { listConversations } from '../chat.js';
+import { systemNote } from '../messages.js';
+import { sellerEarnings } from '../seller-earnings.js';
+import {
+  MAX_PCT, MIN_PCT, applyStorePromoTo, discountPct, endStorePromo, parsePct, parseUntil, reapplyAfterPriceChange,
+  removeProductDiscount, setProductDiscount, startStorePromo, storePromoOf, untilLabel,
+} from '../promos.js';
 import { OPEN_STATUSES, buyerOrders, paymentConfig, sellerOrders } from '../orders.js';
 import { perUser, rateLimit } from '../rate-limit.js';
 import { normalizePhone, parsePrice, validateProduct } from '../validate.js';
@@ -87,8 +93,51 @@ router.get('/', (req, res) => {
     title: 'Mi cuenta', products, orders, purchases, stats, searches: listSearches(req.user.id), PRODUCT_STATUS, ORDER_STATUS,
     emailWait: WAIT_MINUTES, conversations: listConversations(req.user.id).slice(0, 6), sellerState: sellerStatus(req.user),
     storeAddress: storeAddressOf(req.user.id), pickupPoints: pickupPointsOf(req.user.id), maxPoints: MAX_POINTS,
-    hours: hoursOf(req.user.id), DAYS,
+    hours: hoursOf(req.user.id), DAYS, storePromo: storePromoOf(req.user.id), untilLabel, discountPct, MIN_PCT, MAX_PCT,
   });
+});
+
+// ---------- Promos y descuentos ----------
+router.post('/productos/:id/descuento', lockedWhileOrdered, (req, res) => {
+  const pct = parsePct(req.body.pct);
+  const { until, error } = parseUntil(req.body.until);
+  if (!pct) flash(res, `El descuento debe ser de ${MIN_PCT} % a ${MAX_PCT} %.`);
+  else if (error) flash(res, error);
+  else if (req.product.promo_store) flash(res, 'Este artículo está en la promo de toda la tienda; termina la promo para ponerle un descuento propio.');
+  else {
+    setProductDiscount(req.product.id, pct, until);
+    flash(res, `"${req.product.title}" con ${pct} % de descuento${until ? ` ${untilLabel(until)}` : ''}.`);
+  }
+  res.redirect('/vendedor#articulos');
+});
+
+router.post('/productos/:id/descuento/quitar', lockedWhileOrdered, (req, res) => {
+  if (req.product.promo_store) flash(res, 'Este descuento es de la promo de toda la tienda: termínala en "Promoción en toda la tienda".');
+  else { removeProductDiscount(req.product.id); flash(res, 'Descuento quitado: volvió al precio normal.'); }
+  res.redirect('/vendedor#articulos');
+});
+
+router.post('/promo', (req, res) => {
+  const pct = parsePct(req.body.pct);
+  const { until, error } = parseUntil(req.body.until);
+  if (!pct) flash(res, `La promo debe ser de ${MIN_PCT} % a ${MAX_PCT} %.`);
+  else if (error) flash(res, error);
+  else {
+    startStorePromo(req.user.id, pct, until, req.body.label);
+    flash(res, `¡Promo activa! ${pct} % en toda tu tienda${until ? ` ${untilLabel(until)}` : ''}.`);
+  }
+  res.redirect('/vendedor#promo');
+});
+
+router.post('/promo/terminar', (req, res) => {
+  endStorePromo(req.user.id);
+  flash(res, 'Promo terminada: tus artículos volvieron al precio normal.');
+  res.redirect('/vendedor#promo');
+});
+
+// Mis ganancias: vendido, comisión, recibido, por recibir (y cuándo), por mes e historial.
+router.get('/ganancias', (req, res) => {
+  res.render('seller/earnings', { title: 'Mis ganancias', e: sellerEarnings(req.user.id) });
 });
 
 // Datos para recibir los pagos de CowFace (SINPE Móvil). Se piden antes de publicar.
@@ -207,6 +256,7 @@ router.post('/productos/nuevo', listingLimit, photos, (req, res) => {
     return res.status(400).render('seller/product-form', formView('Publicar artículo', null, req.body, errors, req.user));
   }
   const id = createProduct(req.user.id, data, req.photos, draft ? 'borrador' : 'disponible');
+  applyStorePromoTo(id); // si la tienda tiene una promo activa, el artículo nuevo entra
   if (draft) {
     flash(res, canPublish(req.user) ? 'Borrador guardado. Nadie lo ve hasta que lo publiques.' : 'Borrador guardado. Lo vas a poder publicar cuando aprobemos tu tienda.');
     return res.redirect(`/vendedor/productos/${id}/editar`);
@@ -216,7 +266,8 @@ router.post('/productos/nuevo', listingLimit, photos, (req, res) => {
 });
 
 router.get('/productos/:id/editar', lockedWhileOrdered, (req, res) => {
-  const form = { ...req.product };
+  // Con descuento, el formulario muestra (y edita) el precio normal; el descuento se vuelve a aplicar.
+  const form = { ...req.product, price: req.product.compare_at_price && req.product.compare_at_price > req.product.price ? req.product.compare_at_price : req.product.price };
   for (const [k, v] of Object.entries(req.product.measurements || {})) form[`m_${k}`] = v;
   res.render('seller/product-form', formView(req.product.status === 'borrador' ? 'Borrador' : 'Editar artículo', req.product, form, {}, req.user));
 });
@@ -234,6 +285,8 @@ router.post('/productos/:id/editar', listingLimit, photos, lockedWhileOrdered, (
     return res.status(400).render('seller/product-form', formView('Editar artículo', req.product, req.body, errors, req.user));
   }
   updateProduct(req.product.id, data, req.photos, { publish });
+  if (discountPct(req.product)) reapplyAfterPriceChange(req.product.id, req.product);
+  else if (publish) applyStorePromoTo(req.product.id);
   if (publish) announce(req, req.product.id, data.title);
   if (req.product.status === 'borrador' && !publish) {
     flash(res, 'Borrador guardado.');
@@ -266,6 +319,7 @@ router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
     flash(res, 'Revisa el precio (en colones) y la cantidad (0 a 999).');
   } else {
     quickUpdate(req.product.id, price, quantity);
+    if (discountPct(req.product)) reapplyAfterPriceChange(req.product.id, req.product);
     flash(res, `"${req.product.title}" actualizado.`);
   }
   res.redirect('/vendedor#articulos');
@@ -282,6 +336,14 @@ router.post('/productos/:id/estado', (req, res) => {
     setProductStatus(req.product.id, req.body.status);
   }
   res.redirect('/vendedor#articulos');
+});
+
+// Marcar como vendida (se pide hacerlo apenas se venda por otro lado, para no vender dos veces).
+router.post('/productos/:id/vendida', lockedWhileOrdered, (req, res) => {
+  if (!['disponible', 'pausado'].includes(req.product.status)) return res.redirect('/vendedor#articulos');
+  for (const conv of markSoldElsewhere(req.product.id)) systemNote(conv, 'Este artículo ya se vendió; tu oferta quedó sin efecto.');
+  flash(res, `"${req.product.title}" quedó como vendida. ¡Felicidades!`);
+  res.redirect(req.body.back === 'producto' ? `/p/${req.product.id}` : '/vendedor#articulos');
 });
 
 router.post('/productos/:id/borrar', lockedWhileOrdered, (req, res) => {

@@ -386,3 +386,20 @@ label.check a { text-decoration: underline; }
 .install-close { background: none; border: 0; font-size: 1.4rem; line-height: 1; padding: .2rem .4rem; cursor: pointer; color: var(--muted); }
 .install-steps { display: flex; flex-direction: column; gap: .5rem; padding-left: 1.2rem; }
 .topnav .menu-install[hidden] { display: none !important; }
+
+/* ---------- Reseñas como comentarios ---------- */
+.review-comments { margin: 1rem 0; }
+.review-comment { border-left: 3px solid var(--ink); padding: .4rem .8rem; margin: .6rem 0; }
+.review-comment p { margin: .25rem 0; }
+
+/* ---------- Promos y descuentos ---------- */
+.was { color: var(--muted); font-weight: 500; font-size: .85em; margin-left: .3rem; }
+.tag-sale { background: var(--accent); color: #fff; }
+.tag-right { left: auto; right: .5rem; }
+.sale-pill { display: inline-block; background: var(--accent); color: #fff; font-size: .8rem; font-weight: 800; padding: .1rem .45rem; vertical-align: middle; }
+.sale-note { color: var(--accent); font-weight: 700; font-size: .9rem; margin: .2rem 0 .4rem; }
+.promo-banner { margin: 1rem 0 0; padding: .7rem 1rem; background: #fff1f2; border: 1px solid var(--accent); color: var(--accent); }
+.catnav-sale { color: var(--accent) !important; }
+.discount-form { display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; margin-top: .4rem; font-size: .8rem; }
+.discount-form input { width: 74px; padding: .3rem .4rem; font-size: .8rem; }
+.discount-form input[type="date"] { width: 140px; }

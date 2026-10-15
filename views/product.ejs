@@ -49,7 +49,9 @@
       <span><%= catalog.CONDITIONS[p.condition] %></span>
       <% if (p.color) { %><span><%= p.color %></span><% } %>
     </div>
-    <div class="price"><%= money(p.price) %></div>
+    <% const off = p.compare_at_price > p.price ? Math.round((1 - p.price / p.compare_at_price) * 100) : 0; %>
+    <div class="price"><%= money(p.price) %><% if (off) { %> <s class="was"><%= money(p.compare_at_price) %></s> <span class="sale-pill">−<%= off %> %</span><% } %></div>
+    <% if (off) { %><div class="sale-note">🔥 <%= p.promo_store ? 'Promo de la tienda' : 'En oferta' %><%= p.promo_until ? ` ${untilLabel(p.promo_until)}` : '' %></div><% } %>
     <div class="ship-line">
       <span>🚚 Correos de Costa Rica o Uber Flash</span>
       <% if (p.meetup) { %><span>📍 Pick up<%= pickupPoints.length ? `: ${pickupPoints.join(' · ')}` : ` en ${p.province}` %></span><% } %>
@@ -58,6 +60,13 @@
 
     <% if (isOwner) { %>
       <div class="notice">Este artículo es tuyo<%= p.status === 'borrador' ? ' y todavía es un borrador (nadie más lo ve)' : '' %>. <a href="/vendedor/productos/<%= p.id %>/editar">Editarlo</a></div>
+      <% if (p.status === 'disponible' || p.status === 'pausado') { %>
+        <form action="/vendedor/productos/<%= p.id %>/vendida" method="post" data-confirm="¿La vendiste? Se quita de la venta y las ofertas pendientes quedan sin efecto.">
+          <input type="hidden" name="back" value="producto">
+          <button class="btn btn-block">✓ Marcar como vendida</button>
+          <p class="hint">¿La vendiste por otro lado? Márcala enseguida para que nadie la compre aquí.</p>
+        </form>
+      <% } %>
     <% } else if (blocked) { %>
       <div class="notice">No puedes comprar ni escribirle a este vendedor porque una de las dos cuentas bloqueó a la otra.</div>
     <% } else if (p.status !== 'disponible') { %>
@@ -116,6 +125,20 @@
       </div>
       <span class="seller-arrow" aria-hidden="true">→</span>
     </a>
+
+    <% if (sellerReviews.length) { %>
+      <section class="review-comments">
+        <h2 class="details-title">Lo que dicen de <%= p.store_name %></h2>
+        <% for (const r of sellerReviews) { %>
+          <div class="review-comment">
+            <div class="small"><span class="stars"><%= stars(r.rating) %></span> <strong><%= r.author_display %></strong> <span class="muted">· <%= timeAgo(r.created_at) %></span></div>
+            <p>«<%= r.comment %>»</p>
+            <div class="muted small">Compró: <%= r.product_title %></div>
+          </div>
+        <% } %>
+        <a class="small" href="/u/<%= p.seller_id %>#resenas">Ver todas las reseñas</a>
+      </section>
+    <% } %>
 
     <% if (measureList.length) { %>
       <h2 class="details-title">Medidas</h2>

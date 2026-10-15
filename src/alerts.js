@@ -21,6 +21,7 @@ export function canonicalQuery(query) {
   if (f.province) p.set('provincia', f.province);
   if (f.min) p.set('min', String(f.min));
   if (f.max) p.set('max', String(f.max));
+  if (f.onSale) p.set('oferta', '1');
   return p.toString();
 }
 

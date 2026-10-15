@@ -12,14 +12,14 @@
 </div>
 <% if (sellerState === 'pendiente') { %><div class="notice"><strong>Tu tienda está en revisión.</strong> Te avisamos por correo cuando la aprobemos; mientras tanto puedes ir subiendo artículos como borradores.</div><% } %>
 <% if (sellerState === 'rechazado') { %><div class="notice">Tu tienda no está aprobada para vender en este momento. <a href="/vendedor/solicitud">Ver detalles</a></div><% } %>
-<p class="small muted account-links"><a href="/bloqueados">Usuarios bloqueados</a> · <a href="/vendedor/pagos">Datos para recibir pagos</a></p>
+<p class="small muted account-links"><a href="/vendedor/ganancias"><strong>Mis ganancias</strong></a> · <a href="/bloqueados">Usuarios bloqueados</a> · <a href="/vendedor/pagos">Datos para recibir pagos</a></p>
 
 <div class="stats">
   <div class="stat"><span class="stat-n"><%= stats.available %></span><span class="muted">Publicados</span></div>
   <a class="stat" href="/mensajes"><span class="stat-n"><%= stats.unreadSelling %></span><span class="muted">Chats de venta sin leer</span></a>
   <div class="stat <%= stats.toShip ? 'stat-warn' : '' %>"><span class="stat-n"><%= stats.toShip %></span><span class="muted">Pagadas · por enviar</span></div>
   <div class="stat"><span class="stat-n"><%= money(stats.soldTotal) %></span><span class="muted">Vendido (completado)</span></div>
-  <div class="stat stat-accent"><span class="stat-n"><%= money(stats.payoutPending) %></span><span class="muted">Por recibir de CowFace</span></div>
+  <a class="stat stat-accent" href="/vendedor/ganancias"><span class="stat-n"><%= money(stats.payoutPending) %></span><span class="muted">Por recibir de CowFace · ver mis ganancias →</span></a>
 </div>
 
 <section id="mensajes">
@@ -87,19 +87,39 @@
           <img src="<%= imageUrl(p) %>" alt="">
           <div class="list-main">
             <a href="<%= p.status === 'borrador' ? `/vendedor/productos/${p.id}/editar` : `/p/${p.id}` %>"><strong><%= p.title %></strong></a>
-            <div class="muted small">Talla <%= p.size %> · <%= money(p.price) %> · <%= p.quantity %> disp.</div>
+            <% const off = discountPct(p); %>
+            <div class="muted small">Talla <%= p.size %> · <%= money(p.price) %><% if (off) { %> <s class="was"><%= money(p.compare_at_price) %></s> <span class="sale-pill">−<%= off %> %</span><% } %> · <%= p.quantity %> disp.</div>
             <span class="status status-<%= p.status %>"><%= PRODUCT_STATUS[p.status] %></span>
             <% if (['disponible', 'pausado', 'vendido'].includes(p.status)) { %>
               <form action="/vendedor/productos/<%= p.id %>/rapido" method="post" class="quick-edit">
-                <label>Precio ₡<input name="price" inputmode="numeric" value="<%= p.price %>" aria-label="Precio de <%= p.title %>"></label>
+                <label><%= off ? 'Precio normal ₡' : 'Precio ₡' %><input name="price" inputmode="numeric" value="<%= off ? p.compare_at_price : p.price %>" aria-label="Precio de <%= p.title %>"></label>
                 <label>Cant.<input name="quantity" type="number" min="0" max="999" value="<%= p.quantity %>" aria-label="Cantidad de <%= p.title %>"></label>
                 <button class="btn btn-small btn-ghost">Guardar</button>
               </form>
+              <% if (off && !p.promo_store) { %>
+                <form action="/vendedor/productos/<%= p.id %>/descuento/quitar" method="post" class="discount-form">
+                  <span>🔥 <%= off %> % de descuento<%= p.promo_until ? ` ${untilLabel(p.promo_until)}` : '' %></span>
+                  <button class="btn btn-small btn-ghost">Quitar descuento</button>
+                </form>
+              <% } else if (off) { %>
+                <div class="discount-form"><span>🔥 En la promo de toda la tienda</span></div>
+              <% } else if (p.status !== 'vendido') { %>
+                <form action="/vendedor/productos/<%= p.id %>/descuento" method="post" class="discount-form">
+                  <span>Descuento</span>
+                  <input name="pct" type="number" min="<%= MIN_PCT %>" max="<%= MAX_PCT %>" placeholder="%" aria-label="Porcentaje de descuento" required>
+                  <span>hasta</span>
+                  <input name="until" type="date" aria-label="Hasta (opcional)">
+                  <button class="btn btn-small btn-ghost">Aplicar</button>
+                </form>
+              <% } %>
             <% } %>
           </div>
           <div class="list-actions">
             <a class="btn btn-small <%= p.status === 'borrador' ? '' : 'btn-ghost' %>" href="/vendedor/productos/<%= p.id %>/editar"><%= p.status === 'borrador' ? 'Terminar y publicar' : 'Editar' %></a>
             <% if (p.status === 'disponible' || p.status === 'pausado') { %>
+              <form action="/vendedor/productos/<%= p.id %>/vendida" method="post" class="inline" data-confirm="¿La vendiste? Se quita de la venta y las ofertas pendientes quedan sin efecto.">
+                <button class="btn btn-small">✓ Vendida</button>
+              </form>
               <form action="/vendedor/productos/<%= p.id %>/estado" method="post" class="inline">
                 <% if (p.status === 'disponible') { %>
                   <button class="btn btn-small btn-ghost" name="status" value="pausado">Pausar</button>
@@ -199,6 +219,27 @@
 </section>
 
 <% if (sellerState !== 'nuevo') { %>
+<section id="promo">
+  <h2>Promoción en toda la tienda</h2>
+  <% if (storePromo) { %>
+    <div class="promo-banner">🔥 <strong><%= storePromo.label || 'Promo' %>:</strong> <%= storePromo.pct %> % en toda tu tienda<%= storePromo.until ? ` ${untilLabel(storePromo.until)}` : ' (sin fecha de fin)' %>.</div>
+    <p class="hint">Se aplica a todos tus artículos (y a los que publiques mientras dure). Los que tienen descuento propio se quedan con el suyo. Al terminar, todo vuelve al precio normal.</p>
+    <form action="/vendedor/promo/terminar" method="post" data-confirm="¿Terminar la promo? Tus artículos vuelven al precio normal.">
+      <button class="btn btn-small btn-ghost">Terminar promo</button>
+    </form>
+  <% } else { %>
+    <p class="muted">Un descuento en todos tus artículos a la vez, por ejemplo "20 % en todo este fin de semana". Los compradores lo ven tachado, con la etiqueta "−20 %", y en la sección 🔥 Ofertas.</p>
+    <form action="/vendedor/promo" method="post" class="stack notify-form">
+      <div class="row2">
+        <label>Descuento (%)<input name="pct" type="number" min="<%= MIN_PCT %>" max="<%= MAX_PCT %>" required placeholder="20"></label>
+        <label>Hasta (opcional)<input name="until" type="date"></label>
+      </div>
+      <label>Nombre de la promo (opcional)<input name="label" maxlength="40" placeholder="Ej. Black Friday, Fin de temporada"></label>
+      <button class="btn btn-small">Lanzar promo</button>
+    </form>
+  <% } %>
+</section>
+
 <section id="horario">
   <h2>Horario de atención</h2>
   <p class="muted">Los compradores lo ven en tu perfil y tus artículos, con "Abierta ahora" o "Cerrada · abre a las…". Marca los días que atiendes.</p>

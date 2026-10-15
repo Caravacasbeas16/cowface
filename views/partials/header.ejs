@@ -66,6 +66,7 @@
         <a href="/vendedor">Mi cuenta</a>
         <a href="/vendedor#articulos" class="menu-only">Mis artículos</a>
         <a href="/vendedor#ventas" class="menu-only">Mis ventas</a>
+        <a href="/vendedor/ganancias" class="menu-only">Mis ganancias</a>
         <a href="/vendedor#celular" class="menu-only">Notificaciones</a>
       <% } else { %>
         <a class="btn btn-small" href="/vender">Vender</a>
@@ -85,6 +86,7 @@
     <div class="wrap catnav-inner">
       <a href="/buscar?para=hombre">Hombre</a>
       <a href="/buscar?para=mujer">Mujer</a>
+      <a href="/buscar?oferta=1" class="catnav-sale">🔥 Ofertas</a>
       <a href="/tiendas">Tiendas</a>
       <% for (const [key, c] of Object.entries(catalog.CATEGORIES)) { %>
         <a href="/buscar?categoria=<%= key %>"><%= c.label %></a>

@@ -33,7 +33,7 @@ npm run dev       # abre http://localhost:3100
    vendedor ve la dirección y envía.
 5. El vendedor marca **Enviado**. El comprador toca **Lo recibí**, o pasa el plazo (3 días por defecto)
    sin reclamo y se completa solo.
-6. En `/admin → Pagos a vendedores` ves cuánto transferir (precio − 2 % + envío) y a qué SINPE; al hacerlo,
+6. En `/admin → Pagos a vendedores` ves cuánto transferir (precio − 5 % + envío) y a qué SINPE; al hacerlo,
    tocas **Ya le pagué**.
 7. Si hay problema, el comprador abre un **reclamo** y el dinero queda retenido; tú decides
    **Pagar al vendedor** o **Reembolsar al comprador**.
@@ -95,7 +95,7 @@ el chat en vivo, los límites de intentos y las tareas automáticas viven en ese
 - **Guardar borrador** no necesita fotos y nadie más lo ve; se publica después desde "Editar".
 - Medidas por categoría (pecho, largo, plantilla, alto…), en cm.
 - El vendedor pone el **costo de envío** (0 = gratis) y si acepta **entrega en persona** (sin costo de envío).
-  El comprador ve el total exacto antes de comprar; al vendedor se le paga precio − 2 % + envío.
+  El comprador ve el total exacto antes de comprar; al vendedor se le paga precio − 5 % + envío.
 - En el panel: editar precio y cantidad sin abrir el artículo (cantidad 0 lo marca vendido).
 
 ## Chat: fotos y comprobantes
@@ -223,6 +223,18 @@ volver a pedir se reemplazan.
   admin, lista "Ayuda solicitada" en Por hacer, el admin escribe en el chat como CowFace y la marca
   resuelta. La garantía "CowFace se hace cargo" está en el artículo, el pedido, Cómo funciona y los
   términos.
+
+## Ventas, ganancias y promos de las tiendas
+
+- **Comisión: 5 %** (se cambia en `/admin → Cobro`; cada pedido guarda la suya).
+- **"✓ Vendida"** (Mi cuenta y el artículo): para lo que se vende por otro lado; las ofertas pendientes
+  quedan sin efecto. Las ventas de CowFace la marcan solas.
+- **Reseñas como comentarios**: las últimas reseñas con comentario de la tienda salen en cada artículo.
+- **Mis ganancias** (`/vendedor/ganancias`): recibido, por recibir (y cuándo), en camino, vendido,
+  comisión, por mes e historial de pagos.
+- **Descuentos y promos** (`src/promos.js`): descuento por artículo o promo en toda la tienda, con
+  fecha de fin opcional. El precio baja de verdad y el de antes se muestra tachado; al vencer vuelve
+  solo (revisión cada 5 min). Filtro "Solo en oferta" y link 🔥 Ofertas (`/buscar?oferta=1`).
 
 ## Chats cifrados
 

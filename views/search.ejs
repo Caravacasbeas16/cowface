@@ -72,6 +72,7 @@
           <% } %>
         </select>
       </label>
+      <label class="check"><input type="checkbox" name="oferta" value="1" data-autosubmit <%= f.onSale ? 'checked' : '' %>> <span>Solo en oferta</span></label>
       <input type="hidden" name="orden" value="<%= f.sort %>">
       <button class="btn btn-block" type="submit">Aplicar filtros</button>
     </form>

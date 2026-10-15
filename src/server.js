@@ -5,6 +5,7 @@ import { adminFromEnv, ensureAdmin } from './admin-account.js';
 import { runOrderTimers } from './orders.js';
 import { runMessageEmails } from './seller-notify.js';
 import { runDailyBackup } from './backup.js';
+import { expirePromos } from './promos.js';
 import { encryptExisting } from './crypto-box.js';
 import { ATTACH_DIR } from './storage.js';
 
@@ -24,6 +25,7 @@ try {
 // Cancela pedidos no pagados a tiempo y libera pagos de envíos sin reclamo.
 const timers = () => {
   try { runOrderTimers(); } catch (err) { console.error('Error en tareas de pedidos:', err); }
+  try { expirePromos(); } catch (err) { console.error('Error terminando promos vencidas:', err); }
 };
 timers();
 setInterval(timers, 5 * 60 * 1000).unref();

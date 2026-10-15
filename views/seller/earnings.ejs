@@ -1,0 +1,76 @@
+<%- include('../partials/header') %>
+<% const t = e.totals; %>
+<div class="page-head">
+  <div>
+    <p class="muted small"><a href="/vendedor">← Mi cuenta</a></p>
+    <h1>Mis ganancias</h1>
+    <p class="muted">Lo que vendiste en <%= siteName %>, la comisión y tus pagos. Te pagamos por SINPE Móvil al <%= user.payout_phone || 'número que registraste' %>, ya con la comisión rebajada, <%= payoutRule() %>.</p>
+  </div>
+</div>
+
+<div class="stats">
+  <div class="stat stat-accent"><span class="stat-n"><%= money(t.received) %></span><span class="muted">Ya recibiste</span></div>
+  <div class="stat <%= t.pending ? 'stat-warn' : '' %>"><span class="stat-n"><%= money(t.pending) %></span><span class="muted">Por recibir (ventas completadas)</span></div>
+  <div class="stat"><span class="stat-n"><%= money(t.inProgress) %></span><span class="muted">En camino (<%= t.inProgressCount %> pedido<%= t.inProgressCount === 1 ? '' : 's' %> pagados o enviados)</span></div>
+  <div class="stat"><span class="stat-n"><%= money(t.sold) %></span><span class="muted">Vendido (<%= t.sales %> venta<%= t.sales === 1 ? '' : 's' %>)</span></div>
+  <div class="stat"><span class="stat-n">− <%= money(t.commission) %></span><span class="muted">Comisión <%= siteName %></span></div>
+  <div class="stat"><span class="stat-n"><%= money(t.net) %></span><span class="muted">Ganancia neta<%= t.shipping ? ` (incluye ${money(t.shipping)} de envíos)` : '' %></span></div>
+</div>
+
+<% if (e.pending.length) { %>
+  <section>
+    <h2>Próximos pagos</h2>
+    <div class="task-list">
+      <% for (const o of e.pending) { %>
+        <div class="task">
+          <div class="task-main">
+            <strong><%= money(o.payout_amount) %></strong> · <%= o.product_title %> <span class="muted small">(<%= o.code %>)</span>
+            <div class="muted small"><%= money(o.price) %> − comisión <%= money(o.commission_amount) %><%= o.shipping_cost ? ` + envío ${money(o.shipping_cost)}` : '' %></div>
+          </div>
+          <span class="status status-pendiente">Se paga <%= o.when.replace(' al final del día', '') %></span>
+        </div>
+      <% } %>
+    </div>
+  </section>
+<% } %>
+
+<section>
+  <h2>Por mes</h2>
+  <% if (!e.months.length) { %>
+    <p class="muted">Todavía no tienes ventas completadas. Cuando el comprador confirme que recibió su prenda, aparece aquí.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Mes</th><th>Ventas</th><th>Vendido</th><th>Comisión</th><th>Tu ganancia</th></tr></thead>
+        <tbody>
+          <% for (const m of e.months) { %>
+            <tr><td><%= m.label %></td><td><%= m.sales %></td><td><%= money(m.sold) %></td><td>− <%= money(m.commission) %></td><td><strong><%= money(m.net) %></strong></td></tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<% if (e.history.length) { %>
+  <section>
+    <h2>Historial de pagos</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Pedido</th><th>Prenda</th><th>Completado</th><th>Te llega</th><th>Pago</th></tr></thead>
+        <tbody>
+          <% for (const o of e.history) { %>
+            <tr>
+              <td><a href="/mensajes/<%= o.conversation_id %>"><%= o.code %></a></td>
+              <td><%= o.product_title %></td>
+              <td><%= when(o.completed_at, true) %></td>
+              <td><strong><%= money(o.payout_amount) %></strong><div class="muted small"><%= +(o.commission_rate * 100).toFixed(2) %> % de comisión</div></td>
+              <td><% if (o.payout_status === 'pagado') { %><span class="status status-vendido">Pagado <%= when(o.payout_paid_at, true) %></span><% } else { %><span class="status status-pendiente"><%= o.when %></span><% } %></td>
+            </tr>
+          <% } %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% } %>
+<%- include('../partials/footer') %>

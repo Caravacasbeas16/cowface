@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -172,7 +172,7 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
-INSERT OR IGNORE INTO settings (key, value) VALUES ('commission_rate', '0.02');
+INSERT OR IGNORE INTO settings (key, value) VALUES ('commission_rate', '0.05');
 
 -- Reseñas: una por pedido completado y por dirección (comprador → vendedor, vendedor → comprador).
 CREATE TABLE IF NOT EXISTS reviews (
@@ -275,6 +275,11 @@ addColumn('users', 'store_address', "TEXT NOT NULL DEFAULT ''");     // direcci�
 addColumn('users', 'pickup_points', "TEXT NOT NULL DEFAULT '[]'");   // JSON: puntos públicos para pick up / entrega en persona
 addColumn('users', 'store_hours', "TEXT NOT NULL DEFAULT '{}'");     // JSON: { lun: ["09:00","18:00"], … } horario de atención
 addColumn('users', 'last_seen_at', 'TEXT');             // última vez que usó el sitio (para "activa hace…")
+// Promos y descuentos: el precio de venta baja y el de antes queda en compare_at_price (se muestra tachado).
+addColumn('products', 'compare_at_price', 'INTEGER');   // precio antes del descuento (NULL = sin descuento)
+addColumn('products', 'promo_until', 'TEXT');           // cuándo termina el descuento (ISO); NULL = sin fecha
+addColumn('products', 'promo_store', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el descuento viene de la promo de toda la tienda
+addColumn('users', 'store_promo', "TEXT NOT NULL DEFAULT '{}'");    // JSON: { pct, until, label } promo de toda la tienda
 
 // "Pedir ayuda a CowFace": cualquier problema con una compra o conversación; el admin se hace cargo.
 db.exec(`
@@ -318,6 +323,11 @@ if (db.prepare("SELECT 1 FROM settings WHERE key = 'migration_commission_2pct'")
   db.prepare("UPDATE settings SET value = '0.02' WHERE key = 'commission_rate' AND value = '0.05'").run();
   db.prepare("INSERT INTO settings (key, value) VALUES ('migration_commission_2pct', '1')").run();
 }
+// Una sola vez (2026-10-14): el dueño decidió cobrar 5 %. Los pedidos ya creados conservan su comisión.
+if (db.prepare("SELECT 1 FROM settings WHERE key = 'migration_commission_5pct'").get() == null) {
+  db.prepare("INSERT INTO settings (key, value) VALUES ('commission_rate', '0.05') ON CONFLICT(key) DO UPDATE SET value = '0.05'").run();
+  db.prepare("INSERT INTO settings (key, value) VALUES ('migration_commission_5pct', '1')").run();
+}
 
 export function getSetting(key) {
   return db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value;
@@ -330,7 +340,7 @@ export function setSetting(key, value) {
 
 export function commissionRate() {
   const rate = Number(getSetting('commission_rate'));
-  return Number.isFinite(rate) ? rate : 0.02;
+  return Number.isFinite(rate) ? rate : 0.05;
 }
 
 let depth = 0;

@@ -10,6 +10,7 @@ import { createProduct } from './products.js';
 import { ImageError, processPhoto } from './images.js';
 import { TMP_DIR, UPLOAD_DIR, removeFrom } from './storage.js';
 import { MAX_IMAGES } from './uploads.js';
+import { applyStorePromoTo } from './promos.js';
 import crypto from 'node:crypto';
 
 export const MAX_ROWS = 200;
@@ -203,6 +204,7 @@ export async function importRows({ sellerId, csv, photos, publish = true }) {
     }
     const status = publish && processed.length ? 'disponible' : 'borrador';
     const id = createProduct(sellerId, data, processed, status);
+    applyStorePromoTo(id);
     results.push({
       line, title: data.title, ok: true, id, status,
       messages: status === 'borrador' ? [processed.length ? 'Guardado como borrador.' : 'Sin fotos: quedó como borrador (agrégalas desde "Editar").'] : [],

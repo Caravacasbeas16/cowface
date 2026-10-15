@@ -1,13 +1,13 @@
-<% const isNew = catalog.CONDITION_GROUPS.nuevo.includes(p.condition); %>
+<% const isNew = catalog.CONDITION_GROUPS.nuevo.includes(p.condition); const off = p.compare_at_price > p.price ? Math.round((1 - p.price / p.compare_at_price) * 100) : 0; %>
 <a class="card" href="/p/<%= p.id %>">
   <div class="card-img">
     <img src="<%= imageUrl(p) %>" alt="<%= p.title %>" loading="lazy">
-    <% if (isNew) { %><span class="tag">Nuevo</span><% } %>
+    <% if (off) { %><span class="tag tag-sale">−<%= off %> %</span><% } else if (isNew) { %><span class="tag">Nuevo</span><% } %>
   </div>
   <div class="card-body">
     <div class="card-meta"><span><%= p.featured ? '★ Destacada' : timeAgo(p.created_at) %></span><span class="card-size"><%= p.size %></span></div>
     <div class="card-brand"><%= p.brand || p.item_type %></div>
     <div class="card-title"><%= p.title %></div>
-    <div class="card-price"><%= money(p.price) %></div>
+    <div class="card-price"><%= money(p.price) %><% if (off) { %> <s class="was"><%= money(p.compare_at_price) %></s><% } %></div>
   </div>
 </a>

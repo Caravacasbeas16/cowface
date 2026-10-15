@@ -13,7 +13,7 @@ export const FEATURED_SQL = "(u.featured_until IS NOT NULL AND u.featured_until 
 
 const CARD_COLUMNS = `
   p.id, p.title, p.brand, p.category, p.department, p.item_type, p.size, p.color, p.condition,
-  p.price, p.status, p.created_at, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
+  p.price, p.compare_at_price, p.promo_until, p.status, p.created_at, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
   (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image
 `;
 
@@ -32,6 +32,7 @@ export function parseFilters(query, viewerId = null) {
     province: PROVINCES.includes(query.provincia) ? query.provincia : '',
     ...priceRange(parsePrice(query.min), parsePrice(query.max)),
     sort: SORTS[query.orden] ? query.orden : 'recientes',
+    onSale: query.oferta === '1',
     page: Math.max(1, Math.min(500, Number.parseInt(query.pagina, 10) || 1)),
     viewerId,
   };
@@ -86,6 +87,7 @@ export function searchProducts(f) {
   if (f.province) { where.push('u.province = ?'); params.push(f.province); }
   if (f.min) { where.push('p.price >= ?'); params.push(f.min); }
   if (f.max) { where.push('p.price <= ?'); params.push(f.max); }
+  if (f.onSale) where.push('p.compare_at_price > p.price');
 
   const order = { recientes: `${FEATURED_SQL} DESC, p.created_at DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC' }[f.sort];
   const from = `FROM products p JOIN users u ON u.id = p.seller_id WHERE ${where.join(' AND ')}`;
@@ -132,7 +134,7 @@ export function getProduct(id) {
 
 export function sellerProducts(sellerId) {
   return db.prepare(`
-    SELECT ${CARD_COLUMNS}, p.quantity FROM products p JOIN users u ON u.id = p.seller_id
+    SELECT ${CARD_COLUMNS}, p.quantity, p.promo_store FROM products p JOIN users u ON u.id = p.seller_id
     WHERE p.seller_id = ? ORDER BY p.status = 'disponible' DESC, p.created_at DESC
   `).all(sellerId);
 }
@@ -272,4 +274,15 @@ export function searchSuggestions(q) {
     }
   }
   return out.sort((a, b) => b.count - a.count).slice(0, 8);
+}
+
+// "Vendida" (por ejemplo, la vendió por otro lado): sale de la venta y las ofertas pendientes quedan
+// sin efecto. Devuelve las conversaciones con ofertas para avisarles.
+export function markSoldElsewhere(id) {
+  return transaction(() => {
+    db.prepare("UPDATE products SET status = 'vendido', quantity = 0, updated_at = datetime('now') WHERE id = ?").run(id);
+    const convs = db.prepare("SELECT DISTINCT conversation_id FROM offers WHERE product_id = ? AND status = 'pendiente'").all(id).map((r) => r.conversation_id);
+    db.prepare("UPDATE offers SET status = 'expirada', responded_at = ? WHERE product_id = ? AND status = 'pendiente'").run(new Date().toISOString(), id);
+    return convs;
+  });
 }
