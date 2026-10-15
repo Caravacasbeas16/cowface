@@ -80,3 +80,26 @@
 .recent-item img { width: 132px; height: 132px; object-fit: cover; background: var(--soft); }
 .recent-title { font-size: .8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recent-price { font-size: .8rem; font-weight: 800; }
+
+/* Avance del pedido en el chat (como el seguimiento de Uber) */
+.order-track { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: .7rem 0 .4rem; padding: 0; position: relative; }
+.order-track::before { content: ''; position: absolute; top: 12px; left: 10%; right: 10%; height: 2px; background: var(--line); }
+.order-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: .25rem; text-align: center; font-size: .66rem; font-weight: 700; color: var(--muted); line-height: 1.2; }
+.dot-step { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: #fff; border: 2px solid var(--line); font-size: .7rem; z-index: 1; }
+.order-track .is-done { color: var(--text); }
+.order-track .is-done .dot-step { background: var(--ink); border-color: var(--ink); color: #fff; }
+.order-track .is-current { color: var(--text); }
+.order-track .is-current .dot-step { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17, 17, 17, .12); }
+
+/* Barra de abajo en el celular (como las apps de Uber / DoorDash) */
+.tabbar { display: none; }
+@media (max-width: 767px) {
+  body.has-tabbar { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }
+  .tabbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 50; display: grid; grid-template-columns: repeat(5, 1fr); background: rgba(255, 255, 255, .97); border-top: 1px solid var(--line); padding: 6px 4px calc(6px + env(safe-area-inset-bottom)); backdrop-filter: blur(8px); }
+  .tabbar a { position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: .66rem; font-weight: 700; color: var(--muted); padding: 2px 0; }
+  .tabbar a:hover { text-decoration: none; }
+  .tabbar svg { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .tabbar a.is-active { color: var(--ink); }
+  .tabbar a.is-active svg { stroke-width: 2.4; }
+  .tabbar .badge { position: absolute; top: -2px; left: calc(50% + 6px); }
+}

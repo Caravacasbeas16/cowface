@@ -40,7 +40,7 @@
   <link rel="stylesheet" href="/css/store.css?v=<%= assetVersion %>">
   <% if (locals.portal) { %><link rel="stylesheet" href="/css/portal.css?v=<%= assetVersion %>"><% } %>
 </head>
-<body<% if (user && user.role === 'usuario') { %> data-live<% } %>>
+<body<% if (user && user.role === 'usuario') { %> data-live<% } %><% if (locals.tabbar) { %> class="has-tabbar"<% } %>>
 <header class="topbar">
   <div class="wrap topbar-inner">
     <a class="logo" href="/" aria-label="<%= siteName %>, inicio"><img src="/img/logo.jpg" alt="" width="44" height="44"><span><%= siteName.toUpperCase() %></span></a>

@@ -24,6 +24,23 @@
     <strong>Pedido <%= o.code %></strong>
     <span class="status status-<%= o.status %>"><%= catalog.ORDER_STATUS[o.status] %></span>
   </div>
+  <% if (!['cancelado', 'reembolsado', 'reembolso_pendiente'].includes(o.status)) { %>
+    <%# Avance del pedido, como el seguimiento de Uber: cada paso marcado cuando ya pasó. %>
+    <% const after = ['pagado', 'enviado', 'en_disputa', 'completado'];
+       const steps = [
+         ['Pedido', true],
+         [pickUp ? 'Pick up' : 'Envío cotizado', quoted],
+         [o.payment_reported_at && o.status === 'por_pagar' ? 'Verificando pago' : 'Pagado', after.includes(o.status)],
+         [pickUp ? 'Entregado' : 'Enviado', ['enviado', 'en_disputa', 'completado'].includes(o.status)],
+         ['Recibido', o.status === 'completado'],
+       ];
+       const current = steps.findIndex(([, done]) => !done); %>
+    <ol class="order-track" aria-label="Avance del pedido">
+      <% steps.forEach(([label, done], i) => { %>
+        <li class="<%= done ? 'is-done' : i === current ? 'is-current' : '' %>"><span class="dot-step" aria-hidden="true"><%= done ? '✓' : i + 1 %></span><span><%= label %></span></li>
+      <% }) %>
+    </ol>
+  <% } %>
   <div class="order-lines">
     <div><span>Prenda<% if (o.price !== o.list_price) { %> <span class="muted small">(oferta; publicado en <%= money(o.list_price) %>)</span><% } %></span><span><%= money(o.price) %></span></div>
     <% if (quoted) { %>

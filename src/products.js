@@ -109,7 +109,9 @@ export function searchProducts(f) {
   if (f.max) { where.push('p.price <= ?'); params.push(f.max); }
   if (f.onSale) where.push('p.compare_at_price > p.price');
 
-  const order = { recientes: `${FEATURED_SQL} DESC, COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC' }[f.sort];
+  const order = { recientes: `${FEATURED_SQL} DESC, COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC',
+    // Populares (como StockX): cada ♥ pesa como 5 visitas.
+    populares: '(SELECT COUNT(*) FROM favorites fv WHERE fv.product_id = p.id) * 5 + p.views DESC, p.id DESC' }[f.sort];
   const from = `FROM products p JOIN users u ON u.id = p.seller_id WHERE ${where.join(' AND ')}`;
   const total = db.prepare(`SELECT COUNT(*) AS n ${from}`).get(...params).n;
   const items = db.prepare(`SELECT ${CARD_COLUMNS} ${from} ORDER BY ${order} LIMIT ? OFFSET ?`)

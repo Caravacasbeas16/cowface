@@ -317,6 +317,10 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
 - **Gráfico de ventas** de las últimas 2 semanas en el inicio del panel.
 - **Etiqueta de envío** (`/vendedor/pedidos/<id>/etiqueta`, 10 × 15 cm para imprimir): con el pago
   confirmado, nombre, dirección y teléfono del comprador, datos de la tienda y el código del pedido.
+- **Como app en el celular**: barra de abajo (Inicio, Buscar, Favoritos, Mensajes, Mi cuenta), como
+  Uber / DoorDash (`res.locals.tabbar`; no sale en el chat, al publicar ni en la etiqueta).
+- **Avance del pedido** en el chat: Pedido → Envío cotizado → Pagado → Enviado → Recibido.
+- Búsqueda con orden **Más populares** (cada ♥ pesa como 5 visitas).
 
 ## Reseñas, perfiles y bloqueos
 

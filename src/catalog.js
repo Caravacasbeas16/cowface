@@ -156,6 +156,7 @@ export const OFFER_STATUS = {
 
 export const SORTS = {
   recientes: 'Más recientes',
+  populares: 'Más populares',
   precio_asc: 'Precio: menor a mayor',
   precio_desc: 'Precio: mayor a menor',
 };

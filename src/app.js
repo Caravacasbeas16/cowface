@@ -183,6 +183,10 @@ export function createApp() {
     res.locals.adminPending = req.user?.role === 'admin' ? adminPendingCount() : 0;
     // Corazones llenos en las tarjetas de lo que la persona guardó.
     res.locals.favIds = req.method === 'GET' && req.user?.role === 'usuario' ? favoriteIds(req.user.id) : new Set();
+    // Barra de abajo en el celular (como la app de Uber / DoorDash). No va en el chat, al publicar ni
+    // en la etiqueta de envío, que tienen sus propios botones.
+    res.locals.tabbar = req.user?.role !== 'admin' && !['/mensajes/', '/vendedor/productos/'].some((x) => req.path.startsWith(x))
+      && !req.path.endsWith('/etiqueta');
     next();
   });
 

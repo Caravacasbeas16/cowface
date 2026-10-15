@@ -81,3 +81,21 @@ test('inicio de la tienda: gráfico de ventas de las últimas 2 semanas', async 
   assert.match(page, /₡17\s?000 en 1 venta/);
   assert.equal((page.match(/class="spark-col"/g) || []).length, 14);
 });
+
+test('barra de abajo (celular), avance del pedido y orden "Más populares"', async () => {
+  const guest = await (await get('/')).text();
+  assert.match(guest, /class="tabbar"/);
+  assert.match(guest, /href="\/entrar" class="[^"]*"><svg/);
+  assert.match(await (await get('/buscar', buyer)).text(), /class="tabbar"[\s\S]*href="\/favoritos" class=""[\s\S]*href="\/vendedor"/);
+  const order = db.prepare('SELECT * FROM orders WHERE product_id = ?').get(ids.a);
+  const chat = await (await get(`/mensajes/${order.conversation_id}`, buyer)).text();
+  assert.doesNotMatch(chat, /class="tabbar"/, 'el chat tiene su propio cuadro de texto abajo');
+  assert.match(chat, /class="order-track"/);
+  assert.equal((chat.match(/class="is-done"/g) || []).length, 3, 'pedido, envío cotizado y pagado');
+  assert.match(chat, /class="is-current"><span class="dot-step" aria-hidden="true">4<\/span><span>Enviado/);
+
+  await post(`/p/${ids.c}/favorito`, buyer, {}, true);
+  const list = await (await get('/buscar?orden=populares')).text();
+  assert.ok(list.indexOf('Camisa c') < list.indexOf('Camisa b'), 'el guardado va primero');
+  assert.match(list, /Más populares/);
+});
