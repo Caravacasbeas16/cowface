@@ -1,4 +1,5 @@
 <% const isNew = catalog.CONDITION_GROUPS.nuevo.includes(p.condition); const off = p.compare_at_price > p.price ? Math.round((1 - p.price / p.compare_at_price) * 100) : 0; %>
+<div class="card-wrap" data-search="<%= [p.title, p.brand, p.item_type, p.size, p.color].filter(Boolean).join(' ').toLowerCase() %>" data-price="<%= p.price %>" data-date="<%= p.created_at %>">
 <a class="card" href="/p/<%= p.id %>">
   <div class="card-img">
     <img src="<%= imageUrl(p) %>" alt="<%= p.title %>" loading="lazy">
@@ -11,3 +12,10 @@
     <div class="card-price"><%= money(p.price) %><% if (off) { %> <s class="was"><%= money(p.compare_at_price) %></s><% } %></div>
   </div>
 </a>
+<% const faved = locals.favIds && favIds.has(p.id); %>
+<form action="/p/<%= p.id %>/favorito" method="post" class="fav-form" data-fav>
+  <button class="fav-btn <%= faved ? 'is-on' : '' %>" aria-pressed="<%= Boolean(faved) %>" aria-label="<%= faved ? 'Quitar de favoritos' : 'Guardar en favoritos' %>" title="<%= faved ? 'Quitar de favoritos' : 'Guardar' %>">
+    <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg>
+  </button>
+</form>
+</div>

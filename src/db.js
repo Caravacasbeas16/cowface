@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -305,6 +305,27 @@ addColumn('products', 'details', "TEXT NOT NULL DEFAULT '{}'");     // JSON: { m
 addColumn('products', 'retail_price', 'INTEGER');                  // precio original en tienda (opcional)
 addColumn('conversations', 'chosen_size', 'TEXT');                 // talla que eligió el comprador
 addColumn('orders', 'chosen_size', 'TEXT');                        // talla vendida (para devolverla al inventario)
+
+// Logo y portada de la tienda; seguir tiendas y guardar artículos en favoritos (como Grailed).
+addColumn('users', 'store_logo', 'TEXT');
+addColumn('users', 'store_banner', 'TEXT');
+db.exec(`
+CREATE TABLE IF NOT EXISTS store_follows (
+  user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  store_id   INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  PRIMARY KEY (user_id, store_id)
+);
+CREATE INDEX IF NOT EXISTS idx_follows_store ON store_follows (store_id);
+CREATE TABLE IF NOT EXISTS favorites (
+  user_id       INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  product_id    INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  created_at    TEXT NOT NULL DEFAULT (datetime('now')),
+  notified_price INTEGER NOT NULL,   -- último precio que vio o del que se le avisó (para avisar si baja)
+  PRIMARY KEY (user_id, product_id)
+);
+CREATE INDEX IF NOT EXISTS idx_favorites_product ON favorites (product_id);
+`);
 
 // Reportes de artículos, personas y conversaciones (requisito de Google Play / App Store).
 db.exec(`

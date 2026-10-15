@@ -5,6 +5,8 @@ import { fileURLToPath } from 'node:url';
 import { loadUser } from './auth.js';
 import * as catalog from './catalog.js';
 import publicRoutes from './routes/public.js';
+import socialRoutes from './routes/social.js';
+import { favoriteIds } from './social.js';
 import sellerRoutes from './routes/seller.js';
 import portalRoutes from './routes/portal.js';
 import attachmentRoutes from './routes/attachments.js';
@@ -179,6 +181,8 @@ export function createApp() {
     res.locals.unread = req.user?.role === 'usuario' ? unreadCount(req.user.id) : 0;
     if (req.user?.role === 'usuario') touch(req.user.id);
     res.locals.adminPending = req.user?.role === 'admin' ? adminPendingCount() : 0;
+    // Corazones llenos en las tarjetas de lo que la persona guardó.
+    res.locals.favIds = req.method === 'GET' && req.user?.role === 'usuario' ? favoriteIds(req.user.id) : new Set();
     next();
   });
 
@@ -195,6 +199,7 @@ export function createApp() {
   app.use('/', publicRoutes);
   app.use('/auth', oauthRoutes);
   app.use('/', profileRoutes);
+  app.use('/', socialRoutes);
   app.use('/', passwordRoutes);
   app.use('/', chatRoutes);
   app.use('/pedidos', orderRoutes);

@@ -21,6 +21,7 @@ import { logFlagged } from '../moderation.js';
 import { MAX_IMAGES, REQUEST_MAX_PHOTOS, discardRequestPhotos, photoFiles, photos, requestPhotos } from '../uploads.js';
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
 import { deleteSearch, notifyMatches } from '../alerts.js';
+import { notifyFollowers } from '../social.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
 import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
@@ -30,6 +31,7 @@ import { parseHours, saveHours } from '../store-hours.js';
 // Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
 function announce(req, id, title) {
   notifyMatches(id, publicBaseUrl(req));
+  notifyFollowers(req.user.id, id);
   notifyAdmin('publicacion', `Nuevo artículo: ${title}`, `${req.user.store_name || req.user.name} publicó «${title}».`, `/p/${id}`);
 }
 

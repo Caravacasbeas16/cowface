@@ -140,7 +140,7 @@ export function countByCategory() {
 
 export function getProduct(id) {
   const product = db.prepare(`
-    SELECT p.*, COALESCE(u.store_name, u.name) AS store_name, u.name AS seller_name, u.province, u.active AS seller_active, u.store_paused, ${FEATURED_SQL} AS featured
+    SELECT p.*, COALESCE(u.store_name, u.name) AS store_name, u.name AS seller_name, u.province, u.active AS seller_active, u.store_paused, u.store_logo, ${FEATURED_SQL} AS featured
     FROM products p JOIN users u ON u.id = p.seller_id WHERE p.id = ?
   `).get(id);
   if (!product) return null;

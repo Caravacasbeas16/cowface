@@ -56,7 +56,19 @@
       <span>🚚 Correos de Costa Rica o Uber Flash</span>
       <% if (p.meetup) { %><span>📍 Pick up<%= pickupPoints.length ? `: ${pickupPoints.join(' · ')}` : ` en ${p.province}` %></span><% } %>
     </div>
-    <div class="muted small">Publicado <%= timeAgo(p.created_at) %> · <%= p.province %></div>
+    <div class="product-meta-row">
+      <span class="muted small">Publicado <%= timeAgo(p.created_at) %> · <%= p.province %><%= favCount ? ` · ♥ ${favCount} persona${favCount === 1 ? '' : 's'} lo guardó${favCount === 1 ? '' : 'aron'}` : '' %></span>
+      <% if (!isOwner && p.status !== 'borrador') { %>
+        <% if (user && user.role === 'usuario') { %>
+          <form action="/p/<%= p.id %>/favorito" method="post" class="product-fav" data-fav>
+            <button class="fav-btn <%= isFav ? 'is-on' : '' %>" aria-pressed="<%= isFav %>" aria-label="<%= isFav ? 'Quitar de favoritos' : 'Guardar en favoritos' %>"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/></svg></button>
+            <span class="small" data-fav-label><%= isFav ? 'Guardado' : 'Guardar' %></span>
+          </form>
+        <% } else if (!user) { %>
+          <a class="product-fav small" href="/entrar?next=/p/<%= p.id %>">♡ Guardar</a>
+        <% } %>
+      <% } %>
+    </div>
 
     <% if (isOwner) { %>
       <div class="notice">Este artículo es tuyo<%= p.status === 'borrador' ? ' y todavía es un borrador (nadie más lo ve)' : '' %>. <a href="/vendedor/productos/<%= p.id %>/editar">Editarlo</a></div>
@@ -130,7 +142,7 @@
     <% } %>
 
     <a class="seller-box" href="/u/<%= p.seller_id %>">
-      <div class="avatar"><%= (p.store_name || '?').charAt(0).toUpperCase() %></div>
+      <%- include('partials/store-logo', { name: p.store_name, logo: p.store_logo, size: 'sm' }) %>
       <div class="seller-main">
         <strong><%= p.store_name %></strong><% if (p.featured) { %> <span class="featured-pill">Tienda destacada</span><% } %>
         <div class="small">

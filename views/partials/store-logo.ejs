@@ -1,0 +1,6 @@
+<%# Logo de la tienda, o su inicial si no subió uno. Variables: name, logo, size ('sm' | 'md' | 'lg'). %>
+<% if (logo) { %>
+  <img class="store-logo store-logo-<%= locals.size || 'sm' %>" src="/fotos/<%= logo %>" alt="" loading="lazy">
+<% } else { %>
+  <span class="avatar store-logo store-logo-<%= locals.size || 'sm' %>"><%= (name || '?').charAt(0).toUpperCase() %></span>
+<% } %>

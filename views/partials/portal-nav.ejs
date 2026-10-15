@@ -11,7 +11,7 @@
 ]; %>
 <aside class="portal-nav" aria-label="Panel de la tienda">
   <div class="portal-store">
-    <span class="avatar"><%= (user.store_name || user.name).charAt(0).toUpperCase() %></span>
+    <%- include('store-logo', { name: user.store_name || user.name, logo: locals.storeLogo, size: 'sm' }) %>
     <div class="portal-store-name">
       <strong><%= user.store_name || user.name %></strong>
       <% if (paused) { %>

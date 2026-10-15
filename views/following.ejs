@@ -1,0 +1,33 @@
+<%- include('partials/header') %>
+<div class="page-head">
+  <div>
+    <h1>Siguiendo</h1>
+    <p class="muted">Lo nuevo de las tiendas que sigues. Te avisamos en el celular cuando publican.</p>
+  </div>
+  <a class="btn btn-ghost btn-small" href="/favoritos">Mis favoritos</a>
+</div>
+<% if (!stores.length) { %>
+  <div class="empty">
+    <p>Todavía no sigues ninguna tienda.</p>
+    <p class="muted small">En la página de una tienda toca <strong>"Seguir"</strong> y aquí ves lo último que publican.</p>
+    <a class="btn" href="/tiendas">Ver tiendas</a>
+  </div>
+<% } else { %>
+  <div class="follow-strip">
+    <% for (const s of stores) { %>
+      <a class="follow-store" href="/u/<%= s.id %>">
+        <%- include('partials/store-logo', { name: s.store_name, logo: s.store_logo, size: 'md' }) %>
+        <span><%= s.store_name %></span>
+        <span class="muted small"><%= s.listings %> artículo<%= s.listings === 1 ? '' : 's' %></span>
+      </a>
+    <% } %>
+  </div>
+  <% if (!items.length) { %>
+    <p class="muted">Las tiendas que sigues no tienen artículos a la venta ahora mismo.</p>
+  <% } else { %>
+    <div class="grid">
+      <% for (const p of items) { %><%- include('partials/card', { p }) %><% } %>
+    </div>
+  <% } %>
+<% } %>
+<%- include('partials/footer') %>

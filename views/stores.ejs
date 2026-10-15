@@ -13,7 +13,9 @@
     <% for (const s of stores) { %>
       <a class="store-card" href="/u/<%= s.id %>">
         <div class="store-cover">
-          <% if (s.cover) { %><img src="/fotos/<%= s.cover %>" alt="" loading="lazy"><% } else { %><span class="avatar avatar-lg"><%= s.store_name.charAt(0).toUpperCase() %></span><% } %>
+          <% const cover = s.store_banner || s.cover; %>
+          <% if (cover) { %><img src="/fotos/<%= cover %>" alt="" loading="lazy"><% } else { %><span class="avatar avatar-lg"><%= s.store_name.charAt(0).toUpperCase() %></span><% } %>
+          <% if (s.store_logo) { %><img class="store-card-logo" src="/fotos/<%= s.store_logo %>" alt="" loading="lazy"><% } %>
           <% if (s.featured) { %><span class="tag">★ Destacada</span><% } %>
           <% if (s.promo) { %><span class="tag tag-sale tag-right">−<%= s.promo.pct %> % en todo</span><% } %>
         </div>

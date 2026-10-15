@@ -13,6 +13,11 @@ import { storePromoOf, untilLabel } from '../promos.js';
 import { sellerProducts } from '../products.js';
 import { normalizePhone, safeNext } from '../validate.js';
 import { blockedMessage, findBlocked } from '../moderation.js';
+import { followerCount, isFollowing } from '../social.js';
+import { approvalRequired } from '../approval.js';
+import { pickupPointsOf } from '../pickup.js';
+
+const slugify = (s) => String(s).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 const router = Router();
 const signedIn = requireRole('usuario');
@@ -34,7 +39,7 @@ router.get('/tiendas', (req, res) => {
   const viewer = req.user?.role === 'usuario' ? req.user.id : null;
   const hide = viewer ? `AND ${notBlockedSql('u.id')}` : '';
   const stores = db.prepare(`
-    SELECT u.id, COALESCE(u.store_name, u.name) AS store_name, u.province, ${FEATURED_SQL} AS featured,
+    SELECT u.id, COALESCE(u.store_name, u.name) AS store_name, u.province, u.store_logo, u.store_banner, ${FEATURED_SQL} AS featured,
       (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible') AS listings,
       (SELECT COALESCE(i.thumb, i.filename) FROM products p JOIN product_images i ON i.product_id = p.id
         WHERE p.seller_id = u.id AND p.status = 'disponible' ORDER BY p.created_at DESC, i.position LIMIT 1) AS cover
@@ -53,7 +58,8 @@ router.get('/tiendas', (req, res) => {
 
 router.get('/u/:id', (req, res, next) => {
   const profile = db.prepare(`
-    SELECT id, name, COALESCE(store_name, name) AS store_name, province, created_at,
+    SELECT id, name, COALESCE(store_name, name) AS store_name, province, created_at, store_logo, store_banner, store_about,
+      store_paused, seller_status,
       (SELECT COUNT(*) FROM orders WHERE seller_id = users.id AND status = 'completado') AS sales,
       (SELECT COUNT(*) FROM orders WHERE buyer_id = users.id AND status = 'completado') AS purchases
     FROM users WHERE id = ? AND role = 'usuario' AND active = 1
@@ -61,7 +67,12 @@ router.get('/u/:id', (req, res, next) => {
   if (!profile) return next();
   const viewer = req.user?.role === 'usuario' ? req.user.id : null;
   const blockedEither = viewer && viewer !== profile.id && isBlockedEither(viewer, profile.id);
-  const listings = blockedEither ? [] : sellerProducts(profile.id).filter((p) => p.status === 'disponible');
+  const all = blockedEither ? [] : sellerProducts(profile.id);
+  const listings = all.filter((p) => p.status === 'disponible');
+  // Secciones por tipo de artículo (como el menú de una tienda en DoorDash), de la más grande a la más chica.
+  const groups = Object.entries(listings.reduce((acc, p) => { (acc[p.item_type] ||= []).push(p); return acc; }, {}))
+    .sort((a, b) => b[1].length - a[1].length).map(([type, items]) => ({ type, slug: slugify(type), items }));
+  const sold = all.filter((p) => p.status === 'vendido').slice(0, 12);
   const rating = ratingSummary(profile.id);
   const firstPhoto = listings.find((p) => p.image)?.image;
   res.render('profile', {
@@ -78,7 +89,10 @@ router.get('/u/:id', (req, res, next) => {
     storePromo: storePromoOf(profile.id), untilLabel,
     hoursInfo: storeHoursInfo(profile.id),
     reviews: reviewsAbout(profile.id),
-    listings,
+    listings, groups, sold, onSale: listings.filter((p) => p.compare_at_price > p.price),
+    followers: followerCount(profile.id), following: isFollowing(viewer, profile.id),
+    verified: approvalRequired() && profile.seller_status === 'aprobado' && listings.length + sold.length > 0,
+    pickupPoints: pickupPointsOf(profile.id),
     isMe: viewer === profile.id,
     iBlocked: viewer ? hasBlocked(viewer, profile.id) : false,
     blockedEither,

@@ -21,10 +21,10 @@ const SIGNATURES = {
   'image/avif': (b) => ['ftypavif', 'ftypavis'].includes(b.subarray(4, 12).toString('latin1')),
   'application/pdf': (b) => b.subarray(0, 5).toString('latin1') === '%PDF-',
 };
-const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
+export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
 const ATTACH_TYPES = [...PHOTO_TYPES, 'application/pdf'];
 
-function headerMatches(file) {
+export function headerMatches(file) {
   const head = Buffer.alloc(12);
   const fd = fs.openSync(file.path, 'r');
   try { fs.readSync(fd, head, 0, 12, 0); } finally { fs.closeSync(fd); }
@@ -50,7 +50,7 @@ function makeUpload({ types, maxMb, maxFiles }) {
 const photoUpload = makeUpload({ types: PHOTO_TYPES, maxMb: MAX_PHOTO_MB, maxFiles: MAX_IMAGES });
 const attachUpload = makeUpload({ types: ATTACH_TYPES, maxMb: MAX_ATTACH_MB, maxFiles: 1 });
 
-const HEIC_HELP = 'Las fotos HEIC no se pueden subir. En iPhone: Ajustes → Cámara → Formatos → "Más compatible", o comparte la foto como JPG.';
+export const HEIC_HELP = 'Las fotos HEIC no se pueden subir. En iPhone: Ajustes → Cámara → Formatos → "Más compatible", o comparte la foto como JPG.';
 const photoErrors = {
   LIMIT_FILE_SIZE: `Cada foto debe pesar menos de ${MAX_PHOTO_MB} MB.`,
   LIMIT_FILE_COUNT: `Máximo ${MAX_IMAGES} fotos por artículo.`,

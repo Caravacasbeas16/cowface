@@ -290,6 +290,20 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
   reembolsar; opcionales: registros, publicaciones e intentos bloqueados. El botón **Admin** del
   menú muestra cuántas tareas hay pendientes.
 
+## Página de la tienda, favoritos y seguir tiendas
+
+- **Página de la tienda** (`/u/<id>`, como una tienda en DoorDash / Uber Eats): portada y logo
+  (`src/store-branding.js`, se suben en Configuración → Perfil; el logo se recorta cuadrado y la
+  portada 3:1), "✓ Verificada" si el admin la aprobó, calificación, ventas, seguidores, descripción,
+  horario, entrega y pick up. Los artículos van en secciones por tipo con pestañas fijas arriba, un
+  buscador y orden dentro de la tienda, 🔥 Ofertas aparte y **Vendidos recientemente** (como Grailed).
+- **Favoritos** (`src/social.js`): ♥ en cada tarjeta y en el artículo ("N personas lo guardaron"),
+  lista en `/favoritos`. Cada 5 min se revisa si algo guardado **bajó de precio** (descuento, promo
+  o edición) y se avisa por el celular y por correo, una vez por bajada. La tienda ve ♥ por artículo
+  en su inventario.
+- **Seguir tiendas**: botón "+ Seguir" en la tienda; `/siguiendo` muestra lo nuevo de las tiendas
+  que sigues, y al publicar se avisa por el celular a sus seguidores.
+
 ## Reseñas, perfiles y bloqueos
 
 - Al completarse un pedido, comprador y vendedor se califican (1–5 estrellas + comentario, que pasa

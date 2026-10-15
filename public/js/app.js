@@ -265,3 +265,87 @@ document.addEventListener('submit', (e) => {
     picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
   }, true);
 })();
+
+// Favoritos (♥) y "Seguir tienda" sin recargar la página. Sin JS, los formularios funcionan igual.
+(() => {
+  const send = (form) => fetch(form.getAttribute('action'), {
+    method: 'POST', credentials: 'same-origin', headers: { Accept: 'application/json' },
+  }).then((r) => (r.status === 401 || r.redirected ? null : r.json())).catch(() => null);
+
+  document.addEventListener('submit', async (e) => {
+    const form = e.target;
+    if (form.matches('[data-fav]')) {
+      e.preventDefault();
+      const data = await send(form);
+      if (!data) { form.submit(); return; }
+      const btn = form.querySelector('.fav-btn');
+      btn.classList.toggle('is-on', data.saved);
+      btn.setAttribute('aria-pressed', String(data.saved));
+      btn.setAttribute('aria-label', data.saved ? 'Quitar de favoritos' : 'Guardar en favoritos');
+      btn.classList.remove('pop'); void btn.offsetWidth; btn.classList.add('pop');
+      const label = form.querySelector('[data-fav-label]');
+      if (label) label.textContent = data.saved ? 'Guardado' : 'Guardar';
+    } else if (form.matches('[data-follow]')) {
+      e.preventDefault();
+      const data = await send(form);
+      if (!data) { form.submit(); return; }
+      const id = form.getAttribute('action').match(/\/u\/(\d+)\//)[1];
+      const btn = form.querySelector('button');
+      const count = document.querySelector('[data-followers]');
+      form.setAttribute('action', `/u/${id}/${data.following ? 'dejar-de-seguir' : 'seguir'}`);
+      btn.textContent = data.following ? '✓ Siguiendo' : '+ Seguir';
+      btn.classList.toggle('btn-ghost', data.following);
+      btn.setAttribute('aria-pressed', String(data.following));
+      if (count) count.textContent = Math.max(0, Number(count.textContent) + (data.following ? 1 : -1));
+    }
+  });
+})();
+
+// Página de la tienda: buscar y ordenar dentro de la tienda, y pestaña activa según la sección.
+(() => {
+  const search = document.querySelector('[data-store-search]');
+  if (!search) return;
+  const sort = document.querySelector('[data-store-sort]');
+  const sections = [...document.querySelectorAll('[data-store-section]')];
+  const empty = document.querySelector('[data-store-empty]');
+  const norm = (s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+  for (const grid of document.querySelectorAll('[data-store-section] .grid')) {
+    [...grid.children].forEach((c, i) => { c.dataset.order = i; });
+  }
+  const apply = () => {
+    const words = norm(search.value).split(/\s+/).filter(Boolean);
+    let shown = 0;
+    for (const sec of sections) {
+      const cards = [...sec.querySelectorAll('.card-wrap')];
+      let n = 0;
+      for (const c of cards) {
+        const ok = words.every((w) => norm(c.dataset.search || '').includes(w));
+        c.hidden = !ok;
+        if (ok) n += 1;
+      }
+      sec.hidden = n === 0;
+      shown += n;
+      const grid = sec.querySelector('.grid');
+      const by = {
+        recientes: (a, b) => (b.dataset.date || '').localeCompare(a.dataset.date || ''),
+        precio_asc: (a, b) => a.dataset.price - b.dataset.price,
+        precio_desc: (a, b) => b.dataset.price - a.dataset.price,
+      }[sort.value] || ((a, b) => a.dataset.order - b.dataset.order);
+      grid.append(...cards.sort(by));
+    }
+    empty.hidden = shown > 0;
+  };
+  search.addEventListener('input', apply);
+  sort.addEventListener('change', apply);
+
+  const tabs = [...document.querySelectorAll('[data-store-tabs] a')];
+  const setActive = (hash) => tabs.forEach((t) => t.classList.toggle('is-active', t.getAttribute('href') === hash));
+  tabs.forEach((t) => t.addEventListener('click', () => setActive(t.getAttribute('href'))));
+  if ('IntersectionObserver' in window) {
+    const io = new IntersectionObserver((entries) => {
+      const top = entries.filter((en) => en.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (top) setActive(`#${top.target.id}`);
+    }, { rootMargin: '-80px 0px -60% 0px' });
+    sections.forEach((s) => io.observe(s));
+  }
+})();

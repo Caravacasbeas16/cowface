@@ -71,6 +71,7 @@
               <% if (p.locked) { %><span class="pill">Pedido en curso</span><% } %>
               <% if (p.admin_hidden) { %><span class="pill pill-danger">Oculto por CowFace</span><% } %>
               <span class="muted small" title="Visitas">👁 <%= p.views %></span>
+              <% if (favs[p.id]) { %><span class="muted small" title="Personas que lo guardaron">♥ <%= favs[p.id] %></span><% } %>
             </div>
           </div>
 

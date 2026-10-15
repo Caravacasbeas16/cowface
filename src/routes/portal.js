@@ -17,6 +17,9 @@ import { sellerEarnings } from '../seller-earnings.js';
 import { deleteProduct, markSoldElsewhere, setProductStatus } from '../products.js';
 import { systemNote } from '../messages.js';
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
+import { perUser, rateLimit } from '../rate-limit.js';
+import { brandOf, brandPhotos, removeBrand, saveBrand } from '../store-branding.js';
+import { favoriteCounts, followerCount } from '../social.js';
 import {
   BULK_ACTIONS, INVENTORY_FILTERS, INVENTORY_SORTS, MAX_PAUSE_NOTE, ORDER_TABS, STAGE_ACTION, bulkTargets, homeSummary, inventory,
   inventoryCounts, ordersByTab, parseInventoryQuery, pauseStore, resumeStore, setupChecklist, statusLabel,
@@ -35,8 +38,11 @@ export const isStore = (user) => sellerStatus(user) !== 'nuevo'
 // Lo que necesita el menú lateral en todas las páginas del panel.
 function portalLocals(req, active) {
   const toAttend = ordersByTab(req.user.id).atender.length;
-  const paused = db.prepare('SELECT store_paused FROM users WHERE id = ?').get(req.user.id)?.store_paused || '';
-  return { portal: true, active, toAttend, paused, sellerState: sellerStatus(req.user), storeOpen: hoursStatus(hoursOf(req.user.id)) };
+  const row = db.prepare('SELECT store_paused, store_logo FROM users WHERE id = ?').get(req.user.id) || {};
+  return {
+    portal: true, active, toAttend, paused: row.store_paused || '', storeLogo: row.store_logo || null,
+    sellerState: sellerStatus(req.user), storeOpen: hoursStatus(hoursOf(req.user.id)),
+  };
 }
 
 // Las páginas de tienda: si no tiene tienda, a su cuenta.
@@ -88,7 +94,7 @@ router.get('/inventario', storeOnly, (req, res) => {
   const f = parseInventoryQuery(req.query);
   res.render('seller/inventory', {
     title: 'Inventario', ...portalLocals(req, 'inventario'), f, items: inventory(req.user.id, f), counts: inventoryCounts(req.user.id),
-    INVENTORY_FILTERS, INVENTORY_SORTS, BULK_ACTIONS, CATEGORIES, PRODUCT_STATUS, statusLabel, discountPct, untilLabel,
+    INVENTORY_FILTERS, INVENTORY_SORTS, BULK_ACTIONS, CATEGORIES, PRODUCT_STATUS, statusLabel, discountPct, untilLabel, favs: favoriteCounts(req.user.id),
     canPublish: canPublish(req.user), back: req.originalUrl,
   });
 });
@@ -153,8 +159,26 @@ router.get('/configuracion', storeOnly, (req, res) => {
   res.render('seller/settings', {
     title: 'Configuración', ...portalLocals(req, 'configuracion'), storeAbout: user.store_about,
     storeAddress: storeAddressOf(req.user.id), pickupPoints: pickupPointsOf(req.user.id), maxPoints: MAX_POINTS,
-    hours: hoursOf(req.user.id), DAYS, emailWait: WAIT_MINUTES,
+    hours: hoursOf(req.user.id), DAYS, emailWait: WAIT_MINUTES, brand: brandOf(req.user.id), followers: followerCount(req.user.id),
   });
+});
+
+// Logo y portada de la tienda.
+const brandLimit = rateLimit({ windowMs: 60 * 60 * 1000, max: 20, key: perUser, message: 'Subiste muchas imágenes seguidas. Espera un rato.' });
+router.post('/marca', storeOnly, brandLimit, brandPhotos, (req, res) => {
+  if (req.uploadError) flash(res, req.uploadError);
+  else if (!Object.keys(req.brand).length) flash(res, 'Elige una imagen para el logo o la portada.');
+  else {
+    saveBrand(req.user.id, req.brand);
+    flash(res, req.brand.logo && req.brand.banner ? 'Logo y portada guardados.' : req.brand.logo ? 'Logo guardado.' : 'Portada guardada.');
+  }
+  res.redirect('/vendedor/configuracion#perfil');
+});
+
+router.post('/marca/:kind/quitar', storeOnly, (req, res) => {
+  removeBrand(req.user.id, req.params.kind);
+  flash(res, req.params.kind === 'logo' ? 'Logo quitado.' : 'Portada quitada.');
+  res.redirect('/vendedor/configuracion#perfil');
 });
 
 export const MAX_ABOUT = 600;

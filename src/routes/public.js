@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db, commissionRate } from '../db.js';
+import { favoriteCount, isFavorite } from '../social.js';
 import { endSession, hashPassword, startSession, verifyPassword } from '../auth.js';
 import { CATEGORIES, CONDITIONS, DEPARTMENTS, formatColones } from '../catalog.js';
 import { canonicalQuery, describe, saveSearch } from '../alerts.js';
@@ -172,7 +173,8 @@ router.get('/p/:id', (req, res, next) => {
     image: cover ? `/fotos/${cover.thumb || cover.filename}` : undefined, imageAlt: product.title,
   };
   res.render('product', {
-    og, title: product.title, product, isOwner, conversationId, chosen, minOffer: minOffer(product.price), blocked,
+    og, title: product.title, product, isOwner, conversationId, chosen,
+    favCount: favoriteCount(product.id), isFav: req.user ? isFavorite(req.user.id, product.id) : false, minOffer: minOffer(product.price), blocked,
     sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), pickupPoints: pickupPointsOf(product.seller_id),
     sellerReviews: reviewsAbout(product.seller_id, 10).filter((r) => r.role === 'vendedor' && r.comment).slice(0, 3),
     untilLabel,

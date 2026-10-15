@@ -20,6 +20,30 @@
 
   <section id="perfil" class="panel">
     <div class="panel-head"><h2>Perfil de la tienda</h2><a class="small" href="/u/<%= user.id %>">Ver mi tienda →</a></div>
+    <div class="brand-edit">
+      <div class="brand-preview">
+        <div class="brand-banner"><% if (brand.banner) { %><img src="/fotos/<%= brand.banner %>" alt="Portada actual"><% } else { %><span class="muted small">Sin portada</span><% } %></div>
+        <%- include('../partials/store-logo', { name: user.store_name || user.name, logo: brand.logo, size: 'lg' }) %>
+      </div>
+      <form action="/vendedor/marca" method="post" enctype="multipart/form-data" class="stack notify-form" data-busy>
+        <div class="row2">
+          <label>Logo (cuadrado)
+            <input type="file" name="logo" accept="image/jpeg,image/png,image/webp,image/avif">
+            <span class="hint">Se recorta en círculo. Mínimo 200 px.</span>
+          </label>
+          <label>Portada (horizontal)
+            <input type="file" name="banner" accept="image/jpeg,image/png,image/webp,image/avif">
+            <span class="hint">Se recorta a 3:1, como en Uber Eats. Ideal 1800 × 600.</span>
+          </label>
+        </div>
+        <button class="btn btn-small" data-busy-text="Subiendo…">Subir imágenes</button>
+      </form>
+      <div class="brand-remove small">
+        <% if (brand.logo) { %><form action="/vendedor/marca/logo/quitar" method="post" class="inline"><button class="linklike">Quitar logo</button></form><% } %>
+        <% if (brand.banner) { %><form action="/vendedor/marca/banner/quitar" method="post" class="inline"><button class="linklike">Quitar portada</button></form><% } %>
+        <span class="muted"><%= followers %> seguidor<%= followers === 1 ? '' : 'es' %> · les avisamos cuando publicas algo nuevo</span>
+      </div>
+    </div>
     <form action="/vendedor/perfil" method="post" class="stack notify-form">
       <label>Descripción (sale arriba en tu tienda)
         <textarea name="store_about" rows="4" maxlength="600" placeholder="Qué vendes, tu estilo, de dónde traes la ropa, cada cuánto subes cosas nuevas…"><%= storeAbout %></textarea>
