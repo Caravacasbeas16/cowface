@@ -152,6 +152,39 @@
     });
   }
 
+  // Panel de la tienda (Inicio y Pedidos): como la tablet de DoorDash, suena y se actualiza solo
+  // cuando entra un pedido o un mensaje. Si la tienda está escribiendo algo, solo muestra un aviso.
+  let audio;
+  function ding() {
+    try {
+      audio ||= new (window.AudioContext || window.webkitAudioContext)();
+      for (const [freq, at] of [[880, 0], [1320, 0.16]]) {
+        const osc = audio.createOscillator();
+        const gain = audio.createGain();
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.0001, audio.currentTime + at);
+        gain.gain.exponentialRampToValueAtTime(0.25, audio.currentTime + at + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audio.currentTime + at + 0.3);
+        osc.connect(gain).connect(audio.destination);
+        osc.start(audio.currentTime + at);
+        osc.stop(audio.currentTime + at + 0.32);
+      }
+    } catch { /* sin sonido */ }
+  }
+  function portalAlert() {
+    ding();
+    const busy = document.activeElement?.matches('input, textarea, select') || document.querySelector('details[open]');
+    if (!busy) { setTimeout(() => location.reload(), 900); return; }
+    if (document.querySelector('[data-live-toast]')) return;
+    const toast = document.createElement('button');
+    toast.type = 'button';
+    toast.className = 'live-toast';
+    toast.dataset.liveToast = '';
+    toast.textContent = '🔔 Hay novedades en tus pedidos · Actualizar';
+    toast.addEventListener('click', () => location.reload());
+    document.body.append(toast);
+  }
+
   // Canal en vivo. EventSource se reconecta solo si se cae.
   const events = new EventSource('/mensajes/eventos');
   events.addEventListener('no-leidos', (e) => {
@@ -165,5 +198,6 @@
     const { id } = JSON.parse(e.data);
     if (id === conversationId) refreshThread();
     else if (document.querySelector('[data-inbox]')) location.reload();
+    else if (document.querySelector('[data-portal-live]')) portalAlert();
   });
 })();
