@@ -181,6 +181,7 @@
         <div><dt><%= pickUp ? 'Punto de pick up' : 'Dirección' %></dt><dd><%= o.delivery_address %></dd></div>
         <div><dt>Teléfono</dt><dd><%= o.delivery_phone %></dd></div>
       </dl>
+      <% if (!pickUp) { %><p class="small"><a href="/vendedor/pedidos/<%= o.id %>/etiqueta" target="_blank" rel="noopener">🖨 Imprimir etiqueta de envío</a></p><% } %>
       <form action="/pedidos/<%= o.id %>/enviado" method="post" enctype="multipart/form-data" class="stack compact">
         <% if (pickUp) { %>
           <input name="note" maxlength="300" placeholder="Cómo y dónde lo entregaste (opcional)">

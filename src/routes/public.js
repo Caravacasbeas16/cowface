@@ -22,7 +22,7 @@ import { pickupPointsOf } from '../pickup.js';
 import { untilLabel } from '../promos.js';
 import { REPORT_REASONS, createReport } from '../reports.js';
 import { UserError } from '../messages.js';
-import { presenceOf } from '../presence.js';
+import { presenceOf, replyTime } from '../presence.js';
 import { storeHoursInfo } from '../store-hours.js';
 
 const router = Router();
@@ -180,7 +180,7 @@ router.get('/p/:id', (req, res, next) => {
     sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), pickupPoints: pickupPointsOf(product.seller_id),
     sellerReviews: reviewsAbout(product.seller_id, 10).filter((r) => r.role === 'vendedor' && r.comment).slice(0, 3),
     untilLabel,
-    sellerPresence: presenceOf(product.seller_id), sellerHours: storeHoursInfo(product.seller_id).status, justPublished: isOwner && req.query.publicado === '1',
+    sellerPresence: presenceOf(product.seller_id), sellerReply: replyTime(product.seller_id), sellerHours: storeHoursInfo(product.seller_id).status, justPublished: isOwner && req.query.publicado === '1',
   });
 });
 

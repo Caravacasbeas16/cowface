@@ -15,7 +15,7 @@
         <span class="muted"><%= profile.province %></span>
         <span class="muted">Desde <%= when(profile.created_at, true).replace(/,.*$/, '') %></span>
       </div>
-      <div class="status-line"><%- include('partials/presence', { presence, hoursStatus: hoursInfo.status }) %></div>
+      <div class="status-line"><%- include('partials/presence', { presence, hoursStatus: hoursInfo.status }) %><% if (reply) { %><span class="hours-pill">⚡ <%= reply %></span><% } %></div>
     </div>
     <div class="store-actions">
       <% if (isMe) { %>

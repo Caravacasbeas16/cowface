@@ -87,10 +87,30 @@ export function homeSummary(user) {
     FROM products p WHERE p.seller_id = ? AND p.status = 'disponible' ORDER BY p.views DESC, p.created_at DESC LIMIT 5
   `).all(id);
   return {
-    tabs, today: sales(1), week: sales(7), month: sales(30), stock, payout, offers, unread, top,
+    tabs, today: sales(1), week: sales(7), month: sales(30), stock, payout, offers, unread, top, daily: dailySales(id),
     rating: ratingSummary(id).asSeller, salesTotal: salesSummary(id).total,
     todo: tabs.atender,
   };
+}
+
+// Ventas por día (hora de Costa Rica) de las últimas 2 semanas, para el gráfico del inicio.
+const WEEKDAYS = ['dom', 'lun', 'mar', 'mié', 'jue', 'vie', 'sáb'];
+export function dailySales(sellerId, days = 14, nowMs = Date.now()) {
+  const rows = db.prepare(`
+    SELECT date(created_at, '-6 hours') AS day, COUNT(*) AS n, SUM(price) AS amount FROM orders
+    WHERE seller_id = ? AND status NOT IN ('cancelado', 'reembolsado', 'reembolso_pendiente')
+      AND date(created_at, '-6 hours') > date(?, '-6 hours', ?)
+    GROUP BY day
+  `).all(sellerId, new Date(nowMs).toISOString(), `-${days} days`);
+  const byDay = Object.fromEntries(rows.map((r) => [r.day, r]));
+  const out = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(nowMs - 6 * 3600e3 - i * 24 * 3600e3);
+    const key = d.toISOString().slice(0, 10);
+    out.push({ day: key, label: `${WEEKDAYS[d.getUTCDay()]} ${d.getUTCDate()}`, n: byDay[key]?.n || 0, amount: byDay[key]?.amount || 0 });
+  }
+  const max = Math.max(1, ...out.map((x) => x.amount));
+  return out.map((x) => ({ ...x, pct: Math.round((x.amount / max) * 100) }));
 }
 
 // Lista para que la tienda quede completa (como el "checklist" de DoorDash al abrir una tienda).

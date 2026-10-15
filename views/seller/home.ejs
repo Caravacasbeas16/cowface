@@ -52,6 +52,18 @@
     <a class="kpi" href="/vendedor/inventario?estado=disponible"><span class="kpi-label">Publicados</span><span class="kpi-n"><%= s.stock.live || 0 %></span><span class="muted small"><%= s.stock.views %> visita<%= s.stock.views === 1 ? '' : 's' %> en total</span></a>
   </div>
 
+  <section class="panel">
+    <div class="panel-head"><h2>Ventas · últimas 2 semanas</h2><span class="muted small"><%= money(s.daily.reduce((a, d) => a + d.amount, 0)) %> en <%= s.daily.reduce((a, d) => a + d.n, 0) %> venta<%= s.daily.reduce((a, d) => a + d.n, 0) === 1 ? '' : 's' %></span></div>
+    <div class="spark" role="img" aria-label="Ventas por día de las últimas 2 semanas">
+      <% for (const d of s.daily) { %>
+        <div class="spark-col" title="<%= d.label %>: <%= money(d.amount) %> (<%= d.n %>)">
+          <span class="spark-bar <%= d.amount ? '' : 'is-zero' %>" data-height="<%= d.amount ? Math.max(6, d.pct) : 2 %>"></span>
+          <span class="spark-label"><%= d.label.split(' ')[1] %></span>
+        </div>
+      <% } %>
+    </div>
+  </section>
+
   <div class="portal-grid">
     <section class="panel">
       <div class="panel-head"><h2>Por atender</h2><a class="small" href="/vendedor/pedidos">Ver pedidos →</a></div>

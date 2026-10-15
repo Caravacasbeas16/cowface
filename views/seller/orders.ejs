@@ -41,6 +41,9 @@
           <% if (o.stage === 'cotizar') { %><p class="order-next">👉 El comprador pidió <%= DELIVERY_LABELS[o.delivery_requested] %>. Cotiza el envío en el chat para que pueda pagar.</p><% } %>
           <% if (o.stage === 'enviar') { %><p class="order-next">👉 CowFace confirmó el pago. Envíalo y sube la foto de la guía o del paquete<%= o.data_sent_at ? '' : ' (te mandamos los datos de entrega)' %>.</p><% } %>
           <% if (o.stage === 'reclamo') { %><p class="order-next">⚠️ El comprador abrió un reclamo. CowFace lo está revisando: responde en el chat.</p><% } %>
+          <% if (['enviar', 'camino'].includes(o.stage) && o.delivery_method && !['pick_up', 'en_persona'].includes(o.delivery_method)) { %>
+            <a class="small" href="/vendedor/pedidos/<%= o.id %>/etiqueta" target="_blank" rel="noopener">🖨 Etiqueta de envío</a>
+          <% } %>
           <% if (o.conversation_id) { %>
             <a class="btn btn-small <%= STAGE_ACTION[o.stage] ? '' : 'btn-ghost' %>" href="/mensajes/<%= o.conversation_id %>"><%= STAGE_ACTION[o.stage] || 'Ver el pedido' %></a>
           <% } %>

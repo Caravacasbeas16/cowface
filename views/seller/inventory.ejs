@@ -142,6 +142,13 @@
                     <span class="more-note">⬆ Podrás subirlo el <%= b.next.toLocaleDateString('es-CR', { day: 'numeric', month: 'short', timeZone: 'America/Costa_Rica' }) %></span>
                   <% } %>
                 <% } %>
+                <% if (favs[p.id] && p.status === 'disponible' && !p.has_sizes && !p.locked) { %>
+                  <form action="/vendedor/productos/<%= p.id %>/oferta-favoritos" method="post" class="more-discount">
+                    <input type="hidden" name="back" value="<%= back %>">
+                    <label>♥ <%= favs[p.id] %> · Ofrecer ₡<input name="amount" inputmode="numeric" required placeholder="<%= Math.round(p.price * 0.9 / 100) * 100 %>" aria-label="Precio de la oferta para quienes lo guardaron"></label>
+                    <button>Enviar</button>
+                  </form>
+                <% } %>
                 <form action="/vendedor/productos/<%= p.id %>/duplicar" method="post"><input type="hidden" name="back" value="<%= back %>"><button>⧉ Duplicar</button></form>
                 <% if (p.status !== 'borrador') { %><a href="/p/<%= p.id %>">Ver como comprador</a><% } %>
                 <% if (!p.locked && ['disponible', 'pausado'].includes(p.status)) { %>

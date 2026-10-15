@@ -91,6 +91,17 @@ router.get('/pedidos', storeOnly, (req, res) => {
   });
 });
 
+// Etiqueta de envío para imprimir y pegar en el paquete (cuando el pago ya está confirmado).
+router.get('/pedidos/:orderId/etiqueta', storeOnly, (req, res, next) => {
+  const order = db.prepare(`
+    SELECT o.*, b.name AS buyer_name FROM orders o JOIN users b ON b.id = o.buyer_id
+    WHERE o.id = ? AND o.seller_id = ? AND o.status IN ('pagado', 'enviado')
+  `).get(Number(req.params.orderId), req.user.id);
+  if (!order) return next();
+  const store = db.prepare('SELECT COALESCE(store_name, name) AS name, phone, province, store_address FROM users WHERE id = ?').get(req.user.id);
+  res.render('seller/label', { order, store, DELIVERY_LABELS });
+});
+
 // ---------- Inventario ----------
 router.get('/inventario', storeOnly, (req, res) => {
   const f = parseInventoryQuery(req.query);

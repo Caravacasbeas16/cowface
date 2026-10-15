@@ -7,7 +7,7 @@ import { block, hasBlocked, isBlockedEither, myBlocks, unblock } from '../blocks
 import { createReview, ratingSummary, reviewsAbout, salesSummary } from '../reviews.js';
 import { FEATURED_SQL } from '../products.js';
 import { notBlockedSql } from '../blocks.js';
-import { presenceOf } from '../presence.js';
+import { presenceOf, replyTime } from '../presence.js';
 import { storeHoursInfo } from '../store-hours.js';
 import { storePromoOf, untilLabel } from '../promos.js';
 import { sellerProducts } from '../products.js';
@@ -90,7 +90,7 @@ router.get('/u/:id', (req, res, next) => {
     hoursInfo: storeHoursInfo(profile.id),
     reviews: reviewsAbout(profile.id),
     listings, groups, sold, onSale: listings.filter((p) => p.compare_at_price > p.price),
-    followers: followerCount(profile.id), following: isFollowing(viewer, profile.id),
+    followers: followerCount(profile.id), following: isFollowing(viewer, profile.id), reply: replyTime(profile.id),
     verified: approvalRequired() && profile.seller_status === 'aprobado' && listings.length + sold.length > 0,
     pickupPoints: pickupPointsOf(profile.id),
     isMe: viewer === profile.id,

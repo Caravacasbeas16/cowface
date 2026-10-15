@@ -5,7 +5,7 @@ import {
   createProduct, deleteImage, deleteProduct, getProduct, imageCount, quickUpdate, setCoverImage,
   markSoldElsewhere, refreshProductSearch, setProductStatus, updateProduct,
 } from '../products.js';
-import { systemNote } from '../messages.js';
+import { UserError, systemNote } from '../messages.js';
 import { deleteAccount, deletionBlockers } from '../account-deletion.js';
 import { endSession, verifyPassword } from '../auth.js';
 import {
@@ -15,13 +15,13 @@ import {
 import { OPEN_STATUSES, paymentConfig } from '../orders.js';
 import { perUser, rateLimit } from '../rate-limit.js';
 import { detailField, normalizePhone, parsePrice, validateProduct } from '../validate.js';
-import { DEFECTS_FIELD, DETAILS, allSizes } from '../catalog.js';
+import { DEFECTS_FIELD, DETAILS, allSizes, formatColones } from '../catalog.js';
 import { parseSizeStock, saveSizes, sizeField } from '../variants.js';
 import { logFlagged } from '../moderation.js';
 import { MAX_IMAGES, REQUEST_MAX_PHOTOS, discardRequestPhotos, photoFiles, photos, requestPhotos } from '../uploads.js';
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
 import { deleteSearch, notifyMatches } from '../alerts.js';
-import { notifyFollowers } from '../social.js';
+import { notifyFollowers, offerToLikers } from '../social.js';
 import { bump, bumpState, duplicateProduct } from '../listing-tools.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
@@ -380,6 +380,18 @@ router.post('/productos/:id/subir', (req, res) => {
   } else {
     flash(res, req.product.status !== 'disponible' ? 'Solo se pueden subir artículos a la venta.'
       : `Podrás volver a subirlo el ${next.toLocaleDateString('es-CR', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'America/Costa_Rica' })}.`);
+  }
+  res.redirect(backTo(req));
+});
+
+// Oferta privada a quienes tienen el artículo en favoritos (como Grailed).
+router.post('/productos/:id/oferta-favoritos', lockedWhileOrdered, (req, res) => {
+  try {
+    const sent = offerToLikers(req.product, parsePrice(req.body.amount));
+    flash(res, `Oferta de ${formatColones(parsePrice(req.body.amount))} enviada a ${sent} persona${sent === 1 ? '' : 's'} que lo guardaron. Vence en 48 h.`);
+  } catch (err) {
+    if (!(err instanceof UserError)) throw err;
+    flash(res, err.message);
   }
   res.redirect(backTo(req));
 });

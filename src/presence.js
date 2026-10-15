@@ -38,3 +38,30 @@ export function presenceOf(userId, nowMs = Date.now()) {
   const online = isOnline(userId) || Boolean(lastSeen && nowMs - Date.parse(lastSeen) < ONLINE_MS);
   return { online, lastSeen, label: presenceLabel(lastSeen, online, nowMs) };
 }
+
+// "Suele responder en…" (como DoorDash / Grailed): mediana del tiempo entre el primer mensaje de un
+// comprador y la primera respuesta de la tienda, en las conversaciones de los últimos 90 días.
+// Necesita al menos 3 conversaciones respondidas. Se guarda 10 minutos en memoria.
+const replyCache = new Map();
+export function replyTime(sellerId, nowMs = Date.now()) {
+  const hit = replyCache.get(sellerId);
+  if (hit && nowMs - hit.at < 10 * 60_000) return hit.value;
+  const rows = db.prepare(`
+    SELECT c.id,
+      (SELECT MIN(m.created_at) FROM messages m WHERE m.conversation_id = c.id AND m.sender_id = c.buyer_id) AS asked,
+      (SELECT MIN(m.created_at) FROM messages m WHERE m.conversation_id = c.id AND m.sender_id = c.seller_id
+        AND m.created_at >= (SELECT MIN(m2.created_at) FROM messages m2 WHERE m2.conversation_id = c.id AND m2.sender_id = c.buyer_id)) AS replied
+    FROM conversations c WHERE c.seller_id = ? AND c.created_at > datetime('now', '-90 days')
+  `).all(sellerId);
+  const toMs = (s) => Date.parse(String(s).includes('T') ? s : `${String(s).replace(' ', 'T')}Z`);
+  const mins = rows.filter((r) => r.asked && r.replied).map((r) => (toMs(r.replied) - toMs(r.asked)) / 60_000).sort((a, b) => a - b);
+  let value = null;
+  if (mins.length >= 3) {
+    const median = mins[Math.floor(mins.length / 2)];
+    value = median < 60 ? 'Suele responder en menos de 1 h'
+      : median < 6 * 60 ? 'Suele responder en unas horas'
+        : median < 24 * 60 ? 'Suele responder el mismo día' : 'Suele responder en uno o dos días';
+  }
+  replyCache.set(sellerId, { at: nowMs, value });
+  return value;
+}

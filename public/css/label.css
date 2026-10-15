@@ -1,0 +1,24 @@
+/* Etiqueta de envío para imprimir (10 × 15 cm, el tamaño de las etiquetas térmicas). */
+* { box-sizing: border-box; }
+body { margin: 0; padding: 16px; font: 15px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #111; background: #f5f4f1; }
+.toolbar { display: flex; gap: 1rem; align-items: center; max-width: 10cm; margin: 0 auto 12px; }
+.toolbar button { padding: .6rem 1rem; border: 1px solid #111; background: #111; color: #fff; font-weight: 700; cursor: pointer; }
+.toolbar a { color: #111; }
+.label { width: 10cm; min-height: 15cm; margin: 0 auto; padding: .6cm; background: #fff; border: 2px solid #111; display: flex; flex-direction: column; gap: .4cm; }
+.label header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #111; padding-bottom: .3cm; }
+.brand { font-size: 1.3rem; font-weight: 900; letter-spacing: .02em; }
+.code { font: 800 1.1rem/1 ui-monospace, Consolas, monospace; border: 2px solid #111; padding: .15cm .25cm; }
+.tag { display: inline-block; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .08em; background: #111; color: #fff; padding: .05cm .2cm; }
+.to { flex: 1; }
+.to .name { font-size: 1.5rem; font-weight: 800; margin: .2cm 0 .1cm; }
+.to .addr { font-size: 1.15rem; white-space: pre-line; margin: 0 0 .2cm; }
+.from { border-top: 1px dashed #111; padding-top: .3cm; font-size: .85rem; }
+.from p, .to p { margin: .05cm 0; overflow-wrap: anywhere; }
+.label footer { display: flex; flex-direction: column; gap: .1cm; border-top: 2px solid #111; padding-top: .3cm; font-size: .8rem; }
+.note { max-width: 10cm; margin: 12px auto; font-size: .8rem; color: #555; }
+@media print {
+  body { background: #fff; padding: 0; }
+  .toolbar, .note { display: none; }
+  .label { border: 0; margin: 0; }
+  @page { size: 10cm 15cm; margin: 0; }
+}

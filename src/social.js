@@ -6,6 +6,8 @@ import { pushToUser } from './push.js';
 import { sendMail } from './mailer.js';
 import { notBlockedSql } from './blocks.js';
 import { FEATURED_SQL, LIVE_SELLER } from './products.js';
+import { UserError, convRow } from './messages.js';
+import { getOrCreateConversation, makeOffer } from './chat.js';
 
 // ---------- Seguir tiendas ----------
 
@@ -131,3 +133,31 @@ export async function notifyPriceDrops(baseUrl = '') {
 }
 
 const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+// "Ofrecer a quienes lo guardaron" (como Grailed): la tienda manda una oferta privada, con un precio
+// más bajo, a cada persona que tiene el artículo en favoritos. Llega al chat como cualquier oferta
+// (vence en 48 h) y la persona la acepta con un toque. Una vez cada 24 h por artículo.
+export const LIKERS_OFFER_HOURS = 24;
+export function offerToLikers(product, amount) {
+  if (product.status !== 'disponible' || product.quantity < 1) throw new UserError('El artículo tiene que estar a la venta.');
+  if (product.has_sizes) throw new UserError('Los artículos con varias tallas no tienen esta opción: ponles un descuento.');
+  if (!Number.isInteger(amount) || amount <= 0 || amount >= product.price) throw new UserError(`La oferta debe ser menor al precio actual (${formatColones(product.price)}).`);
+  const last = product.likers_offer_at ? Date.parse(product.likers_offer_at) : 0;
+  if (Date.now() - last < LIKERS_OFFER_HOURS * 3600e3) throw new UserError('Ya enviaste una oferta a quienes lo guardaron hoy. Puedes volver a hacerlo mañana.');
+  const likers = db.prepare(`
+    SELECT f.user_id FROM favorites f JOIN users u ON u.id = f.user_id WHERE f.product_id = ? AND u.active = 1 AND f.user_id != ?
+  `).all(product.id, product.seller_id).map((r) => r.user_id);
+  if (!likers.length) throw new UserError('Nadie ha guardado este artículo todavía.');
+  let sent = 0;
+  for (const buyerId of likers) {
+    try {
+      const conv = convRow(getOrCreateConversation(product, buyerId));
+      makeOffer(conv, product.seller_id, amount);
+      sent += 1;
+    } catch (err) {
+      if (!(err instanceof UserError)) throw err; // bloqueos u ofertas que no aplican: se salta a esa persona
+    }
+  }
+  db.prepare('UPDATE products SET likers_offer_at = ? WHERE id = ?').run(new Date().toISOString(), product.id);
+  return sent;
+}

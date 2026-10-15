@@ -309,6 +309,14 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
   **Subir al inicio** una vez cada 7 días (como el bump de Grailed; `bumped_at` cuenta como recién
   publicado), **Duplicar** (borrador con fotos copiadas, tallas y detalles) y **Exportar CSV** de
   todo el inventario (abre en Excel con tildes; los textos que empiezan con = + - @ se neutralizan).
+- **Ofrecer a quienes lo guardaron** (como Grailed, en ⋯ del inventario cuando tiene ♥): manda una
+  oferta privada más baja al chat de cada persona que lo tiene en favoritos (vence en 48 h). Una vez
+  cada 24 h por artículo; no aplica a artículos con varias tallas.
+- **"Suele responder en…"** en la tienda y el artículo (`replyTime` en presence.js): mediana entre el
+  primer mensaje del comprador y la primera respuesta, últimos 90 días, con al menos 3 conversaciones.
+- **Gráfico de ventas** de las últimas 2 semanas en el inicio del panel.
+- **Etiqueta de envío** (`/vendedor/pedidos/<id>/etiqueta`, 10 × 15 cm para imprimir): con el pago
+  confirmado, nombre, dirección y teléfono del comprador, datos de la tienda y el código del pedido.
 
 ## Reseñas, perfiles y bloqueos
 

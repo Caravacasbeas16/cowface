@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Etiqueta <%= order.code %> · <%= siteName %></title>
+  <link rel="stylesheet" href="/css/label.css?v=<%= assetVersion %>">
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" data-print>🖨 Imprimir</button>
+    <a href="/mensajes/<%= order.conversation_id %>">← Volver al pedido</a>
+  </div>
+  <article class="label">
+    <header>
+      <strong class="brand"><%= siteName.toUpperCase() %></strong>
+      <span class="code"><%= order.code %></span>
+    </header>
+    <section class="to">
+      <span class="tag">Para</span>
+      <p class="name"><%= order.buyer_name %></p>
+      <p class="addr"><%= order.delivery_address %></p>
+      <p>Tel. <%= order.delivery_phone %></p>
+    </section>
+    <section class="from">
+      <span class="tag">De</span>
+      <p><strong><%= store.name %></strong> · <%= store.province %></p>
+      <% if (store.store_address) { %><p><%= store.store_address %></p><% } %>
+      <% if (store.phone) { %><p>Tel. <%= store.phone %></p><% } %>
+    </section>
+    <footer>
+      <span><%= DELIVERY_LABELS[order.delivery_method] || order.delivery_method %></span>
+      <span><%= order.product_title %></span>
+    </footer>
+  </article>
+  <p class="note">Pega la etiqueta en el paquete. Después sube la foto de la guía o del paquete en el pedido: sin esa foto no se puede liberar tu pago.</p>
+  <script src="/js/label.js?v=<%= assetVersion %>" defer></script>
+</body>
+</html>
