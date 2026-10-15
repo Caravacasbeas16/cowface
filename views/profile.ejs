@@ -1,5 +1,5 @@
 <%- include('partials/header') %>
-<%# Página de la tienda, como la de una tienda en DoorDash / Uber Eats: portada, logo, datos, secciones por tipo y buscador. %>
+<%# Página de la tienda, como la de una tienda en DoorDash: portada, logo, datos, secciones por tipo y buscador. %>
 <section class="store-hero <%= profile.store_banner ? 'has-banner' : '' %>">
   <div class="store-banner">
     <% if (profile.store_banner) { %><img src="/fotos/<%= profile.store_banner %>" alt=""><% } %>

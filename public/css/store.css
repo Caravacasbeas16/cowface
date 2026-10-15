@@ -1,4 +1,4 @@
-/* Página de la tienda (como en DoorDash / Uber Eats), favoritos y seguir tiendas. */
+/* Página de la tienda (como en DoorDash), favoritos y seguir tiendas. */
 
 /* ---------- Corazón en las tarjetas ---------- */
 .card-wrap { position: relative; min-width: 0; }
@@ -81,7 +81,7 @@
 .recent-title { font-size: .8rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .recent-price { font-size: .8rem; font-weight: 800; }
 
-/* Avance del pedido en el chat (como el seguimiento de Uber) */
+/* Avance del pedido en el chat  */
 .order-track { list-style: none; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); margin: .7rem 0 .4rem; padding: 0; position: relative; }
 .order-track::before { content: ''; position: absolute; top: 12px; left: 10%; right: 10%; height: 2px; background: var(--line); }
 .order-track li { position: relative; display: flex; flex-direction: column; align-items: center; gap: .25rem; text-align: center; font-size: .66rem; font-weight: 700; color: var(--muted); line-height: 1.2; }
@@ -91,7 +91,7 @@
 .order-track .is-current { color: var(--text); }
 .order-track .is-current .dot-step { border-color: var(--ink); box-shadow: 0 0 0 3px rgba(17, 17, 17, .12); }
 
-/* Barra de abajo en el celular (como las apps de Uber / DoorDash) */
+/* Barra de abajo en el celular (como las apps de DoorDash) */
 .tabbar { display: none; }
 @media (max-width: 767px) {
   body.has-tabbar { padding-bottom: calc(62px + env(safe-area-inset-bottom)); }

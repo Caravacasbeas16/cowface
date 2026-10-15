@@ -1,4 +1,4 @@
-// Entrega "como un Uber": el comprador elige Correos, Uber Flash o pick up; la tienda cotiza el envío
+// Entrega: el comprador elige Correos, Uber Flash o pick up; la tienda cotiza el envío
 // (y lo puede cambiar mientras hablan); recién con la entrega definida se ve el total y se paga.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';

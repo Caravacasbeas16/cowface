@@ -1,4 +1,4 @@
-// Logo y portada de la tienda (como en DoorDash / Uber Eats): el logo se recorta cuadrado y la
+// Logo y portada de la tienda (como en DoorDash): el logo se recorta cuadrado y la
 // portada a 3:1. Se guardan sin metadatos en la carpeta de fotos públicas.
 import multer from 'multer';
 import crypto from 'node:crypto';

@@ -109,7 +109,7 @@
           <div><span>Prenda</span><span><%= money(p.price) %></span></div>
           <div><span>Entrega</span><span>Correos, Uber Flash<%= p.meetup ? ' o pick up' : '' %></span></div>
           <p class="hint guarantee">🛡️ <strong>Garantía CowFace:</strong> si hay un problema con tu compra, nos hacemos cargo.</p>
-          <p class="hint">Después de comprar eliges cómo recibirlo y la tienda te cotiza el envío (como un Uber). Ves el total exacto antes de pagar<%= p.meetup ? '; el pick up no tiene costo' : '' %>.</p>
+          <p class="hint">Después de comprar eliges cómo recibirlo y la tienda te cotiza el envío. Ves el total exacto antes de pagar<%= p.meetup ? '; el pick up no tiene costo' : '' %>.</p>
         </div>
         <form action="/p/<%= p.id %>/comprar" method="post" data-confirm="¿Comprar «<%= p.title %>» por <%= money(p.price) %>? Luego eliges la entrega, la tienda te cotiza el envío y le pagas a CowFace por SINPE Móvil. Guardamos el dinero hasta que recibas el artículo.">
           <% if (p.sizes.length) { %><%- include('partials/size-select', { sizes: p.sizes, chosen }) %><% } %>

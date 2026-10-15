@@ -1,7 +1,7 @@
 <%#
   Recuadro del pedido dentro de la conversación. Muestra a cada parte lo que le toca hacer.
   Variables: o (pedido), conv, isSeller.
-  Entrega "como un Uber": el comprador elige cómo y dónde lo quiere, la tienda cotiza el envío
+  Entrega: el comprador elige cómo y dónde lo quiere, la tienda cotiza el envío
   (y lo puede ajustar mientras hablan), y recién ahí se ve el total y se paga.
 %>
 <%
@@ -25,7 +25,7 @@
     <span class="status status-<%= o.status %>"><%= catalog.ORDER_STATUS[o.status] %></span>
   </div>
   <% if (!['cancelado', 'reembolsado', 'reembolso_pendiente'].includes(o.status)) { %>
-    <%# Avance del pedido, como el seguimiento de Uber: cada paso marcado cuando ya pasó. %>
+    <%# Avance del pedido: cada paso marcado cuando ya pasó. %>
     <% const after = ['pagado', 'enviado', 'en_disputa', 'completado'];
        const steps = [
          ['Pedido', true],

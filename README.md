@@ -194,7 +194,7 @@ dominio de Railway; si se cambia a dominio propio, definir `PUBLIC_URL`.
 - **Datos por enviar a tiendas** (en "Por hacer"): después de confirmar el SINPE, el admin le manda
   a la tienda por correo los datos de entrega (o los copia para WhatsApp y los marca como enviados).
 
-## Entrega "como un Uber"
+## Entrega cotizada por la tienda
 
 El artículo no lleva costo de envío: solo dice si la tienda ofrece pick up. Después de comprar:
 1. El comprador elige **Correos de Costa Rica**, **Uber Flash** o **pick up** y da la dirección
@@ -292,7 +292,7 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
 
 ## Página de la tienda, favoritos y seguir tiendas
 
-- **Página de la tienda** (`/u/<id>`, como una tienda en DoorDash / Uber Eats): portada y logo
+- **Página de la tienda** (`/u/<id>`, como una tienda en DoorDash): portada y logo
   (`src/store-branding.js`, se suben en Configuración → Perfil; el logo se recorta cuadrado y la
   portada 3:1), "✓ Verificada" si el admin la aprobó, calificación, ventas, seguidores, descripción,
   horario, entrega y pick up. Los artículos van en secciones por tipo con pestañas fijas arriba, un
@@ -318,7 +318,7 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
 - **Etiqueta de envío** (`/vendedor/pedidos/<id>/etiqueta`, 10 × 15 cm para imprimir): con el pago
   confirmado, nombre, dirección y teléfono del comprador, datos de la tienda y el código del pedido.
 - **Como app en el celular**: barra de abajo (Inicio, Buscar, Favoritos, Mensajes, Mi cuenta), como
-  Uber / DoorDash (`res.locals.tabbar`; no sale en el chat, al publicar ni en la etiqueta).
+  DoorDash (`res.locals.tabbar`; no sale en el chat, al publicar ni en la etiqueta).
 - **Avance del pedido** en el chat: Pedido → Envío cotizado → Pagado → Enviado → Recibido.
 - Búsqueda con orden **Más populares** (cada ♥ pesa como 5 visitas).
 

@@ -258,7 +258,7 @@ addColumn('users', 'reviews_base_count', 'INTEGER NOT NULL DEFAULT 0');
 addColumn('users', 'reviews_base_avg', 'REAL NOT NULL DEFAULT 0');
 addColumn('users', 'history_source', "TEXT NOT NULL DEFAULT ''");  // de dónde viene (ej. "Instagram")
 addColumn('orders', 'data_sent_at', 'TEXT');           // cuándo el admin le mandó a la tienda los datos de entrega
-// Entrega "como un Uber": el comprador pide una forma de entrega y la tienda cotiza el envío.
+// Entrega: el comprador pide una forma de entrega y la tienda cotiza el envío.
 addColumn('orders', 'delivery_requested', 'TEXT');     // lo que pidió el comprador (correos, uber_flash, pick_up)
 addColumn('orders', 'delivery_quote_at', 'TEXT');      // cuándo quedó definida la entrega (cotización o pick up)
 addColumn('orders', 'delivery_note', "TEXT NOT NULL DEFAULT ''"); // nota de la tienda en la cotización

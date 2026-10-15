@@ -17,7 +17,7 @@ import { restockSize, takeSize } from './variants.js';
 export const MAX_UNPAID_PER_BUYER = 3;
 export const OPEN_STATUSES =['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
 // Formas de entrega que se pueden elegir. El costo del envío no se fija al publicar: la tienda lo
-// cotiza en cada pedido (como un Uber), después de que el comprador dice cómo y dónde lo quiere.
+// cotiza en cada pedido, después de que el comprador dice cómo y dónde lo quiere.
 export const DELIVERY_METHODS = {
   correos: 'Correos de Costa Rica',
   uber_flash: 'Uber Flash',
