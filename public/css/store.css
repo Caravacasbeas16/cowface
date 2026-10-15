@@ -103,3 +103,4 @@
   .tabbar a.is-active svg { stroke-width: 2.4; }
   .tabbar .badge { position: absolute; top: -2px; left: calc(50% + 6px); }
 }
+.geo-field { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; }

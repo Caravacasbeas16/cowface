@@ -45,3 +45,13 @@ export function cutoffLabel(hour) {
   const h = hour % 12 === 0 ? 12 : hour % 12;
   return `${h} ${hour < 12 ? 'a. m.' : 'p. m.'}`;
 }
+
+// Uber Flash llega el mismo día: si no hay reclamo, el pedido se da por recibido al final del día del
+// envío, un minuto antes de la hora de corte (así se le paga a la tienda ese mismo día). Si se envió a
+// menos de 3 horas del corte, el comprador tiene hasta el final del día siguiente.
+export function sameDayRelease(shippedMs, cutoffHour = DEFAULT_CUTOFF_HOUR, bufferHours = 3) {
+  const d = crClock(shippedMs);
+  let release = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), cutoffHour, 0) - 60e3 + CR_OFFSET_MS;
+  if (release - shippedMs < bufferHours * 3600e3) release += 86400e3;
+  return new Date(release).toISOString();
+}

@@ -7,6 +7,7 @@ import * as catalog from './catalog.js';
 import publicRoutes from './routes/public.js';
 import socialRoutes from './routes/social.js';
 import { favoriteIds } from './social.js';
+import { uberLink } from './uber-flash.js';
 import sellerRoutes from './routes/seller.js';
 import portalRoutes from './routes/portal.js';
 import attachmentRoutes from './routes/attachments.js';
@@ -63,7 +64,7 @@ export function createApp() {
       'Referrer-Policy': 'strict-origin-when-cross-origin',
       'X-Frame-Options': 'DENY',
       'Cross-Origin-Opener-Policy': 'same-origin',
-      'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), payment=()',
+      'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=()',
       ...(production ? { 'Strict-Transport-Security': 'max-age=31536000' } : {}),
     });
     next();
@@ -136,6 +137,7 @@ export function createApp() {
   app.locals.REPORT_REASONS = REPORT_REASONS;
   // Cuándo se le paga a la tienda ("hoy al final del día", "el lunes 20 oct al final del día") y la regla en palabras.
   app.locals.payoutWhen = (o) => payoutDayLabel(payoutDayOf(o));
+  app.locals.uberLink = uberLink;
   app.locals.todayCR = () => todayCR();
   app.locals.payoutRule = () => `al final del día en que se completa la venta; si se completa después de las ${cutoffLabel(paymentConfig().cutoffHour)} o en fin de semana, el siguiente día hábil`;
   app.locals.OPEN_STATUSES = OPEN_STATUSES;

@@ -9,10 +9,11 @@ import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
 import { notifyAdmin } from './admin-notify.js';
 import { pickupPointsOf } from './pickup.js';
-import { DEFAULT_CUTOFF_HOUR, cutoffLabel, payoutDay, payoutDayLabel } from './payout-schedule.js';
+import { DEFAULT_CUTOFF_HOUR, payoutDay, payoutDayLabel, sameDayRelease } from './payout-schedule.js';
 import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 import { restockSize, takeSize } from './variants.js';
+import { deliveryLocation, trackUrlFor, uberShippedNote } from './uber-flash.js';
 
 export const MAX_UNPAID_PER_BUYER = 3;
 export const OPEN_STATUSES =['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
@@ -216,7 +217,7 @@ export function requestDelivery(orderId, buyerId, body) {
     } else {
       update(order, {
         delivery_requested: method, delivery_address: address, delivery_method: null, delivery_quote_at: null, delivery_note: '',
-        ...withShipping(order, 0),
+        ...withShipping(order, 0), ...deliveryLocation(method, body),
       });
       systemNote(order.conversation_id, `📦 El comprador quiere recibir el pedido ${order.code} por ${DELIVERY_METHODS[method]} en: «${address}». Tienda: cotiza el envío aquí arriba.`);
     }
@@ -301,7 +302,7 @@ export function cancelUnpaid(orderId, userId) {
 
 // proof: foto de la guía, del recibo del courier o del paquete (adjunto privado), o null.
 // Si es por envío, se exige la foto (el número de guía es opcional): sin foto del envío no se le paga al vendedor.
-export function markShipped(orderId, sellerId, note, proof = null) {
+export function markShipped(orderId, sellerId, note, proof = null, track = '') {
   return transaction(() => {
     const order = load(orderId, { sellerId, from: ['pagado'] });
     if (!order) return null;
@@ -310,9 +311,12 @@ export function markShipped(orderId, sellerId, note, proof = null) {
       throw new UserError('Sube una foto de la guía, del recibo o del paquete enviado. Sin la foto del envío no podemos pagarte la venta.');
     }
     const { releaseDays } = paymentConfig();
-    update(order, { status: 'enviado', shipped_at: now(), shipping_note: text, shipping_proof: proof, auto_release_at: addHours(releaseDays * 24) });
-    systemNote(order.conversation_id,
-      `📦 El vendedor marcó el pedido ${order.code} como enviado/entregado. Si no hay reclamo, el pago se libera en ${releaseDays} días.`);
+    const uber = order.delivery_method === 'uber_flash';
+    const trackUrl = trackUrlFor(order, track);
+    const release = uber ? sameDayRelease(Date.now(), savedCutoff()) : addHours(releaseDays * 24);
+    update(order, { status: 'enviado', shipped_at: now(), shipping_note: text, shipping_proof: proof, track_url: trackUrl, auto_release_at: release });
+    systemNote(order.conversation_id, uber ? uberShippedNote(order, trackUrl)
+      : `📦 El vendedor marcó el pedido ${order.code} como enviado/entregado. Si no hay reclamo, el pago se libera en ${releaseDays} días.`);
     return order;
   });
 }
@@ -476,24 +480,4 @@ export function adminPendingCount() {
   `).get().n + db.prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'usuario' AND active = 1 AND seller_status = 'pendiente'").get().n
     + db.prepare("SELECT COUNT(*) AS n FROM help_requests WHERE status = 'abierta'").get().n
     + db.prepare("SELECT COUNT(*) AS n FROM reports WHERE status = 'abierto'").get().n;
-}
-
-// Datos que el admin le manda a la tienda después de confirmar el SINPE (por correo o para pegar en WhatsApp).
-export function orderDataText(o, baseUrl = '') {
-  return [
-    `Pedido ${o.code} en CowFace: pago confirmado ✅`,
-    `Artículo: ${o.product_title}`,
-    `Entrega: ${DELIVERY_LABELS[o.delivery_method] || o.delivery_method}`,
-    `Nombre: ${o.buyer_name}`,
-    `Dirección / punto de entrega: ${o.delivery_address}`,
-    `Teléfono: ${o.delivery_phone}`,
-    o.shipping_cost ? `Envío pagado por el comprador: ${formatColones(o.shipping_cost)}` : null,
-    `Te pagamos ${formatColones(o.payout_amount)} por SINPE (ya con la comisión rebajada) al final del día en que el comprador lo reciba; si es después de las ${cutoffLabel(savedCutoff())} o en fin de semana, el siguiente día hábil.`,
-    'Envíalo en máximo 3 días hábiles y sube la foto del envío (guía o paquete) en el pedido: sin esa foto no se puede pagar.',
-    baseUrl && o.conversation_id ? `Pedido: ${baseUrl}/mensajes/${o.conversation_id}` : null,
-  ].filter(Boolean).join('\n');
-}
-
-export function markDataSent(orderId) {
-  db.prepare("UPDATE orders SET data_sent_at = ? WHERE id = ? AND status = 'pagado'").run(now(), orderId);
 }

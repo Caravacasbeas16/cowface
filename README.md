@@ -206,6 +206,14 @@ El artículo no lleva costo de envío: solo dice si la tienda ofrece pick up. De
 El envío llega completo a la tienda (no paga comisión). Para enviar se exige foto (guía o captura del
 viaje de Uber Flash); el pick up no.
 
+**Uber Flash** (`src/uber-flash.js`): el comprador puede mandar su ubicación con el GPS del celular
+(solo si está en Costa Rica). Con el pago confirmado, la tienda tiene "Abrir Uber con el destino"
+(enlace `m.uber.com/ul` con la ubicación y la dirección; elige Flash y confirma). Para marcarlo como
+enviado sube la captura del viaje y, opcional, el link de "Compartir viaje" (solo uber.com / ubr.to).
+El comprador ve "Seguir el viaje en vivo" y el botón "Lo recibí" recién después de esa captura. Si no
+hay reclamo, se da por recibido al final del día (5:59 p. m., antes del corte de pagos, para que la
+tienda cobre ese mismo día); si se envió a menos de 3 h del corte, al día siguiente.
+
 ## Aprobación de tiendas
 
 Comprar no necesita nada. Para vender: datos de SINPE → **solicitud de tienda** (nombre, Instagram
