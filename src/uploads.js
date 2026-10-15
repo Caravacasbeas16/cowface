@@ -5,7 +5,7 @@ import multer from 'multer';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import { ImageError, processAttachment, processPhoto } from './images.js';
-import { ATTACH_DIR, TMP_DIR, UPLOAD_DIR, removeFrom } from './storage.js';
+import { ATTACH_DIR, TMP_DIR, UPLOAD_DIR, removeFrom, removeFromNow } from './storage.js';
 import { sealFile } from './crypto-box.js';
 import path from 'node:path';
 
@@ -172,3 +172,59 @@ export function bulkFiles(req, res, next) {
 }
 
 export const discardBulk = (req) => cleanupTmp(req.bulk?.tmp);
+
+// ---------- Solicitud de tienda: fotos de referencia (privadas, solo las ven la tienda y el admin) ----------
+export const REQUEST_MAX_PHOTOS = 6;
+const requestUpload = multer({
+  storage: multer.diskStorage({
+    destination: TMP_DIR,
+    filename: (req, file, cb) => cb(null, crypto.randomBytes(12).toString('hex')),
+  }),
+  limits: { fileSize: MAX_PHOTO_MB * 1024 * 1024, files: REQUEST_MAX_PHOTOS * 2, fields: 20, fieldSize: 10 * 1024 },
+  fileFilter: (req, file, cb) => {
+    if (PHOTO_TYPES.includes(file.mimetype)) return cb(null, true);
+    const err = new Error(file.mimetype);
+    err.code = /hei[cf]/i.test(file.mimetype) || /\.hei[cf]$/i.test(file.originalname) ? 'HEIC' : 'TYPE';
+    return cb(err);
+  },
+});
+
+// Deja req.requestPhotos = { productos: [nombres], envios: [nombres] } (ya procesadas y cifradas) o req.uploadError.
+export function requestPhotos(req, res, next) {
+  requestUpload.fields([{ name: 'productos', maxCount: REQUEST_MAX_PHOTOS }, { name: 'envios', maxCount: REQUEST_MAX_PHOTOS }])(req, res, async (err) => {
+    req.requestPhotos = { productos: [], envios: [] };
+    req.uploadError = null;
+    const tmp = [...(req.files?.productos || []), ...(req.files?.envios || [])];
+    try {
+      if (err) {
+        throw new ImageError({
+          LIMIT_FILE_SIZE: `Cada foto debe pesar menos de ${MAX_PHOTO_MB} MB.`,
+          LIMIT_FILE_COUNT: `Máximo ${REQUEST_MAX_PHOTOS} fotos en cada grupo.`,
+          LIMIT_UNEXPECTED_FILE: `Máximo ${REQUEST_MAX_PHOTOS} fotos en cada grupo.`,
+          HEIC: HEIC_HELP,
+          TYPE: 'Solo se aceptan fotos JPG, PNG, WebP o AVIF.',
+        }[err.code] || 'No se pudieron subir las fotos.');
+      }
+      if (!tmp.every(headerMatches)) throw new ImageError('Una de las fotos no es una imagen válida (JPG, PNG, WebP o AVIF).');
+      for (const field of ['productos', 'envios']) {
+        for (const file of req.files?.[field] || []) {
+          const { name } = await processAttachment(file.path, file.mimetype, ATTACH_DIR);
+          sealFile(path.join(ATTACH_DIR, name));
+          req.requestPhotos[field].push(name);
+        }
+      }
+    } catch (e) {
+      if (!(e instanceof ImageError)) console.error('Error procesando fotos de la solicitud:', e);
+      req.uploadError = e instanceof ImageError ? e.message : 'No se pudieron procesar las fotos. Intenta de nuevo.';
+      discardRequestPhotos(req);
+      cleanupTmp(tmp);
+    }
+    next();
+  });
+}
+
+export function discardRequestPhotos(req) {
+  const p = req.requestPhotos || {};
+  removeFromNow(ATTACH_DIR, [...(p.productos || []), ...(p.envios || [])]);
+  req.requestPhotos = { productos: [], envios: [] };
+}

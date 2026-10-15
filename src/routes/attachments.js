@@ -18,7 +18,10 @@ function ownersOf(name) {
   const order = db.prepare(`
     SELECT buyer_id, seller_id FROM orders WHERE payment_proof = ? OR shipping_proof = ? OR dispute_evidence = ?
   `).get(name, name, name);
-  return order ? [order.buyer_id, order.seller_id] : null;
+  if (order) return [order.buyer_id, order.seller_id];
+  // Fotos de referencia de una solicitud de tienda: solo la tienda (y el admin).
+  const requester = db.prepare('SELECT id FROM users WHERE seller_request LIKE ?').get(`%"${name}"%`);
+  return requester ? [requester.id] : null;
 }
 
 router.get('/:name', (req, res, next) => {

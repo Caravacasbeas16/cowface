@@ -13,6 +13,11 @@ export const ATTACH_DIR = path.resolve(process.env.ATTACH_DIR || (VOLUME ? path.
 
 for (const dir of [UPLOAD_DIR, TMP_DIR, ATTACH_DIR]) fs.mkdirSync(dir, { recursive: true });
 
+// Sin esperar (para limpiar al pasar). removeFromNow espera a que se borren.
+export function removeFromNow(dir, names) {
+  for (const name of names) if (name) fs.rmSync(path.join(dir, path.basename(name)), { force: true });
+}
+
 export function removeFrom(dir, names) {
   for (const name of names) if (name) fs.rm(path.join(dir, path.basename(name)), { force: true }, () => {});
 }

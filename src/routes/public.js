@@ -17,6 +17,7 @@ import { rateLimit } from '../rate-limit.js';
 import { adminEmail } from '../admin-account.js';
 import { mailProvider } from '../mailer.js';
 import { notifyAdmin } from '../admin-notify.js';
+import { pickupPointsOf } from '../pickup.js';
 
 const router = Router();
 
@@ -139,7 +140,7 @@ router.get('/p/:id', (req, res, next) => {
   };
   res.render('product', {
     og, title: product.title, product, isOwner, conversationId, minOffer: minOffer(product.price), blocked,
-    sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), justPublished: isOwner && req.query.publicado === '1',
+    sellerRating: ratingSummary(product.seller_id), sellerSales: salesSummary(product.seller_id), pickupPoints: pickupPointsOf(product.seller_id), justPublished: isOwner && req.query.publicado === '1',
   });
 });
 

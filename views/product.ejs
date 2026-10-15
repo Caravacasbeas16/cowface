@@ -52,7 +52,7 @@
     <div class="price"><%= money(p.price) %></div>
     <div class="ship-line">
       <span>🚚 Correos de Costa Rica o Uber Flash</span>
-      <% if (p.meetup) { %><span>📍 Pick up en <%= p.province %></span><% } %>
+      <% if (p.meetup) { %><span>📍 Pick up<%= pickupPoints.length ? `: ${pickupPoints.join(' · ')}` : ` en ${p.province}` %></span><% } %>
     </div>
     <div class="muted small">Publicado <%= timeAgo(p.created_at) %> · <%= p.province %></div>
 

@@ -198,6 +198,23 @@
   <p class="hint" data-push-msg hidden></p>
 </section>
 
+<% if (sellerState !== 'nuevo') { %>
+<section id="tienda">
+  <h2>Tu tienda: dirección y pick up</h2>
+  <form action="/vendedor/tienda" method="post" class="stack notify-form">
+    <label>Dirección de la tienda (privada)
+      <textarea name="store_address" rows="2" maxlength="300" required><%= storeAddress %></textarea>
+    </label>
+    <label>Puntos de pick up o entrega en persona (uno por línea, hasta <%= maxPoints %>)
+      <textarea name="pickup_points" rows="3" maxlength="1000" required placeholder="Mall Oxígeno, Heredia — sábados 2 a 5 p. m."><%= pickupPoints.join('\n') %></textarea>
+      <span class="hint">Se muestran en tus artículos y el comprador elige uno cuando pide pick up.</span>
+    </label>
+    <button class="btn btn-small">Guardar</button>
+  </form>
+  <p class="hint">💰 <strong>Tus pagos:</strong> CowFace te transfiere por SINPE Móvil <strong>al final del día</strong> en que se completa cada venta, <strong>ya con la comisión rebajada</strong> (y con el envío incluido, si lo hubo).</p>
+</section>
+<% } %>
+
 <section id="avisos-correo">
   <h2>Avisos por correo</h2>
   <form action="/vendedor/avisos-correo" method="post" class="stack notify-form">

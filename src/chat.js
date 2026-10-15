@@ -47,7 +47,7 @@ export function findConversation(productId, buyerId) {
 export function getConversationForUser(id, userId) {
   expireOffers();
   const c = db.prepare(`
-    SELECT c.*, p.price, p.status AS product_status, p.category, p.size, p.quantity, p.meetup, s.province,
+    SELECT c.*, p.price, p.status AS product_status, p.category, p.size, p.quantity, p.meetup, s.province, s.pickup_points,
       (SELECT COALESCE(thumb, filename) FROM product_images i WHERE i.product_id = p.id ORDER BY position LIMIT 1) AS image,
       b.name AS buyer_name, s.name AS seller_name, COALESCE(s.store_name, s.name) AS store_name
     FROM conversations c

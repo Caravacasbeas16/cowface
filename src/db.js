@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -271,6 +271,8 @@ const hadSellerStatus = hasColumn('users', 'seller_status');
 addColumn('users', 'seller_status', "TEXT NOT NULL DEFAULT 'nuevo'");
 addColumn('users', 'seller_request', "TEXT NOT NULL DEFAULT '{}'"); // JSON: { instagram, about, requested_at }
 addColumn('users', 'seller_note', "TEXT NOT NULL DEFAULT ''");       // motivo si se rechazó
+addColumn('users', 'store_address', "TEXT NOT NULL DEFAULT ''");     // dirección de la tienda (privada: solo el admin)
+addColumn('users', 'pickup_points', "TEXT NOT NULL DEFAULT '[]'");   // JSON: puntos públicos para pick up / entrega en persona
 if (!hadSellerStatus) {
   db.exec(`UPDATE users SET seller_status = 'aprobado' WHERE role = 'usuario' AND (payout_phone IS NOT NULL
     OR EXISTS (SELECT 1 FROM products p WHERE p.seller_id = users.id) OR sales_base > 0)`);

@@ -5,6 +5,9 @@ import { SITE_NAME } from './catalog.js';
 import { sendMail } from './mailer.js';
 import { notifyAdmin } from './admin-notify.js';
 import { siteBaseUrl } from './urls.js';
+import path from 'node:path';
+import { ATTACH_DIR, removeFromNow } from './storage.js';
+import { saveStoreLocation, validateStoreLocation } from './pickup.js';
 
 export const approvalRequired = () => getSetting('seller_approval') !== '0';
 export const setApprovalRequired = (on) => setSetting('seller_approval', on ? '1' : '0');
@@ -15,31 +18,56 @@ export const canPublish = (user) => sellerStatus(user) === 'aprobado';
 
 const clean = (v, max) => String(v ?? '').trim().slice(0, max);
 
-export function submitRequest(user, body) {
+export const MIN_PRODUCT_PHOTOS = 2;
+export const MIN_SHIPMENT_PHOTOS = 1;
+
+// photos: { productos: [...], envios: [...] } ya guardadas como adjuntos privados (ver uploads.js).
+// Si hay errores, quien llama descarta las fotos nuevas.
+export function submitRequest(user, body, photos = { productos: [], envios: [] }) {
   const data = {
     store_name: clean(body.store_name, 80),
     instagram: clean(body.instagram, 60).replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/.*$/, ''),
     about: clean(body.about, 600),
+    no_shipments: body.no_shipments === '1',
+    store_address: String(body.store_address ?? '').slice(0, 300),
+    pickup_points: String(body.pickup_points ?? '').slice(0, 1000),
   };
-  const errors = {};
+  const location = validateStoreLocation(body);
+  const errors = { ...location.errors };
   if (data.store_name.length < 2) errors.store_name = 'El nombre de tu tienda (o tu nombre, si vendes como persona).';
   if (data.instagram && !/^[A-Za-z0-9._]{1,30}$/.test(data.instagram)) errors.instagram = 'Solo el usuario, sin @ (ej. closetdeana).';
   if (data.about.length < 10) errors.about = 'Cuéntanos en una o dos frases qué vas a vender.';
+  if (photos.productos.length < MIN_PRODUCT_PHOTOS) errors.productos = `Sube al menos ${MIN_PRODUCT_PHOTOS} fotos de productos que tengas para vender.`;
+  if (!data.no_shipments && photos.envios.length < MIN_SHIPMENT_PHOTOS) {
+    errors.envios = 'Sube al menos una foto de un envío que hayas hecho (guía, paquete o captura), o marca que todavía no has hecho envíos.';
+  }
   if (Object.keys(errors).length) return { errors, data };
+
+  // Las fotos de una solicitud anterior (si la rechazaron y vuelve a pedir) se reemplazan.
+  const previous = JSON.parse(db.prepare('SELECT seller_request FROM users WHERE id = ?').get(user.id)?.seller_request || '{}');
+  removeFromNow(ATTACH_DIR, [...(previous.product_photos || []), ...(previous.shipment_photos || [])]);
+  saveStoreLocation(user.id, location.address, location.points);
   db.prepare(`UPDATE users SET store_name = ?, seller_status = 'pendiente', seller_note = '', seller_request = ? WHERE id = ?`)
-    .run(data.store_name, JSON.stringify({ instagram: data.instagram, about: data.about, requested_at: new Date().toISOString() }), user.id);
+    .run(data.store_name, JSON.stringify({
+      instagram: data.instagram, about: data.about, requested_at: new Date().toISOString(),
+      product_photos: photos.productos, shipment_photos: photos.envios, no_shipments: data.no_shipments && !photos.envios.length,
+    }), user.id);
   notifyAdmin('tienda', `Tienda por aprobar: ${data.store_name}`,
-    `${data.store_name} (${user.email}) pidió vender en ${SITE_NAME}.\n${data.instagram ? `Instagram: @${data.instagram}\n` : ''}Qué vende: «${data.about}»`,
-    '/admin#tiendas-por-aprobar');
+    `${data.store_name} (${user.email}) pidió vender en ${SITE_NAME}.\n${data.instagram ? `Instagram: @${data.instagram}\n` : ''}Qué vende: «${data.about}»\n`
+      + `Dirección: ${location.address}\nPuntos de pick up: ${location.points.join(' · ')}\n`
+      + `Fotos: ${photos.productos.length} de productos y ${photos.envios.length ? `${photos.envios.length} de envíos` : 'ninguna de envíos (dice que todavía no ha hecho)'}. Van adjuntas las primeras; todas están en el panel.`,
+    '/admin#tiendas-por-aprobar',
+    { attachments: [...photos.productos.slice(0, 2), ...photos.envios.slice(0, 2)].map((n) => ({ path: path.join(ATTACH_DIR, n) })) });
   return { errors: null, data };
 }
 
 export function pendingStores() {
   return db.prepare(`
     SELECT u.id, u.name, COALESCE(u.store_name, u.name) AS store_name, u.email, u.phone, u.province, u.seller_request, u.created_at,
+      u.store_address, u.pickup_points,
       (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'borrador') AS drafts
     FROM users u WHERE u.role = 'usuario' AND u.active = 1 AND u.seller_status = 'pendiente' ORDER BY u.id
-  `).all().map((u) => ({ ...u, request: JSON.parse(u.seller_request || '{}') }));
+  `).all().map((u) => ({ ...u, request: JSON.parse(u.seller_request || '{}'), points: JSON.parse(u.pickup_points || '[]') }));
 }
 
 const userRow = (id) => db.prepare("SELECT id, name, COALESCE(store_name, name) AS store_name, email, seller_status FROM users WHERE id = ? AND role = 'usuario'").get(id);
@@ -64,6 +92,7 @@ export async function approve(id) {
   await mailUser(u, '¡Tu tienda fue aprobada!', [
     `${u.store_name} ya puede vender en ${SITE_NAME}.`,
     'Publica tus artículos (y los borradores que ya tengas) desde Mi cuenta.',
+    'Tus pagos: te transferimos por SINPE Móvil al final del día en que se completa cada venta, ya con la comisión rebajada.',
   ], { label: 'Publicar ahora', path: '/vendedor/productos/nuevo' });
   return u;
 }

@@ -123,3 +123,29 @@ test('la tienda también puede cotizar sin que el comprador haya elegido, y no p
   assert.match(page, /Entrega: Correos de Costa Rica · envío gratis/);
   assert.doesNotMatch(page, /value="pick_up"/, 'sin pick up activado no se ofrece');
 });
+
+test('con puntos de pick up: se muestran en el artículo y el comprador elige uno', async () => {
+  const bad = await post('/vendedor/tienda', seller, { store_address: 'Heredia', pickup_points: 'Llamame al 8888-8888' });
+  assert.match(flashOf(bad), /dirección|teléfonos/);
+  await post('/vendedor/tienda', seller, {
+    store_address: 'Heredia, San Pablo, 100 m norte de la iglesia',
+    pickup_points: 'Mall Oxígeno, Heredia — sábados 2 a 5 p. m.\nEstación del tren de Heredia — después de las 6 p. m.',
+  });
+  assert.match(await (await get('/vendedor', seller)).text(), /al final del día/);
+  const id = await publishPolo(seller, { title: 'Chaqueta', price: '18000' });
+  const productPage = await (await get(`/p/${id}`)).text();
+  assert.match(productPage, /Pick up: Mall Oxígeno, Heredia — sábados 2 a 5 p\. m\. · Estación del tren/);
+  assert.doesNotMatch(productPage, /100 m norte de la iglesia/, 'la dirección de la tienda es privada');
+
+  await post(`/p/${id}/comprar`, buyer);
+  const p = lastOrder();
+  assert.match(await (await get(`/mensajes/${p.conversation_id}`, buyer)).text(), /¿dónde lo recoges\?/);
+  assert.match(flashOf(await post(`/pedidos/${p.id}/entrega`, buyer, { method: 'pick_up' })), /Elige en cuál punto/);
+  assert.match(flashOf(await post(`/pedidos/${p.id}/entrega`, buyer, { method: 'pick_up', point: 'Otro lugar inventado' })), /Elige en cuál punto/);
+  await post(`/pedidos/${p.id}/entrega`, buyer, { method: 'pick_up', point: 'Estación del tren de Heredia — después de las 6 p. m.' });
+  assert.equal(order(p.id).delivery_address, 'Estación del tren de Heredia — después de las 6 p. m.');
+  assert.match(await (await get(`/mensajes/${p.conversation_id}`, buyer)).text(), /Lo recoges en: Estación del tren de Heredia/);
+  await post(`/pedidos/${p.id}/pago`, buyer, { reference: '99990000', phone: '8777-0000' });
+  await post(`/admin/pedidos/${p.id}/confirmar-pago`, admin);
+  assert.match(await (await get(`/mensajes/${p.conversation_id}`, seller)).text(), /Punto de pick up/);
+});

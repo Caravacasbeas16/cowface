@@ -18,7 +18,7 @@
     <% } else { %>
       <p class="muted">Para cuidar a los compradores, revisamos cada tienda antes de que pueda publicar. Cuéntanos un poco de la tuya; te respondemos en 1 día hábil como máximo.</p>
     <% } %>
-    <form action="/vendedor/solicitud" method="post" class="stack">
+    <form action="/vendedor/solicitud" method="post" enctype="multipart/form-data" class="stack" data-busy>
       <label>Nombre de tu tienda
         <input name="store_name" required maxlength="80" value="<%= form.store_name || '' %>" placeholder="Ej. Closet de Ana">
         <span class="hint">Es el nombre público que ven los compradores. Si vendes como persona, pon tu nombre.</span>
@@ -33,8 +33,37 @@
         <textarea name="about" rows="4" maxlength="600" required placeholder="Ej. Ropa americana de segunda mano, sobre todo jeans y chaquetas, en buen estado."><%= form.about || '' %></textarea>
         <%- err('about') %>
       </label>
-      <button class="btn btn-block">Enviar solicitud</button>
+      <label>Dirección de tu tienda o desde dónde despachas
+        <textarea name="store_address" rows="2" maxlength="300" required placeholder="Provincia, cantón, distrito y señas."><%= form.store_address || '' %></textarea>
+        <span class="hint">Privada: solo la vemos nosotros. No se muestra a los compradores.</span>
+        <%- err('store_address') %>
+      </label>
+      <label>Puntos donde puedes entregar en persona (pick up)
+        <textarea name="pickup_points" rows="3" maxlength="1000" required placeholder="Uno por línea. Ej.:&#10;Mall Oxígeno, Heredia — sábados 2 a 5 p. m.&#10;Estación del tren de Heredia — entre semana después de las 6 p. m."><%= form.pickup_points || '' %></textarea>
+        <span class="hint">Hasta <%= maxPoints %>, uno por línea: lugares públicos y horarios. Los ven los compradores y eligen uno cuando piden pick up.</span>
+        <%- err('pickup_points') %>
+      </label>
+      <fieldset class="request-photos">
+        <legend>Fotos de referencia</legend>
+        <p class="hint">Nos ayudan a conocer tu tienda. Son privadas: solo las vemos nosotros, no se publican.</p>
+        <label>Productos que tienes para vender <span class="muted">(mínimo 2, hasta <%= maxPhotos %>)</span>
+          <input type="file" name="productos" accept="image/jpeg,image/png,image/webp,image/avif" multiple required>
+          <span class="hint">Fotos reales de prendas, zapatos o bolsos que vas a vender.</span>
+          <%- err('productos') %>
+        </label>
+        <label>Envíos que hayas hecho <span class="muted">(hasta <%= maxPhotos %>)</span>
+          <input type="file" name="envios" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
+          <span class="hint">La guía de Correos, un paquete listo para enviar o la captura de un Uber Flash.</span>
+          <%- err('envios') %>
+        </label>
+        <label class="check">
+          <input type="checkbox" name="no_shipments" value="1" <%= form.no_shipments ? 'checked' : '' %>>
+          <span>Todavía no he hecho envíos.</span>
+        </label>
+      </fieldset>
+      <button class="btn btn-block" data-busy-text="Enviando fotos…">Enviar solicitud</button>
     </form>
+    <p class="hint">💰 Cuando vendas, CowFace te paga por SINPE Móvil <strong>al final del día</strong> en que se completa cada venta, <strong>ya con la comisión rebajada</strong>.</p>
     <p class="hint">Comprar no necesita aprobación: puedes seguir comprando con tu cuenta.</p>
   <% } %>
 </section>

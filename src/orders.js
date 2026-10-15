@@ -8,6 +8,7 @@ import { db, commissionRate, getSetting, setSetting, transaction } from './db.js
 import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
 import { notifyAdmin } from './admin-notify.js';
+import { pickupPointsOf } from './pickup.js';
 import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 
@@ -181,11 +182,16 @@ export function requestDelivery(orderId, buyerId, body) {
     }
     const { windowHours } = paymentConfig();
     if (method === 'pick_up') {
+      // Si la tienda tiene puntos de pick up, el comprador elige uno de ellos.
+      const points = pickupPointsOf(order.seller_id);
+      const point = String(body.point ?? '').trim();
+      if (points.length && !points.includes(point)) throw new UserError('Elige en cuál punto vas a recoger el pedido.');
       update(order, {
-        delivery_requested: method, delivery_method: method, delivery_address: address || 'Pick up', delivery_note: '',
+        delivery_requested: method, delivery_method: method, delivery_address: point || 'Pick up', delivery_note: '',
         delivery_quote_at: now(), payment_due_at: laterOf(order.payment_due_at, addHours(windowHours)), ...withShipping(order, 0),
       });
-      systemNote(order.conversation_id, `📍 El comprador va a recoger el pedido ${order.code} (pick up, sin costo de envío). Tienda: dile dónde y cuándo por este chat. Total a pagar: ${formatColones(order.price)}.`);
+      systemNote(order.conversation_id, `📍 El comprador va a recoger el pedido ${order.code} (pick up, sin costo de envío)`
+        + `${point ? ` en: «${point}». Tienda: confirmen el día y la hora por este chat.` : '. Tienda: dile dónde y cuándo por este chat.'} Total a pagar: ${formatColones(order.price)}.`);
     } else {
       update(order, {
         delivery_requested: method, delivery_address: address, delivery_method: null, delivery_quote_at: null, delivery_note: '',
@@ -294,7 +300,7 @@ export function confirmReceived(orderId, buyerId) {
   return transaction(() => {
     const order = load(orderId, { buyerId, from: ['pagado', 'enviado'] });
     if (!order) return null;
-    complete(order, `✅ El comprador confirmó que recibió el pedido ${order.code}. ¡Trato cerrado! CowFace le transferirá el pago al vendedor.`);
+    complete(order, `✅ El comprador confirmó que recibió el pedido ${order.code}. ¡Trato cerrado! CowFace le transfiere el pago al vendedor al final del día, ya con la comisión rebajada.`);
     return order;
   });
 }
@@ -400,7 +406,7 @@ export function runOrderTimers() {
   }
   const due = db.prepare("SELECT * FROM orders WHERE status = 'enviado' AND auto_release_at < ?").all(ts);
   for (const order of due) {
-    transaction(() => complete(order, `✅ Pasó el plazo sin reclamos: el pedido ${order.code} se dio por recibido. CowFace le transferirá el pago al vendedor.`));
+    transaction(() => complete(order, `✅ Pasó el plazo sin reclamos: el pedido ${order.code} se dio por recibido. CowFace le transfiere el pago al vendedor al final del día, ya con la comisión rebajada.`));
   }
   return { expired: expired.length, released: due.length };
 }
@@ -459,7 +465,7 @@ export function orderDataText(o, baseUrl = '') {
     `Dirección / punto de entrega: ${o.delivery_address}`,
     `Teléfono: ${o.delivery_phone}`,
     o.shipping_cost ? `Envío pagado por el comprador: ${formatColones(o.shipping_cost)}` : null,
-    `Te pagamos ${formatColones(o.payout_amount)} por SINPE cuando el comprador lo reciba.`,
+    `Te pagamos ${formatColones(o.payout_amount)} por SINPE al final del día en que el comprador lo reciba (ya con la comisión rebajada).`,
     'Envíalo en máximo 3 días hábiles y sube la foto del envío (guía o paquete) en el pedido: sin esa foto no se puede pagar.',
     baseUrl && o.conversation_id ? `Pedido: ${baseUrl}/mensajes/${o.conversation_id}` : null,
   ].filter(Boolean).join('\n');

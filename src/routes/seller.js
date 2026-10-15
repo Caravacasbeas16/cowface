@@ -11,13 +11,14 @@ import { OPEN_STATUSES, buyerOrders, paymentConfig, sellerOrders } from '../orde
 import { perUser, rateLimit } from '../rate-limit.js';
 import { normalizePhone, parsePrice, validateProduct } from '../validate.js';
 import { logFlagged } from '../moderation.js';
-import { MAX_IMAGES, photoFiles, photos } from '../uploads.js';
+import { MAX_IMAGES, REQUEST_MAX_PHOTOS, discardRequestPhotos, photoFiles, photos, requestPhotos } from '../uploads.js';
 import { UPLOAD_DIR, removeFrom } from '../storage.js';
 import { deleteSearch, listSearches, notifyMatches } from '../alerts.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
 import { WAIT_MINUTES } from '../seller-notify.js';
 import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
+import { MAX_POINTS, pickupPointsOf, saveStoreLocation, storeAddressOf, validateStoreLocation } from '../pickup.js';
 
 // Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
 function announce(req, id, title) {
@@ -84,12 +85,25 @@ router.get('/', (req, res) => {
   res.render('seller/dashboard', {
     title: 'Mi cuenta', products, orders, purchases, stats, searches: listSearches(req.user.id), PRODUCT_STATUS, ORDER_STATUS,
     emailWait: WAIT_MINUTES, conversations: listConversations(req.user.id).slice(0, 6), sellerState: sellerStatus(req.user),
+    storeAddress: storeAddressOf(req.user.id), pickupPoints: pickupPointsOf(req.user.id), maxPoints: MAX_POINTS,
   });
 });
 
 // Datos para recibir los pagos de CowFace (SINPE Móvil). Se piden antes de publicar.
 router.get('/pagos', (req, res) => {
   res.render('seller/payout', { title: 'Datos para recibir pagos', commissionRateNow: commissionRate(), error: null, form: req.user, next: req.query.next === 'publicar' ? 'publicar' : '' });
+});
+
+// Dirección de la tienda y puntos de pick up (se piden en la solicitud y se pueden cambiar aquí).
+router.post('/tienda', (req, res) => {
+  const { address, points, errors } = validateStoreLocation(req.body);
+  if (Object.keys(errors).length) {
+    flash(res, Object.values(errors).join(' '));
+    return res.redirect('/vendedor#tienda');
+  }
+  saveStoreLocation(req.user.id, address, points);
+  flash(res, 'Dirección y puntos de entrega guardados.');
+  res.redirect('/vendedor#tienda');
 });
 
 router.post('/avisos-correo', (req, res) => {
@@ -115,11 +129,15 @@ const needsPayout = (req) => !req.user.payout_phone || !req.user.payout_name;
 
 // Solicitud para vender: el admin aprueba cada tienda antes de que pueda publicar.
 const requestView = (req, form = null, errors = {}) => {
-  const saved = db.prepare('SELECT seller_request, seller_note FROM users WHERE id = ?').get(req.user.id);
+  const saved = db.prepare('SELECT seller_request, seller_note, store_address, pickup_points FROM users WHERE id = ?').get(req.user.id);
   const request = JSON.parse(saved?.seller_request || '{}');
   return {
-    title: 'Vender en CowFace', status: sellerStatus(req.user), note: saved?.seller_note || '', errors,
-    form: form || { store_name: req.user.store_name || '', instagram: request.instagram || '', about: request.about || '' },
+    title: 'Vender en CowFace', status: sellerStatus(req.user), note: saved?.seller_note || '', errors, maxPhotos: REQUEST_MAX_PHOTOS,
+    form: form || {
+      store_name: req.user.store_name || '', instagram: request.instagram || '', about: request.about || '',
+      store_address: saved?.store_address || '', pickup_points: pickupPointsOf(req.user.id).join('\n'),
+    },
+    maxPoints: MAX_POINTS,
   };
 };
 
@@ -129,11 +147,17 @@ router.get('/solicitud', (req, res) => {
   res.render('seller/request', requestView(req));
 });
 
-router.post('/solicitud', (req, res) => {
-  if (canPublish(req.user)) return res.redirect('/vendedor/productos/nuevo');
-  if (sellerStatus(req.user) === 'pendiente') return res.redirect('/vendedor/solicitud');
-  const { errors, data } = submitRequest(req.user, req.body);
-  if (errors) return res.status(400).render('seller/request', requestView(req, data, errors));
+router.post('/solicitud', requestPhotos, (req, res) => {
+  if (canPublish(req.user) || sellerStatus(req.user) === 'pendiente') {
+    discardRequestPhotos(req);
+    return res.redirect(canPublish(req.user) ? '/vendedor/productos/nuevo' : '/vendedor/solicitud');
+  }
+  if (req.uploadError) return res.status(400).render('seller/request', requestView(req, req.body, { productos: req.uploadError }));
+  const { errors, data } = submitRequest(req.user, req.body, req.requestPhotos);
+  if (errors) {
+    discardRequestPhotos(req);
+    return res.status(400).render('seller/request', requestView(req, data, errors));
+  }
   flash(res, 'Recibimos tu solicitud. Te avisamos por correo cuando la revisemos; mientras tanto puedes ir guardando borradores.');
   res.redirect('/vendedor/solicitud');
 });

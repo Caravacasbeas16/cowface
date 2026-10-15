@@ -2,8 +2,23 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  POLO, adminLogin, db, flashOf, get, photoOf, post, publish, publishPolo, signup, signupSeller, startServer, stopServer,
+  PNG, POLO, adminLogin, ctx, db, flashOf, get, photoOf, post, publish, publishPolo, signup, signupSeller, startServer, stopServer,
 } from './helpers.js';
+import fs from 'node:fs';
+import path from 'node:path';
+
+const { ATTACH_DIR } = await import('../src/storage.js');
+
+// Envía la solicitud de tienda con fotos de referencia (por defecto 2 de productos y 1 de envíos).
+async function apply(cookie, fields, { productos = 2, envios = 1 } = {}) {
+  const body = new FormData();
+  const all = { store_address: 'Heredia, San Pablo, 100 m norte de la iglesia', pickup_points: 'Mall Oxígeno, Heredia — sábados 2 a 5 p. m.', ...fields };
+  for (const [k, v] of Object.entries(all)) body.append(k, String(v));
+  for (let i = 0; i < productos; i++) body.append('productos', new Blob([PNG], { type: 'image/png' }), `producto${i}.png`);
+  for (let i = 0; i < envios; i++) body.append('envios', new Blob([PNG], { type: 'image/png' }), `envio${i}.png`);
+  return fetch(`${ctx.base}/vendedor/solicitud`, { method: 'POST', body, headers: { cookie }, redirect: 'manual' });
+}
+const requestOf = (id) => JSON.parse(db.prepare('SELECT seller_request FROM users WHERE id = ?').get(id).seller_request);
 
 const { outbox } = await import('../src/mailer.js');
 
@@ -39,20 +54,36 @@ test('para publicar: primero el SINPE, después la solicitud de tienda', async (
 });
 
 test('la solicitud valida los datos, avisa al admin y queda en revisión', async () => {
-  const bad = await post('/vendedor/solicitud', nueva, { store_name: '', instagram: 'no válido!', about: 'ropa' });
+  const bad = await apply(nueva, { store_name: '', instagram: 'no válido!', about: 'ropa' }, { productos: 1, envios: 0 });
   assert.equal(bad.status, 400);
   const html = await bad.text();
   assert.match(html, /nombre de tu tienda/i);
   assert.match(html, /Solo el usuario/);
+  assert.match(html, /al menos 2 fotos de productos/);
+  assert.match(html, /al menos una foto de un envío/);
+  const noPlace = await apply(nueva, { store_name: 'X tienda', about: 'Ropa usada en buen estado.', store_address: '', pickup_points: '' });
+  const noPlaceHtml = await noPlace.text();
+  assert.match(noPlaceHtml, /dirección de tu tienda/);
+  assert.match(noPlaceHtml, /al menos un punto/);
+  assert.equal(fs.readdirSync(ATTACH_DIR).length, 0, 'las fotos de una solicitud con errores no se guardan');
 
   const from = outbox.length;
-  const ok = await post('/vendedor/solicitud', nueva, { store_name: 'Closet de Ana', instagram: '@closetdeana', about: 'Ropa americana de segunda mano, jeans y chaquetas.' });
+  const ok = await apply(nueva, { store_name: 'Closet de Ana', instagram: '@closetdeana', about: 'Ropa americana de segunda mano, jeans y chaquetas.' }, { productos: 3, envios: 2 });
   assert.match(flashOf(ok), /Recibimos tu solicitud/);
   assert.equal(status(nuevaId), 'pendiente');
   await new Promise((r) => setTimeout(r, 100));
   const mail = outbox.slice(from).find((m) => m.to === 'yo@test.cr');
   assert.match(mail.subject, /Tienda por aprobar: Closet de Ana/);
   assert.match(mail.text, /Instagram: @closetdeana/);
+  assert.match(mail.text, /3 de productos y 2 de envíos/);
+  assert.equal(mail.attachments.length, 4, 'van adjuntas 2 de productos y 2 de envíos');
+  const req = requestOf(nuevaId);
+  assert.deepEqual([req.product_photos.length, req.shipment_photos.length], [3, 2]);
+  const file = req.product_photos[0];
+  assert.equal(fs.readFileSync(path.join(ATTACH_DIR, file)).subarray(0, 4).length, 4);
+  assert.equal((await get(`/adjuntos/${file}`, nueva)).status, 200, 'la tienda ve sus fotos');
+  assert.equal((await get(`/adjuntos/${file}`, admin)).status, 200, 'el admin también');
+  assert.equal((await get(`/adjuntos/${file}`)).status, 404, 'sin sesión, nada');
   assert.match(await (await get('/vendedor/solicitud', nueva)).text(), /Tu tienda está en revisión/);
 });
 
@@ -73,6 +104,9 @@ test('el admin la ve en "Por hacer", la aprueba y a la tienda le llega el correo
   assert.match(page, /Closet de Ana/);
   assert.match(page, /instagram\.com\/closetdeana/);
   assert.match(page, /1 borrador listos/);
+  assert.match(page, /Productos \(3\)/);
+  assert.match(page, /Envíos \(2\)/);
+  assert.equal((page.match(/class="ref-photos"/g) || []).length, 2);
   assert.match(await (await get('/', admin)).text(), /Admin<span class="badge" >1</, 'cuenta como tarea pendiente');
 
   const from = outbox.length;
@@ -99,7 +133,8 @@ test('rechazar manda el motivo; la tienda puede corregir y volver a pedir', asyn
   const otra = await signup('otra@test.cr', 'Otra Persona');
   const otraId = db.prepare("SELECT id FROM users WHERE email = 'otra@test.cr'").get().id;
   await post('/vendedor/pagos', otra, { payout_phone: '8822-3344', payout_name: 'Otra Persona' });
-  await post('/vendedor/solicitud', otra, { store_name: 'Réplicas Baratas', about: 'Vendo réplicas de marcas famosas.' });
+  await apply(otra, { store_name: 'Réplicas Baratas', about: 'Vendo réplicas de marcas famosas.' });
+  const firstPhotos = requestOf(otraId).product_photos;
   const from = outbox.length;
   await post(`/admin/tiendas/${otraId}/rechazar`, admin, { reason: 'No se permiten réplicas' });
   assert.equal(status(otraId), 'rechazado');
@@ -107,7 +142,11 @@ test('rechazar manda el motivo; la tienda puede corregir y volver a pedir', asyn
   const page = await (await get('/vendedor/solicitud', otra)).text();
   assert.match(page, /No pudimos aprobar tu solicitud anterior/);
   assert.match(page, /No se permiten réplicas/);
-  await post('/vendedor/solicitud', otra, { store_name: 'Closet de Otra', about: 'Ropa original usada, en buen estado.' });
+  // Sin envíos todavía: se puede pedir marcando la casilla.
+  await apply(otra, { store_name: 'Closet de Otra', about: 'Ropa original usada, en buen estado.', no_shipments: '1' }, { productos: 2, envios: 0 });
+  assert.equal(requestOf(otraId).no_shipments, true);
+  assert.ok(firstPhotos.every((n) => !fs.existsSync(path.join(ATTACH_DIR, n))), 'las fotos de la solicitud anterior se borran');
+  assert.match(await (await get('/admin', admin)).text(), /Dice que todavía no ha hecho envíos/);
   assert.equal(status(otraId), 'pendiente');
   assert.equal((await post(`/admin/tiendas/${otraId}/aprobar`, otra)).status, 403, 'solo el admin aprueba');
 });

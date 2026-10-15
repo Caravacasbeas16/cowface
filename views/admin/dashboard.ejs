@@ -43,6 +43,18 @@
             <div class="muted small"><%= t.email %> · <%= t.phone %> · pidió <%= when(t.request.requested_at || t.created_at, true) %><%= t.drafts ? ` · ${t.drafts} borrador${t.drafts === 1 ? '' : 'es'} listos` : '' %></div>
             <% if (t.request.instagram) { %><div class="small">Instagram: <a href="https://www.instagram.com/<%= encodeURIComponent(t.request.instagram) %>/" target="_blank" rel="noopener noreferrer">@<%= t.request.instagram %></a></div><% } %>
             <div class="flag-body">«<%= t.request.about %>»</div>
+            <div class="small"><strong>Dirección:</strong> <%= t.store_address || '—' %></div>
+            <div class="small"><strong>Pick up:</strong> <%= t.points.length ? t.points.join(' · ') : '—' %></div>
+            <% for (const [label, list] of [['Productos', t.request.product_photos || []], ['Envíos', t.request.shipment_photos || []]]) { %>
+              <div class="ref-label"><%= label %> (<%= list.length %>)</div>
+              <% if (list.length) { %>
+                <div class="ref-photos">
+                  <% for (const n of list) { %><a href="/adjuntos/<%= n %>" target="_blank" rel="noopener"><img src="/adjuntos/<%= n %>" alt="<%= label %> de <%= t.store_name %>" loading="lazy"></a><% } %>
+                </div>
+              <% } else { %>
+                <div class="muted small"><%= label === 'Envíos' && t.request.no_shipments ? 'Dice que todavía no ha hecho envíos.' : 'Sin fotos.' %></div>
+              <% } %>
+            <% } %>
           </div>
           <div class="ship-actions">
             <form action="/admin/tiendas/<%= t.id %>/aprobar" method="post"><button class="btn btn-small">Aprobar</button></form>
@@ -134,7 +146,21 @@
 
   <% if (queues.payouts.length) { %>
     <h3>4. Pagos a vendedores <span class="badge"><%= queues.payouts.length %></span></h3>
-    <p class="hint">Transfiere por SINPE Móvil y márcalo. Tu comisión ya está descontada del monto (y el envío, si lo hubo, ya está sumado).</p>
+    <p class="hint">Se pagan <strong>al final del día</strong>. Transfiere por SINPE Móvil y marca cada pedido. Tu comisión ya está descontada del monto (y el envío, si lo hubo, ya está sumado).</p>
+    <% const byStore = Object.values(queues.payouts.reduce((acc, o) => {
+         const k = o.payout_phone || o.store_name;
+         acc[k] = acc[k] || { store: o.payout_name || o.store_name, phone: o.payout_phone, total: 0, n: 0 };
+         acc[k].total += o.payout_amount; acc[k].n += 1;
+         return acc;
+       }, {})); %>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tienda</th><th>SINPE</th><th>Pedidos</th><th>Total a transferir hoy</th></tr></thead>
+        <tbody>
+          <% for (const s of byStore) { %><tr><td><%= s.store %></td><td><%= s.phone || '— sin SINPE —' %></td><td><%= s.n %></td><td><strong><%= money(s.total) %></strong></td></tr><% } %>
+        </tbody>
+      </table>
+    </div>
     <div class="task-list">
       <% for (const o of queues.payouts) { %>
         <div class="task">

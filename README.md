@@ -192,6 +192,15 @@ tienda recibe un correo. Mientras espera puede guardar borradores (nunca se publ
 aprobación" pausa sus artículos. Se apaga en `/admin → Cobro` ("Aprobar tiendas antes de que
 publiquen"). Las tiendas que ya vendían quedaron aprobadas; las que crea el admin, también.
 
+La solicitud pide además: **dirección de la tienda** (privada, solo el admin), **puntos de pick up**
+(públicos, uno por línea, hasta 5; el comprador elige uno al pedir pick up; se editan en Mi cuenta),
+**fotos de productos** (mínimo 2) y **fotos de envíos hechos** (mínimo 1, o marcar "todavía no he
+hecho envíos"). Las fotos son adjuntos privados y cifrados que solo ven la tienda y el admin; al
+volver a pedir se reemplazan.
+
+**Pagos a tiendas:** al final del día en que se completa la venta, ya con la comisión rebajada. En
+`/admin → Pagos a vendedores` hay un total por tienda para hacer una sola transferencia.
+
 ## Chats cifrados
 
 Con `CHAT_KEY` (16+ caracteres) en Railway → Variables, el texto de los mensajes y los archivos
