@@ -77,6 +77,11 @@ router.get('/', (req, res) => {
 
 // Sugerencias mientras se escribe (JSON para la barra de búsqueda).
 const suggestLimit = rateLimit({ windowMs: MIN, max: 120, message: 'Demasiadas búsquedas seguidas.' });
+// Cómo instalar CowFace como app (para compartir en Instagram y para iPhone, que no tiene botón).
+router.get('/instalar', (req, res) => {
+  res.render('install', { title: 'Instalar la app', og: { title: 'Instala CowFace en tu celular', description: 'Ten CowFace como una app: pantalla completa, más rápido y con avisos cuando te escriben.' } });
+});
+
 router.get('/buscar/sugerencias', suggestLimit, (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.json(searchSuggestions(String(req.query.q ?? '').slice(0, 60)));

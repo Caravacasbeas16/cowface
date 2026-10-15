@@ -138,6 +138,16 @@ invierten. La barra de arriba sugiere categorías, tipos y marcas mientras se es
 - Solo se aceptan direcciones de los servicios de notificaciones de Google, Apple, Mozilla y Microsoft.
 - El menú en el celular es de hamburguesa (☰), con el ícono de mensajes y su contador a la vista.
 
+## Instalar como app
+
+- `public/js/install.js` registra el service worker en todas las páginas y muestra "Instalar CowFace"
+  (menú ☰ y aviso abajo en portada, búsqueda, mensajes y Mi cuenta; se cierra por 30 días). En
+  Android/computadora instala con un toque; en iPhone lleva a `/instalar`, con los pasos.
+- Sin internet, `public/sw.js` muestra `public/offline.html` en vez del error del navegador (solo
+  guarda esa pantalla; las páginas siempre se piden al servidor). Si se cambian los archivos de esa
+  pantalla, subir la versión `cowface-offline-vN` en `sw.js`.
+- Íconos: `node scripts/make-icons.mjs logo.png` los genera todos desde un logo cuadrado de 1024 px o más.
+
 ## Respaldos
 
 - Todos los días (`src/backup.js`): copia de la base en el volumen (`/data/backups`, las últimas 7),

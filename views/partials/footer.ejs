@@ -18,6 +18,7 @@
       <h4>Vender</h4>
       <a href="/vender">Publicar un artículo</a>
       <a href="/como-funciona">Cómo funciona la compra protegida</a>
+      <a href="/instalar">Instalar la app</a>
     </div>
     <div class="footer-col">
       <h4>Ayuda</h4>
@@ -28,11 +29,20 @@
   </div>
   <div class="wrap footer-bottom muted small">© <%= new Date().getFullYear() %> <%= siteName %></div>
 </footer>
+<% if (['/', '/mensajes', '/vendedor', '/buscar'].includes(path)) { %>
+  <div class="install-banner" data-install-banner hidden>
+    <img src="/img/icon-192.png" alt="" width="40" height="40">
+    <div class="install-text"><strong>Instala CowFace</strong><span>Como una app, con avisos en tu celular.</span></div>
+    <button class="btn btn-small" type="button" data-install>Instalar</button>
+    <button class="install-close" type="button" data-install-dismiss aria-label="Cerrar">×</button>
+  </div>
+<% } %>
 <script id="catalog-data" type="application/json"><%- JSON.stringify(
   Object.fromEntries(Object.entries(catalog.CATEGORIES).map(([k, c]) => [k, { types: c.types, sizes: c.sizes }]))
 ).replace(/</g, '\\u003c') %></script>
 <script src="/js/app.js?v=<%= assetVersion %>" defer></script>
 <script src="/js/push.js?v=<%= assetVersion %>" defer></script>
+<script src="/js/install.js?v=<%= assetVersion %>" defer></script>
 <script src="/js/chat.js?v=<%= assetVersion %>" defer></script>
 </body>
 </html>
