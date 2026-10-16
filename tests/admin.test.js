@@ -170,10 +170,10 @@ test('captura del SINPE: llega adjunta, por el aviso de pago o por el chat', asy
   // 2. Con el aviso "Ya pagué" (con la entrega ya cotizada).
   quoted(o.id, 'correos');
   from = outbox.length;
-  await send(`/pedidos/${o.id}/pago`, buyer, { reference: String(++receipt), method: 'correos', address: 'Heredia centro', phone: '8777-0000' }, 'comprobante');
+  await send(`/pedidos/${o.id}/pago`, buyer, { payer_name: 'María Pérez', method: 'correos', address: 'Heredia centro', phone: '8777-0000' }, 'comprobante');
   await settle();
   [mail] = mailsTo(from);
-  assert.match(mail.subject, /con captura/);
+  assert.match(mail.subject, /Pago por verificar: .* · María Pérez/);
   assert.equal(mail.attachments.length, 1);
 
   // 3. Ya pagado: una foto en el chat no avisa como comprobante.

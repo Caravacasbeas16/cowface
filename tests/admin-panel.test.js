@@ -82,7 +82,7 @@ test('pagos: verificar el SINPE desde Pagos y pagarle a la tienda todo de una ve
     await post(`/p/${productId}/comprar`, buyer);
     const o = db.prepare('SELECT * FROM orders WHERE product_id = ? ORDER BY id DESC').get(productId);
     quoted(o.id, 'correos', 2000);
-    await post(`/pedidos/${o.id}/pago`, buyer, { reference: `REF${o.id}9999`, address: 'San José centro', phone: '8777-1234' });
+    await post(`/pedidos/${o.id}/pago`, buyer, { payer_name: `Pagador ${o.id}`, address: 'San José centro', phone: '8777-1234' });
     return o;
   };
   const a = await orderFor(ids.polo);
@@ -90,7 +90,7 @@ test('pagos: verificar el SINPE desde Pagos y pagarle a la tienda todo de una ve
   const b = await orderFor(ids.polo2);
 
   let page = await (await get('/admin/pagos', admin)).text();
-  assert.match(page, new RegExp(`Comprobante <strong class="copy" data-copy="REF${a.id}9999"`));
+  assert.match(page, new RegExp(`Pagó <strong class="copy" data-copy="Pagador ${a.id}"`));
   const res = await post(`/admin/pedidos/${a.id}/confirmar-pago`, admin, { back: '/admin/pagos' });
   assert.equal(res.headers.get('location'), '/admin/pagos');
   await post(`/admin/pedidos/${b.id}/confirmar-pago`, admin, { back: '/admin/pagos' });

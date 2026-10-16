@@ -55,9 +55,29 @@ export function quoted(orderId, method = 'correos', cost = 0) {
     .run(m, m, cost, cost, cost, orderId);
 }
 
+// Una captura del SINPE distinta cada vez (la misma captura no sirve para dos pedidos).
+let shade = 0;
+export const proofImage = () => {
+  shade += 1;
+  return sharp({ create: { width: 320, height: 320, channels: 3, background: { r: shade % 256, g: (shade >> 8) % 256, b: 120 } } }).png().toBuffer();
+};
+
+// Aviso de pago como lo manda el formulario: nombre de quien pagó y la captura (obligatoria).
+// data.proof: una captura dada (Buffer) o false para no mandar ninguna.
+async function payWith(url, cookie, data) {
+  const body = new FormData();
+  const { proof, ...fields } = data;
+  if (!fields.payer_name) fields.payer_name = 'Persona de prueba';
+  delete fields.reference;
+  for (const [k, v] of Object.entries(fields)) body.append(k, String(v));
+  if (proof !== false) body.append('comprobante', new Blob([proof || await proofImage()], { type: 'image/png' }), 'sinpe.png');
+  return fetch(`${ctx.base}${url}`, { method: 'POST', redirect: 'manual', body, headers: { cookie } });
+}
+
 export const post = (url, cookie = '', data = {}, json = false) => {
   const pay = url.match(/^\/pedidos\/(\d+)\/pago$/);
   if (pay && data.method) quoted(Number(pay[1]), data.method);
+  if (pay) return payWith(url, cookie, data);
   return fetch(`${ctx.base}${url}`, {
     method: 'POST', redirect: 'manual', body: form(data),
     headers: { cookie, ...(json ? { Accept: 'application/json' } : {}) },

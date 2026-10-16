@@ -108,11 +108,12 @@
           </div>
           <p class="hint">🔒 CowFace guarda tu dinero y se lo pasa a la tienda solo cuando confirmes que recibiste el artículo. Plazo para pagar: <%= when(o.payment_due_at, true) %></p>
           <p><strong>3. Avísanos</strong></p>
-          <label>Número de comprobante del SINPE
-            <input name="reference" required maxlength="40" inputmode="numeric" autocomplete="off">
+          <label>Nombre de la persona que hizo el SINPE
+            <input name="payer_name" required minlength="3" maxlength="80" autocomplete="name" value="<%= user.name || '' %>">
+            <span class="hint">Como sale en el comprobante (si pagó otra persona por ti, su nombre).</span>
           </label>
-          <label>Captura del comprobante <span class="muted">(recomendado: acelera la verificación)</span>
-            <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf">
+          <label>Captura del comprobante del SINPE <span class="muted">(obligatoria)</span>
+            <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf" required>
           </label>
           <% const asked = o.delivery_requested === o.delivery_method; %>
           <% if (!asked) { %>
@@ -139,7 +140,7 @@
         <button class="linklike small">Cancelar pedido</button>
       </form>
     <% } else if (o.status === 'por_pagar') { %>
-      <p>⏳ Estamos verificando tu pago (comprobante <%= o.payment_reference %>). Normalmente lo confirmamos en pocas horas, máximo 1 día hábil. <%- fileLink(o.payment_proof, 'Ver tu captura') %></p>
+      <p>⏳ Estamos verificando tu pago (a nombre de <%= o.payer_name || o.payment_reference %>). Normalmente lo confirmamos en pocas horas, máximo 1 día hábil. <%- fileLink(o.payment_proof, 'Ver tu captura') %></p>
     <% } else if (o.status === 'pagado' || o.status === 'enviado') { %>
       <% if (o.status === 'pagado') { %>
         <p>✅ Pago confirmado. CowFace lo tiene guardado mientras la tienda <%= pickUp ? 'coordina contigo el pick up' : o.delivery_method === 'uber_flash' ? 'pide el Uber Flash (te avisamos cuando salga, con el link para seguirlo)' : 'te envía el artículo' %> (máximo 3 días hábiles).</p>

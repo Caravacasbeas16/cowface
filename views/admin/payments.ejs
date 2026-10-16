@@ -26,18 +26,18 @@
     <% if (!toVerify.length) { %>
       <p class="muted">No hay pagos por verificar. 🎉</p>
     <% } else { %>
-      <p class="hint">Busca en tu app del banco un SINPE por el monto exacto con ese número de comprobante. Si está, confírmalo: la tienda recibe aviso para enviar.</p>
+      <p class="hint">Busca en tu app del banco un SINPE por el monto exacto a nombre de esa persona y compáralo con la captura. Si está, confírmalo: la tienda recibe aviso para enviar.</p>
       <div class="todo-list">
         <% for (const o of toVerify) { %>
           <div class="pay-row">
             <div class="pay-row-main">
               <span class="pay-amount copy" data-copy="<%= o.total || o.price %>"><%= money(o.total || o.price) %></span>
-              <span>Comprobante <strong class="copy" data-copy="<%= o.payment_reference %>"><%= o.payment_reference %></strong> · <%= o.code %></span>
+              <span>Pagó <strong class="copy" data-copy="<%= o.payer_name || o.payment_reference %>"><%= o.payer_name || o.payment_reference %></strong> · <%= o.code %></span>
               <span class="muted small"><%= o.buyer_name %> → <%= o.store_name %> · «<%= o.product_title %>» · <%= DELIVERY_LABELS[o.delivery_method] || '' %><%= o.shipping_cost ? ` (envío ${money(o.shipping_cost)})` : '' %> · avisó <%= when(o.payment_reported_at, true) %></span>
               <% if (o.payment_proof) { %><a class="file-link small" href="/adjuntos/<%= o.payment_proof %>" target="_blank" rel="noopener">📷 Ver captura del SINPE</a><% } %>
             </div>
             <div class="pay-row-actions">
-              <form action="/admin/pedidos/<%= o.id %>/confirmar-pago" method="post" data-confirm="¿Confirmas que recibiste <%= money(o.total || o.price) %> con el comprobante <%= o.payment_reference %>?">
+              <form action="/admin/pedidos/<%= o.id %>/confirmar-pago" method="post" data-confirm="¿Confirmas que recibiste <%= money(o.total || o.price) %> a nombre de <%= o.payer_name || o.payment_reference %>?">
                 <input type="hidden" name="back" value="/admin/pagos"><button class="btn btn-small">✓ Pago recibido</button>
               </form>
               <form action="/admin/pedidos/<%= o.id %>/rechazar-pago" method="post" data-confirm="¿Avisar al comprador que no encontraste el pago?">
@@ -97,7 +97,7 @@
       <p class="hint">Devuelve el monto por SINPE al número desde el que pagó el comprador (lo ves en tu banco con el comprobante) y márcalo.</p>
       <% for (const o of refunds) { %>
         <div class="pay-row">
-          <div class="pay-row-main"><span class="pay-amount"><%= money(o.total || o.price) %></span><span><%= o.code %> · a <%= o.buyer_name %> · comprobante original <%= o.payment_reference %></span></div>
+          <div class="pay-row-main"><span class="pay-amount"><%= money(o.total || o.price) %></span><span><%= o.code %> · a <%= o.buyer_name %> · pagó <%= o.payer_name || o.payment_reference %></span></div>
           <form action="/admin/pedidos/<%= o.id %>/reembolsado" method="post" data-confirm="¿Ya devolviste <%= money(o.total || o.price) %>?"><input type="hidden" name="back" value="/admin/pagos"><button class="btn btn-small">Ya lo devolví</button></form>
         </div>
       <% } %>

@@ -14,6 +14,7 @@ import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 import { restockSize, takeSize } from './variants.js';
 import { deliveryLocation, trackUrlFor, uberShippedNote } from './uber-flash.js';
+import { checkPaymentProof } from './payment-proof.js';
 
 export const MAX_UNPAID_PER_BUYER = 3;
 export const OPEN_STATUSES =['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
@@ -269,27 +270,24 @@ export function reportPayment(orderId, buyerId, body, proof = null) {
     if (!asked && body.accept_method !== '1') {
       throw new UserError(`La tienda te cotizó ${DELIVERY_METHODS[order.delivery_method]}, no lo que pediste. Marca que lo aceptas para pagar, o pídele otra cotización por el chat.`);
     }
-    const reference = String(body.reference ?? '').replace(/\s/g, '').slice(0, 40);
     // La dirección con la que se cotizó el envío ya no cambia al pagar (cambiarla sería otro envío).
     const locked = asked && !isPickUp(order.delivery_method) && order.delivery_address;
     const address = locked ? order.delivery_address : String(body.address ?? order.delivery_address ?? '').trim().slice(0, 500);
     const phone = normalizePhone(body.phone);
-    if (!/^[\w-]{4,40}$/.test(reference)) throw new UserError('Escribe el número de comprobante del SINPE.');
-    // Un comprobante solo puede respaldar un pedido (evita pagar una vez y reportarlo en varios).
-    const reused = db.prepare("SELECT 1 FROM orders WHERE payment_reference = ? AND id != ? AND status != 'cancelado'").get(reference, order.id);
-    if (reused) throw new UserError('Ese comprobante ya se usó en otro pedido. Revisa el número; si crees que es un error, escríbenos.');
     if (!isPickUp(order.delivery_method) && address.length < 5) throw new UserError('Escribe la dirección de entrega.');
     if (!phone) throw new UserError('Teléfono de contacto para la entrega (8 dígitos).');
+    // Nombre de quien pagó y captura obligatoria (que no se haya usado en otro pedido).
+    const { payer, hash } = checkPaymentProof(order, body, proof);
     const t = { total: order.total };
     update(order, {
-      payment_reported_at: now(), payment_reference: reference, delivery_address: address || 'Pick up',
+      payment_reported_at: now(), payer_name: payer, payment_proof_hash: hash, delivery_address: address || 'Pick up',
       delivery_phone: phone, payment_proof: proof,
     });
     systemNote(order.conversation_id, `💸 El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code}. CowFace está verificando el pago.`);
-    notifyAdmin('pago', `Pago por verificar: ${order.code} · ${formatColones(t.total)}${proof ? ' · con captura' : ''}`,
-      `El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code} (comprobante ${reference}).\n`
-        + `${proof ? 'La captura del SINPE va adjunta.' : 'No subió captura.'} Revisa en tu banco que entró el SINPE y confírmalo.`,
-      '/admin#pagos', { attachments: proof ? [{ path: path.join(ATTACH_DIR, proof) }] : [] });
+    notifyAdmin('pago', `Pago por verificar: ${order.code} · ${formatColones(t.total)} · ${payer}`,
+      `El comprador avisó que pagó ${formatColones(t.total)} por el pedido ${order.code}. El SINPE lo hizo: ${payer}.\n`
+        + 'La captura del SINPE va adjunta. Revisa en tu banco que entró el SINPE y confírmalo.',
+      '/admin#pagos', { attachments: [{ path: path.join(ATTACH_DIR, proof) }] });
     return order;
   });
 }

@@ -134,8 +134,8 @@ export function orderSearch({ q = '', status = '' } = {}, limit = 150) {
   const term = String(q).trim().slice(0, 60).toLowerCase();
   if (term) {
     where.push(`(lower(o.code) LIKE ? OR lower(o.product_title) LIKE ? OR lower(b.name) LIKE ? OR lower(b.email) LIKE ?
-      OR lower(COALESCE(s.store_name, s.name)) LIKE ? OR o.payment_reference LIKE ? OR o.delivery_phone LIKE ?)`);
-    params.push(...Array(7).fill(`%${term}%`));
+      OR lower(COALESCE(s.store_name, s.name)) LIKE ? OR o.payment_reference LIKE ? OR lower(o.payer_name) LIKE ? OR o.delivery_phone LIKE ?)`);
+    params.push(...Array(8).fill(`%${term}%`));
   }
   if (status) { where.push('o.status = ?'); params.push(status); }
   return db.prepare(`

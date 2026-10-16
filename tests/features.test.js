@@ -134,7 +134,7 @@ test('envío cotizado por la tienda, captura del SINPE, guía de envío y eviden
   o = lastOrder();
   assert.deepEqual([o.shipping_cost, o.total, o.payout_amount], [3000, 23000, 20000 - 400 + 3000]);
   const paid = await multipart(`/pedidos/${o.id}/pago`, buyer,
-    { reference: String(++receipt), address: 'Heredia centro, casa azul', phone: '8777-0000' },
+    { payer_name: 'Compradora', address: 'Heredia centro, casa azul', phone: '8777-0000' },
     [{ field: 'comprobante', data: pngWithGps, type: 'image/png', name: 'sinpe.png' }]);
   assert.equal(paid.status, 302);
   o = lastOrder();

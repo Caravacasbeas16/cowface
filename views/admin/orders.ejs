@@ -29,7 +29,7 @@
             <td><%= o.product_title %><% if (o.price !== o.list_price) { %><div class="muted small">oferta · publicado <%= money(o.list_price) %></div><% } %></td>
             <td><%= o.store_name %> → <%= o.buyer_name %><div class="muted small"><%= o.buyer_email %></div></td>
             <td><%= money(o.total || o.price) %><div class="muted small">comisión <%= money(o.commission_amount) %></div></td>
-            <td><%= DELIVERY_LABELS[o.delivery_method] || (o.delivery_requested ? `${DELIVERY_LABELS[o.delivery_requested]} (por cotizar)` : '—') %><% if (o.payment_reference) { %><div class="muted small">SINPE <%= o.payment_reference %></div><% } %></td>
+            <td><%= DELIVERY_LABELS[o.delivery_method] || (o.delivery_requested ? `${DELIVERY_LABELS[o.delivery_requested]} (por cotizar)` : '—') %><% if (o.payer_name || o.payment_reference) { %><div class="muted small">Pagó <%= o.payer_name || o.payment_reference %></div><% } %></td>
             <td><span class="status status-<%= o.status %>"><%= ORDER_STATUS[o.status] %></span><% if (o.status === 'completado') { %><div class="muted small">tienda <%= o.payout_status === 'pagado' ? 'pagada' : 'por pagar' %></div><% } %></td>
             <td><% if (o.conversation_id) { %><a class="btn btn-small btn-ghost" href="/admin/conversaciones/<%= o.conversation_id %>">Ver chat</a><% } %></td>
           </tr>

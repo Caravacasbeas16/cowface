@@ -66,8 +66,9 @@ test('flujo completo: oferta aceptada → pago → verificación → envío → 
   // El vendedor no puede enviar antes de que CowFace confirme el pago.
   assert.match(flashOf(await post(`/pedidos/${o.id}/enviado`, seller)), /cambió de estado/);
 
-  // Aviso de pago: valida comprobante y dirección.
-  assert.match(flashOf(await post(`/pedidos/${o.id}/pago`, buyer, { ...PAYMENT, reference: '' })), /comprobante/);
+  // Aviso de pago: pide el nombre de quien pagó y la captura (obligatoria).
+  assert.match(flashOf(await post(`/pedidos/${o.id}/pago`, buyer, { ...PAYMENT, payer_name: 'x' })), /nombre de la persona/);
+  assert.match(flashOf(await post(`/pedidos/${o.id}/pago`, buyer, { ...PAYMENT, proof: false })), /captura del comprobante/);
   await post(`/pedidos/${o.id}/pago`, buyer, PAYMENT);
   o = order(o.id);
   assert.ok(o.payment_reported_at);

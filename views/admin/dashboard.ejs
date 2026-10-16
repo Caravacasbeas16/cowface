@@ -93,7 +93,7 @@
       <% for (const o of queues.toVerify) { %>
         <div class="task">
           <div class="task-main">
-            <strong><%= o.code %></strong> · debe entrar <strong><%= money(o.total || o.price) %></strong> · comprobante <strong><%= o.payment_reference %></strong>
+            <strong><%= o.code %></strong> · debe entrar <strong><%= money(o.total || o.price) %></strong> · pagó <strong><%= o.payer_name || o.payment_reference %></strong>
             <% if (o.payment_proof) { %> · <a class="file-link" href="/adjuntos/<%= o.payment_proof %>" target="_blank" rel="noopener">Ver captura</a><% } %>
             <div class="muted small"><%= o.buyer_name %> compra «<%= o.product_title %>» a <%= o.store_name %> · <%= DELIVERY_METHODS[o.delivery_method] || '' %><%= o.shipping_cost ? ` (envío ${money(o.shipping_cost)})` : '' %> · avisó <%= when(o.payment_reported_at, true) %></div>
           </div>
@@ -155,7 +155,7 @@
     <div class="task-list">
       <% for (const o of queues.refunds) { %>
         <div class="task">
-          <div class="task-main"><strong><%= o.code %></strong> · devolver <strong><%= money(o.total || o.price) %></strong> a <%= o.buyer_name %> · comprobante original <%= o.payment_reference %></div>
+          <div class="task-main"><strong><%= o.code %></strong> · devolver <strong><%= money(o.total || o.price) %></strong> a <%= o.buyer_name %> · pagó <%= o.payer_name || o.payment_reference %></div>
           <form action="/admin/pedidos/<%= o.id %>/reembolsado" method="post" data-confirm="¿Ya devolviste <%= money(o.total || o.price) %>?"><button class="btn btn-small">Ya lo devolví</button></form>
         </div>
       <% } %>

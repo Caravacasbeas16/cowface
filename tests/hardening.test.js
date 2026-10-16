@@ -2,7 +2,7 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  POLO, adminLogin, ctx, db, flashOf, get, post, publish, publishPolo, signup, signupSeller, startServer, stopServer,
+  POLO, adminLogin, ctx, db, flashOf, get, post, publish, publishPolo, signup, signupSeller, startServer, stopServer, proofImage,
 } from './helpers.js';
 
 const { ensureAdmin } = await import('../src/admin-account.js');
@@ -67,14 +67,14 @@ test('10 contraseñas fallidas bloquean esa cuenta desde esa conexión, pero nad
   assert.equal((await attempt('10.0.51.1', 'clave-segura-1')).status, 302, 'la contraseña correcta sigue funcionando');
 });
 
-test('un comprobante de SINPE no sirve para dos pedidos', async () => {
+test('una misma captura del SINPE no sirve para dos pedidos', async () => {
   const a = await publishPolo(seller);
   const b = await publishPolo(seller);
   await post(`/p/${a}/comprar`, buyer);
   const first = lastOrder();
   await post(`/p/${b}/comprar`, buyer);
   const second = lastOrder();
-  const data = { reference: '777000111', method: 'correos', address: 'Cartago centro, frente al parque', phone: '8777-0000' };
+  const data = { proof: await proofImage(), method: 'correos', address: 'Cartago centro, frente al parque', phone: '8777-0000' };
   await post(`/pedidos/${first.id}/pago`, buyer, data);
   assert.match(flashOf(await post(`/pedidos/${second.id}/pago`, buyer, data)), /ya se usó/);
   assert.equal(db.prepare('SELECT payment_reported_at FROM orders WHERE id = ?').get(second.id).payment_reported_at, null);
