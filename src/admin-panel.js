@@ -5,6 +5,7 @@ import { FEATURED_SQL } from './products.js';
 import { ratingSummary, salesSummary } from './reviews.js';
 import { adminQueues, admin } from './orders.js';
 import { todayCR } from './payout-schedule.js';
+import { adminUnreadSupport } from './support.js';
 
 // ---------- Tiendas ----------
 
@@ -156,6 +157,7 @@ export function adminLocals(req, res, next) {
     pagos: q.toVerify.length + payoutBoard().due.length + q.refunds.length,
     tiendas: storeTabCounts().pendientes,
     pedidos: q.disputes.length + q.toShip.filter((o) => !o.data_sent_at).length,
+    mensajes: adminUnreadSupport(),
     soporte: db.prepare("SELECT (SELECT COUNT(*) FROM reports WHERE status = 'abierto') + (SELECT COUNT(*) FROM help_requests WHERE status = 'abierta') AS n").get().n,
   };
   res.locals.adminArea = true;

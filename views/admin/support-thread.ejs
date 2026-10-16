@@ -1,0 +1,37 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'mensajes' }) %>
+<div class="portal-main">
+  <p class="muted small"><a href="/admin/mensajes">← Mensajes</a></p>
+  <div class="chat support-chat admin-support">
+    <div class="chat-head">
+      <div class="chat-who">
+        <%- include('../partials/store-logo', { name: u.store_name, logo: u.store_logo, size: 'sm' }) %>
+        <a href="/u/<%= u.id %>"><strong><%= u.store_name %></strong></a>
+        <span class="muted small"><%= u.name %> · <%= u.email %> · <%= u.phone || '' %></span>
+      </div>
+      <a class="small" href="/admin/pedidos?q=<%= encodeURIComponent(u.store_name) %>">Sus pedidos</a>
+    </div>
+    <p class="support-note small">Tus mensajes le llegan como <strong>CowFace · Equipo oficial ✓</strong>, fijos arriba en sus mensajes, con aviso al celular y por correo.</p>
+    <div class="messages" data-messages>
+      <% if (!messages.length) { %><p class="msg-system">Todavía no hay mensajes. Escribe el primero abajo.</p><% } %>
+      <% for (const m of messages) { %>
+        <div class="msg-row <%= m.from_admin ? 'mine' : '' %>">
+          <div class="bubble">
+            <span class="bubble-text"><%= m.body %></span>
+            <span class="bubble-time"><%= when(m.created_at) %><%= m.from_admin ? (m.read_at ? ' · leído ✓' : ' · enviado') : '' %></span>
+          </div>
+        </div>
+      <% } %>
+      <span id="fin"></span>
+    </div>
+    <div class="composer">
+      <form action="/admin/mensajes/<%= u.id %>" method="post" class="composer-text">
+        <textarea name="body" rows="2" maxlength="<%= max %>" required placeholder="Escríbele a <%= u.store_name %> como CowFace…" aria-label="Mensaje"></textarea>
+        <button class="btn" type="submit">Enviar</button>
+      </form>
+    </div>
+  </div>
+</div>
+</div>
+<%- include('../partials/footer') %>

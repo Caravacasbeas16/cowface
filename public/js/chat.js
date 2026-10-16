@@ -194,6 +194,10 @@
       badge.hidden = !count;
     }
   });
+  // CowFace escribió por el chat directo: si está viendo ese chat o la bandeja, se actualiza.
+  events.addEventListener('soporte', () => {
+    if (document.querySelector('[data-support]') || document.querySelector('.inbox-pinned, [data-inbox]')) location.reload();
+  });
   events.addEventListener('conversacion', (e) => {
     const { id } = JSON.parse(e.data);
     if (id === conversationId) refreshThread();

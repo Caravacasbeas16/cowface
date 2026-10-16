@@ -21,6 +21,7 @@ import { perUser, rateLimit } from '../rate-limit.js';
 import { hasBlocked, isBlockedEither } from '../blocks.js';
 import { ratingSummary } from '../reviews.js';
 import { chooseSize, sizesOf } from '../variants.js';
+import { supportSummary } from '../support.js';
 
 const router = Router();
 const signedIn = requireRole('usuario');
@@ -110,7 +111,7 @@ router.post('/p/:id/comprar', signedIn, dealLimit, (req, res, next) => {
 // ---------- Bandeja y conversación ----------
 
 router.get('/mensajes', signedIn, (req, res) => {
-  res.render('chat/inbox', { title: 'Mensajes', conversations: listConversations(req.user.id) });
+  res.render('chat/inbox', { title: 'Mensajes', conversations: listConversations(req.user.id), support: supportSummary(req.user.id) });
 });
 
 // Canal en vivo (Server-Sent Events). Va antes de /mensajes/:id.

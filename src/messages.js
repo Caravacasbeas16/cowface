@@ -50,11 +50,13 @@ function pushMessage(conv, senderId, kind, body, offerId, attachment) {
   pushToUser(recipient, { title: `${sender} · ${title}`, body: text.slice(0, 180) || 'Te escribió', url, tag });
 }
 
+// Conversaciones sin leer, más 1 si CowFace le escribió por el chat directo y no lo ha leído.
 export function unreadCount(userId) {
   return db.prepare(`
-    SELECT COUNT(*) AS n FROM conversations
-    WHERE (buyer_id = ? AND buyer_read_at < last_message_at) OR (seller_id = ? AND seller_read_at < last_message_at)
-  `).get(userId, userId).n;
+    SELECT (SELECT COUNT(*) FROM conversations
+      WHERE (buyer_id = ? AND buyer_read_at < last_message_at) OR (seller_id = ? AND seller_read_at < last_message_at))
+      + EXISTS (SELECT 1 FROM support_messages WHERE user_id = ? AND from_admin = 1 AND read_at IS NULL) AS n
+  `).get(userId, userId, userId).n;
 }
 
 export function announce(conv) {

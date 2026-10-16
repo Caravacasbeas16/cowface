@@ -5,6 +5,10 @@ import { requireRole } from '../auth.js';
 import { ORDER_STATUS } from '../catalog.js';
 import { DELIVERY_LABELS, adminQueues, paymentConfig } from '../orders.js';
 import { pendingStores, approvalRequired } from '../approval.js';
+import { db } from '../db.js';
+import { UserError } from '../messages.js';
+import { publicBaseUrl } from '../urls.js';
+import { MAX_SUPPORT_TEXT, adminWrites, markSupportRead, supportInbox, supportThread } from '../support.js';
 import {
   PRIORITIES, STORE_TABS, adminBack, adminLocals, orderSearch, payAllDue, payoutBoard, payoutHistory, payoutsCsv, setPriority,
   storeList, storeTabCounts,
@@ -58,6 +62,32 @@ router.get('/pedidos', (req, res) => {
   res.render('admin/orders', {
     title: 'Pedidos', adminActive: 'pedidos', q, estado, ORDER_STATUS, DELIVERY_LABELS, orders: orderSearch({ q, status: estado }),
   });
+});
+
+// ---------- Chat directo con tiendas ----------
+router.get('/mensajes', (req, res) => {
+  const q = String(req.query.q ?? '').slice(0, 60);
+  res.render('admin/support-inbox', {
+    title: 'Mensajes', adminActive: 'mensajes', threads: supportInbox(), q, matches: q ? storeList('todos', q).slice(0, 20) : [],
+  });
+});
+
+router.get('/mensajes/:userId', (req, res, next) => {
+  const u = db.prepare("SELECT id, name, COALESCE(store_name, name) AS store_name, email, phone, store_logo, seller_status FROM users WHERE id = ? AND role = 'usuario' AND deleted_at IS NULL").get(Number(req.params.userId));
+  if (!u) return next();
+  markSupportRead(u.id, 'admin');
+  res.render('admin/support-thread', { title: `Mensajes · ${u.store_name}`, adminActive: 'mensajes', u, messages: supportThread(u.id), max: MAX_SUPPORT_TEXT });
+});
+
+router.post('/mensajes/:userId', (req, res, next) => {
+  try {
+    const u = adminWrites(Number(req.params.userId), req.body.body, publicBaseUrl(req));
+    if (!u) return next();
+  } catch (err) {
+    if (!(err instanceof UserError)) return next(err);
+    flash(res, err.message);
+  }
+  res.redirect(`/admin/mensajes/${Number(req.params.userId)}#fin`);
 });
 
 export default router;

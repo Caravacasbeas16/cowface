@@ -1,0 +1,57 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'mensajes' }) %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Mensajes</h1>
+      <p class="muted">Chats directos con tiendas y personas. Ellos lo ven arriba en sus mensajes como <strong>CowFace · Equipo oficial ✓</strong>, con aviso al celular y por correo.</p>
+    </div>
+  </div>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Escribirle a una tienda</h2></div>
+    <form class="inv-toolbar admin-search" action="/admin/mensajes" method="get" role="search">
+      <input type="search" name="q" value="<%= q %>" placeholder="Busca la tienda o persona por nombre, correo o teléfono" aria-label="Buscar a quién escribirle">
+      <button class="btn btn-small btn-ghost">Buscar</button>
+    </form>
+    <% if (q) { %>
+      <% if (!matches.length) { %>
+        <p class="muted small">No encontré a nadie con «<%= q %>».</p>
+      <% } else { %>
+        <div class="todo-list">
+          <% for (const s of matches) { %>
+            <a class="todo" href="/admin/mensajes/<%= s.id %>">
+              <%- include('../partials/store-logo', { name: s.store_name, logo: s.store_logo, size: 'sm' }) %>
+              <span class="todo-main"><strong><%= s.store_name %></strong><span class="muted small"><%= s.name %> · <%= s.email %></span></span>
+              <span class="todo-go">💬</span>
+            </a>
+          <% } %>
+        </div>
+      <% } %>
+    <% } %>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Conversaciones</h2></div>
+    <% if (!threads.length) { %>
+      <p class="muted">Todavía no le has escrito a nadie. Busca una tienda arriba, o toca <strong>💬 Escribir</strong> en <a href="/admin/tiendas">Tiendas</a>.</p>
+    <% } else { %>
+      <div class="inbox">
+        <% for (const t of threads) { %>
+          <a class="inbox-row <%= t.unread ? 'unread' : '' %>" href="/admin/mensajes/<%= t.id %>">
+            <%- include('../partials/store-logo', { name: t.store_name, logo: t.store_logo, size: 'sm' }) %>
+            <div class="inbox-main">
+              <div class="inbox-top"><strong><%= t.store_name %></strong><span class="muted small"><%= when(t.last_at) %></span></div>
+              <div class="muted small"><%= t.name %> · <%= t.email %></div>
+              <div class="inbox-last"><%= t.from_admin ? 'Tú: ' : '' %><%= t.last_text %></div>
+            </div>
+            <% if (t.unread) { %><span class="badge"><%= t.unread %></span><% } %>
+          </a>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>
+<%- include('../partials/footer') %>

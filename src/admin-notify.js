@@ -11,6 +11,7 @@ export const NOTIFY_EVENTS = {
   comprobante: { label: 'Un comprador mandó una foto o PDF en el chat de un pedido por pagar (posible captura del SINPE)', default: true },
   reporte: { label: 'Alguien reportó un artículo, una cuenta o una conversación', default: true },
   ayuda: { label: 'Alguien pidió ayuda a CowFace (problema con una compra o conversación)', default: true },
+  soporte: { label: 'Una tienda o persona te respondió en el chat directo con CowFace', default: true },
   tienda: { label: 'Una tienda pidió permiso para vender (hay que aprobarla)', default: true },
   reclamo: { label: 'Se abrió un reclamo', default: true },
   vendedor: { label: 'Venta completada: hay que pagarle al vendedor', default: true },

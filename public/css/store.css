@@ -104,3 +104,14 @@
   .tabbar .badge { position: absolute; top: -2px; left: calc(50% + 6px); }
 }
 .geo-field { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .75rem; }
+
+/* Chat directo con CowFace: marcado como oficial */
+.official-badge { display: inline-flex; align-items: center; margin-left: .35rem; padding: .1rem .45rem; border-radius: 99px; background: var(--ink); color: #fff; font-size: .62rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; vertical-align: middle; }
+.inbox-pinned { margin-bottom: 1rem; }
+.inbox-official { background: var(--soft); }
+.inbox-official img { border-radius: 50%; }
+.support-logo { border-radius: 50%; }
+.support-note { margin: 0; padding: .6rem 1rem; background: var(--soft); border-bottom: 1px solid var(--line); color: var(--muted); }
+.bubble-official { border-color: var(--ink); box-shadow: inset 3px 0 0 var(--ink); }
+.bubble-author { font-size: .66rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.admin-support { max-width: none; margin: 0; }

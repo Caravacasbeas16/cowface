@@ -4,13 +4,30 @@
   <span>🔔 Activa las notificaciones y entérate al instante cuando te escriban.</span>
   <button class="btn btn-small" type="button" data-push-enable>Activar</button>
 </div>
-<% if (!conversations.length) { %>
+<% if (locals.support) { %>
+  <%# Chat directo con CowFace: siempre arriba, marcado como oficial. %>
+  <div class="inbox inbox-pinned">
+    <a class="inbox-row inbox-official <%= support.unread ? 'unread' : '' %>" href="/mensajes/cowface">
+      <img src="/img/logo.jpg" alt="">
+      <div class="inbox-main">
+        <div class="inbox-top">
+          <strong>CowFace <span class="official-badge">✓ Equipo oficial</span></strong>
+          <span class="muted small"><%= when(support.last_at) %></span>
+        </div>
+        <div class="muted small">Chat directo con la administración</div>
+        <div class="inbox-last"><%= support.from_admin ? '' : 'Tú: ' %><%= support.last_text %></div>
+      </div>
+      <% if (support.unread) { %><span class="dot" aria-label="Sin leer"></span><% } %>
+    </a>
+  </div>
+<% } %>
+<% if (!conversations.length && !locals.support) { %>
   <div class="empty">
     <h2>Todavía no tienes conversaciones</h2>
     <p class="muted">Cuando hagas una oferta, compres o le escribas a un vendedor, la conversación aparece aquí.</p>
     <a class="btn" href="/buscar">Explorar artículos</a>
   </div>
-<% } else { %>
+<% } else if (conversations.length) { %>
   <div class="inbox" data-inbox>
     <% for (const c of conversations) { %>
       <a class="inbox-row <%= c.unread ? 'unread' : '' %>" href="/mensajes/<%= c.id %>">

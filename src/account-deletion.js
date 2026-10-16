@@ -58,11 +58,12 @@ export function deleteAccount(userId) {
       const req = JSON.parse(db.prepare('SELECT seller_request FROM users WHERE id = ?').get(userId)?.seller_request || '{}');
       attachments.push(...(req.product_photos || []), ...(req.shipment_photos || []));
     } catch { /* sin solicitud */ }
-    for (const table of ['sessions', 'push_subscriptions', 'saved_searches', 'password_resets', 'oauth_accounts', 'help_requests', 'reports']) {
+    for (const table of ['sessions', 'push_subscriptions', 'saved_searches', 'password_resets', 'oauth_accounts', 'help_requests', 'reports', 'support_messages', 'favorites', 'store_follows']) {
       const col = table === 'reports' ? 'reporter_id' : 'user_id';
       db.prepare(`DELETE FROM ${table} WHERE ${col} = ?`).run(userId);
     }
     db.prepare('DELETE FROM user_blocks WHERE blocker_id = ? OR blocked_id = ?').run(userId, userId);
+    db.prepare('DELETE FROM store_follows WHERE store_id = ?').run(userId);
     // Datos personales fuera; contraseña al azar que nadie conoce; cuenta inactiva.
     db.prepare(`
       UPDATE users SET name = ?, store_name = NULL, email = ?, phone = NULL, province = '', payout_phone = NULL, payout_name = NULL,

@@ -1,0 +1,35 @@
+<%- include('../partials/header') %>
+<%# Chat directo con CowFace (del lado de la tienda o persona). Los mensajes del admin van marcados como oficiales. %>
+<div class="chat support-chat" data-support>
+  <div class="chat-head">
+    <a href="/mensajes" class="muted">← Mensajes</a>
+    <div class="chat-who">
+      <img class="support-logo" src="/img/logo.jpg" alt="" width="32" height="32">
+      <strong>CowFace</strong>
+      <span class="official-badge">✓ Equipo oficial</span>
+    </div>
+  </div>
+  <p class="support-note small">Este es el chat directo con la administración de <%= siteName %>. Solo lo ven ustedes y el equipo de CowFace. Nunca te vamos a pedir tu contraseña.</p>
+  <div class="messages" data-messages>
+    <% if (!messages.length) { %>
+      <p class="msg-system">Escríbenos cualquier duda sobre tu tienda, un pedido o un pago.</p>
+    <% } %>
+    <% for (const m of messages) { %>
+      <div class="msg-row <%= m.from_admin ? '' : 'mine' %>">
+        <div class="bubble <%= m.from_admin ? 'bubble-official' : '' %>">
+          <% if (m.from_admin) { %><span class="bubble-author">CowFace · Equipo oficial ✓</span><% } %>
+          <span class="bubble-text"><%= m.body %></span>
+          <span class="bubble-time"><%= when(m.created_at) %></span>
+        </div>
+      </div>
+    <% } %>
+    <span id="fin"></span>
+  </div>
+  <div class="composer">
+    <form action="/mensajes/cowface" method="post" class="composer-text">
+      <textarea name="body" rows="1" maxlength="<%= max %>" required placeholder="Escríbele a CowFace…" aria-label="Mensaje para CowFace"></textarea>
+      <button class="btn" type="submit">Enviar</button>
+    </form>
+  </div>
+</div>
+<%- include('../partials/footer') %>

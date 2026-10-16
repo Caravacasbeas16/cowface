@@ -406,3 +406,9 @@ document.addEventListener('click', (e) => {
     msg.textContent = 'No se pudo obtener la ubicación (revisa el permiso en el navegador). Puedes escribir las señas.';
   }, { enableHighAccuracy: true, timeout: 15000 });
 });
+
+// Chat directo con CowFace: abre al final de la conversación.
+(() => {
+  const box = document.querySelector('[data-support] [data-messages], .admin-support [data-messages]');
+  if (box) box.scrollTop = box.scrollHeight;
+})();

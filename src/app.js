@@ -6,6 +6,7 @@ import { loadUser } from './auth.js';
 import * as catalog from './catalog.js';
 import publicRoutes from './routes/public.js';
 import socialRoutes from './routes/social.js';
+import supportRoutes from './routes/support.js';
 import { favoriteIds } from './social.js';
 import { uberLink } from './uber-flash.js';
 import sellerRoutes from './routes/seller.js';
@@ -214,6 +215,7 @@ export function createApp() {
   app.use('/', profileRoutes);
   app.use('/', socialRoutes);
   app.use('/', passwordRoutes);
+  app.use('/', supportRoutes); // /mensajes/cowface va antes que /mensajes/:id
   app.use('/', chatRoutes);
   app.use('/pedidos', orderRoutes);
   app.use('/adjuntos', attachmentRoutes);
