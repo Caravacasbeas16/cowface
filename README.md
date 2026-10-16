@@ -286,6 +286,20 @@ lo cifrado no se puede leer**: guardarla junto a `BACKUP_PASSWORD`.
 
 ## Herramientas del admin
 
+Menú lateral en todo el admin (`views/partials/admin-nav.ejs`, datos en `src/admin-panel.js`):
+
+- **Tiendas** (`/admin/tiendas`): pestañas Por aprobar (con Instagram y fotos de referencia),
+  Aprobadas, Suspendidas, No aprobadas y Todos; búsqueda; **Prioridad** (Normal / Alta / Máxima:
+  sus artículos cuentan como 3 o 7 días más nuevos en "Más recientes" y la portada; `users.priority`),
+  **Destacar** (va siempre primero), aprobar, quitar aprobación, suspender y enlaces útiles.
+- **Pagos** (`/admin/pagos`): SINPE por verificar (monto y comprobante para copiar, captura),
+  **pagarle a cada tienda todo lo del día con un botón** (un SINPE por tienda), reembolsos,
+  historial y CSV (`/admin/pagos.csv`). Marca a las tiendas que cambiaron su número de cobro.
+- **Pedidos** (`/admin/pedidos`): buscar por código, comprador, tienda, comprobante o teléfono.
+- Las acciones vuelven a la página desde donde se hicieron (`back`, solo rutas `/admin`).
+- **Recordatorio de pago** (`src/payment-reminders.js`): 3 h antes de que venza un pedido cotizado
+  y sin pagar, aviso al celular y correo al comprador (una vez).
+
 - **Ganancias** (`/admin/ganancias`): comisión de este mes, del anterior y total; gráfico y tabla
   por mes (hora de Costa Rica), por año; tiendas que más comisión dejan; lo que está por entrar
   (pedidos en curso) y lo que se debe a vendedores. "Descargar ventas" baja un CSV que abre en Excel.
@@ -366,10 +380,16 @@ Con dominio propio también funciona Resend (`RESEND_API_KEY` + `MAIL_FROM`).
 
 ## Seguridad
 
-- Contraseñas con scrypt; sesiones aleatorias en cookie `httpOnly`, `secure` y `SameSite=Lax`.
-- CSP (solo scripts propios), HSTS, `X-Frame-Options`, bloqueo de formularios desde otros sitios (CSRF).
-- Límites: 10 intentos por IP cada 15 min y 10 contraseñas fallidas por cuenta por hora; mensajes,
-  ofertas y publicaciones limitados por persona; máximo 3 pedidos sin pagar por comprador.
+- Contraseñas con scrypt; sesiones aleatorias en cookie `httpOnly`, `secure` y `SameSite=Lax`. En la
+  base solo se guarda el hash (sha256) del token de sesión.
+- CSP (solo scripts propios), HSTS con subdominios, `X-Frame-Options`, bloqueo de formularios desde
+  otros sitios (CSRF).
+- Límites: 10 intentos por IP cada 15 min y 10 contraseñas fallidas por cuenta y conexión por hora
+  (nadie puede bloquearle la cuenta a otro); en total por cuenta, después de 20 fallos por hora cada
+  intento tarda 3 s. Mensajes, ofertas y publicaciones limitados por persona; máximo 3 pedidos sin
+  pagar por comprador.
+- Si la tienda cotiza otra forma de entrega que la pedida, el comprador tiene que aceptarla; la
+  dirección cotizada no cambia al pagar. Cambiar el SINPE de cobro avisa a la tienda y al admin.
 - Un comprobante de SINPE solo respalda un pedido; los artículos con pedido en curso no se editan.
 - Las fotos se validan por su contenido real, no por lo que dice el navegador.
 - Nadie puede registrarse con `ADMIN_EMAIL`; cambiar `ADMIN_PASSWORD` cierra las sesiones de admin.
