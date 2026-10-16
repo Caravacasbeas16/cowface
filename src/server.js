@@ -7,6 +7,7 @@ import { runMessageEmails } from './seller-notify.js';
 import { runDailyBackup } from './backup.js';
 import { expirePromos } from './promos.js';
 import { notifyPriceDrops } from './social.js';
+import { sendPaymentReminders } from './payment-reminders.js';
 import { siteBaseUrl } from './urls.js';
 import { encryptExisting } from './crypto-box.js';
 import { ATTACH_DIR } from './storage.js';
@@ -29,6 +30,9 @@ const timers = () => {
   try { runOrderTimers(); } catch (err) { console.error('Error en tareas de pedidos:', err); }
   try { expirePromos(); } catch (err) { console.error('Error terminando promos vencidas:', err); }
   // Después de las promos: si un artículo guardado bajó de precio, se avisa a quien lo guardó.
+  try {
+    sendPaymentReminders(siteBaseUrl()).catch((err) => console.error('Error en recordatorios de pago:', err));
+  } catch (err) { console.error('Error en recordatorios de pago:', err); }
   try {
     notifyPriceDrops(siteBaseUrl()).catch((err) => console.error('Error avisando bajadas de precio:', err));
   } catch (err) { console.error('Error avisando bajadas de precio:', err); }

@@ -114,3 +114,25 @@ test('reportar: "back" raro no redirige afuera', async () => {
   const res = await post('/reportar', '', { type: 'usuario', id: sellerId, reason: 'estafa', back: '/\\evil.com' });
   assert.equal(res.headers.get('location'), '/entrar?next=%2F');
 });
+
+test('recordatorio de pago: 3 h antes de vencer, una sola vez, por celular y correo', async () => {
+  const { sendPaymentReminders } = await import('../src/payment-reminders.js');
+  const { pushOutbox } = await import('../src/push.js');
+  process.env.PUSH_TEST_OUTBOX = '1';
+  const buyerId = db.prepare("SELECT id FROM users WHERE email = 'compra@test.cr'").get().id;
+  db.prepare("INSERT OR IGNORE INTO push_subscriptions (user_id, endpoint, p256dh, auth) VALUES (?, 'https://push.test/r', 'k', 'a')").run(buyerId);
+  const id = await publishPolo(seller, { title: 'Bolso de cuero' });
+  await post(`/p/${id}/comprar`, buyer);
+  const o = db.prepare('SELECT * FROM orders ORDER BY id DESC').get();
+  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'correos', address: 'Cartago centro, casa azul' });
+  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'correos', cost: '2000' });
+  assert.equal(await sendPaymentReminders('https://cowface.test'), 0, 'todavía falta mucho');
+  db.prepare('UPDATE orders SET payment_due_at = ? WHERE id = ?').run(new Date(Date.now() + 2 * 3600e3).toISOString(), o.id);
+  const mails = outbox.length;
+  const pushes = pushOutbox.length;
+  assert.equal(await sendPaymentReminders('https://cowface.test'), 1);
+  await new Promise((r) => setTimeout(r, 50));
+  assert.match(outbox.slice(mails).find((m) => m.to === 'compra@test.cr').subject, new RegExp(`${o.code} vence`));
+  assert.match(pushOutbox.slice(pushes).find((p) => p.userId === buyerId).title, /vence pronto/);
+  assert.equal(await sendPaymentReminders('https://cowface.test'), 0, 'una sola vez');
+});

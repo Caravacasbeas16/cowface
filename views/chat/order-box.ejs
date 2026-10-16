@@ -103,7 +103,7 @@
           <div class="pay-card">
             <div><span class="muted small">Número</span><strong class="copy" data-copy="<%= pay.phone %>"><%= pay.phone %></strong></div>
             <div><span class="muted small">A nombre de</span><strong><%= pay.holder %></strong></div>
-            <div><span class="muted small">Monto exacto</span><strong><%= money(total) %></strong></div>
+            <div><span class="muted small">Monto exacto</span><strong class="copy" data-copy="<%= total %>"><%= money(total) %></strong></div>
             <div><span class="muted small">Detalle</span><strong class="copy" data-copy="<%= o.code %>"><%= o.code %></strong></div>
           </div>
           <p class="hint">🔒 CowFace guarda tu dinero y se lo pasa a la tienda solo cuando confirmes que recibiste el artículo. Plazo para pagar: <%= when(o.payment_due_at, true) %></p>
