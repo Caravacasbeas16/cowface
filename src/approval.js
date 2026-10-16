@@ -85,9 +85,25 @@ function mailUser(u, subject, lines, button) {
   }).catch(() => false);
 }
 
+// Cupo de tiendas: por ahora CowFace abre con pocas tiendas (10 por defecto; el admin lo cambia,
+// 0 = sin límite). Las demás solicitudes quedan en lista de espera ("por aprobar").
+export const DEFAULT_STORE_LIMIT = 10;
+export function storeLimit() {
+  const n = Number.parseInt(getSetting('max_stores'), 10);
+  return Number.isInteger(n) && n >= 0 ? n : DEFAULT_STORE_LIMIT;
+}
+export const setStoreLimit = (n) => setSetting('max_stores', String(n));
+export const approvedCount = () => db.prepare(
+  "SELECT COUNT(*) AS n FROM users WHERE role = 'usuario' AND active = 1 AND deleted_at IS NULL AND seller_status = 'aprobado'",
+).get().n;
+export const storesFull = () => storeLimit() > 0 && approvedCount() >= storeLimit();
+export class StoreLimitError extends Error {}
+export const limitMessage = () => `Ya tienes ${approvedCount()} tiendas aprobadas (el cupo es de ${storeLimit()}). Sube el cupo en Tiendas o quítale la aprobación a otra antes de aprobar esta.`;
+
 export async function approve(id) {
   const u = userRow(id);
   if (!u) return null;
+  if (u.seller_status !== 'aprobado' && storesFull()) throw new StoreLimitError(limitMessage());
   db.prepare("UPDATE users SET seller_status = 'aprobado', seller_note = '' WHERE id = ?").run(id);
   await mailUser(u, '¡Tu tienda fue aprobada!', [
     `${u.store_name} ya puede vender en ${SITE_NAME}.`,

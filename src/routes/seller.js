@@ -26,7 +26,7 @@ import { bump, bumpState, duplicateProduct } from '../listing-tools.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
 import { sendMail } from '../mailer.js';
-import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
+import { approvalRequired, canPublish, sellerStatus, storesFull, submitRequest } from '../approval.js';
 import { MAX_POINTS, pickupPointsOf, saveStoreLocation, validateStoreLocation } from '../pickup.js';
 import { parseHours, saveHours } from '../store-hours.js';
 
@@ -224,6 +224,7 @@ const requestView = (req, form = null, errors = {}) => {
   const request = JSON.parse(saved?.seller_request || '{}');
   return {
     title: 'Vender en CowFace', status: sellerStatus(req.user), note: saved?.seller_note || '', errors, maxPhotos: REQUEST_MAX_PHOTOS,
+    waitlist: storesFull(),
     form: form || {
       store_name: req.user.store_name || '', instagram: request.instagram || '', about: request.about || '',
       store_address: saved?.store_address || '', pickup_points: pickupPointsOf(req.user.id).join('\n'),

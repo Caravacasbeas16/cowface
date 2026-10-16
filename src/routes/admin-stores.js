@@ -14,7 +14,9 @@ import { BULK_MAX_PHOTOS, bulkFiles, discardBulk } from '../uploads.js';
 import { COLUMNS, MAX_ROWS, importRows, templateCsv } from '../bulk.js';
 import { notifyMatches } from '../alerts.js';
 import { ImageError } from '../images.js';
-import { approve, reject, revoke, setApprovalRequired } from '../approval.js';
+import {
+  StoreLimitError, approve, limitMessage, reject, revoke, setApprovalRequired, setStoreLimit, storesFull,
+} from '../approval.js';
 import { adminBack } from '../admin-panel.js';
 
 const router = Router();
@@ -48,6 +50,7 @@ router.post('/tiendas/nueva', async (req, res, next) => {
   if (b.payout_phone && !normalizePhone(b.payout_phone)) errors.payout_phone = 'SINPE Móvil de 8 dígitos.';
   const blocked = findBlocked(`${data.name}\n${data.store_name}`);
   if (blocked) errors.store_name = 'El nombre no puede tener teléfonos, redes ni enlaces.';
+  if (!errors.email && storesFull()) errors.email = limitMessage();
   if (Object.keys(errors).length) return res.status(400).render('admin/store-new', formView(b, errors));
 
   try {
@@ -156,7 +159,11 @@ const flashTo = (res, message, anchor, req = null) => {
 
 router.post('/tiendas/:id/aprobar', async (req, res, next) => {
   try {
-    const u = await approve(Number(req.params.id));
+    const u = await approve(Number(req.params.id)).catch((err) => {
+      if (err instanceof StoreLimitError) { flashTo(res, err.message, 'tiendas-por-aprobar', req); return false; }
+      throw err;
+    });
+    if (u === false) return;
     if (!u) return next();
     flashTo(res, `${u.store_name} aprobada: ya puede publicar (le avisamos por correo).`, 'tiendas-por-aprobar', req);
   } catch (err) { next(err); }
@@ -174,6 +181,14 @@ router.post('/tiendas/:id/quitar-aprobacion', (req, res, next) => {
   const u = revoke(Number(req.params.id), req.body.reason);
   if (!u) return next();
   flashTo(res, `${u.store_name} ya no puede publicar; sus artículos a la venta quedaron pausados.`, 'usuarios', req);
+});
+
+// Cupo de tiendas aprobadas (0 = sin límite).
+router.post('/tiendas/limite', (req, res) => {
+  const n = Number.parseInt(req.body.limit, 10);
+  if (!Number.isInteger(n) || n < 0 || n > 10_000) return flashTo(res, 'Escribe un número de tiendas (0 = sin límite).', 'usuarios', req);
+  setStoreLimit(n);
+  flashTo(res, n ? `Cupo de tiendas: ${n}.` : 'Sin límite de tiendas.', 'usuarios', req);
 });
 
 router.post('/aprobacion', (req, res) => {

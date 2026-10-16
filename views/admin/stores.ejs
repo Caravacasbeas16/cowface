@@ -10,6 +10,18 @@
     <a class="btn btn-small" href="/admin/tiendas/nueva">+ Crear tienda</a>
   </div>
 
+  <div class="store-quota <%= limit && approved >= limit ? 'is-full' : '' %>">
+    <div>
+      <strong>Tiendas aprobadas: <%= approved %><%= limit ? ` de ${limit}` : '' %></strong>
+      <span class="muted small"><%= limit ? (approved >= limit ? 'Cupo lleno: las nuevas solicitudes quedan en lista de espera.' : `Quedan ${limit - approved} cupo${limit - approved === 1 ? '' : 's'}.`) : 'Sin límite de tiendas.' %></span>
+    </div>
+    <form action="/admin/tiendas/limite" method="post" class="inline-form">
+      <input type="hidden" name="back" value="<%= back %>">
+      <label>Cupo <input name="limit" type="number" min="0" max="10000" value="<%= limit %>" aria-label="Cupo de tiendas (0 = sin límite)"></label>
+      <button class="btn btn-small btn-ghost">Guardar</button>
+    </form>
+  </div>
+
   <nav class="tabs" aria-label="Tiendas por estado">
     <% for (const [key, label] of Object.entries(STORE_TABS)) { %>
       <a href="/admin/tiendas?tab=<%= key %>" class="<%= tab === key ? 'is-active' : '' %>"><%= label %> <span class="tab-n"><%= counts[key] %></span></a>

@@ -4,7 +4,7 @@ import { Router } from 'express';
 import { requireRole } from '../auth.js';
 import { ORDER_STATUS } from '../catalog.js';
 import { DELIVERY_LABELS, adminQueues, paymentConfig } from '../orders.js';
-import { pendingStores, approvalRequired } from '../approval.js';
+import { approvalRequired, approvedCount, pendingStores, storeLimit } from '../approval.js';
 import { commissionRate, db } from '../db.js';
 import { UserError } from '../messages.js';
 import { publicBaseUrl } from '../urls.js';
@@ -28,7 +28,7 @@ router.get('/tiendas', (req, res) => {
   res.render('admin/stores', {
     title: 'Tiendas', adminActive: 'tiendas', tab, q, counts, STORE_TABS, PRIORITIES, stores: storeList(tab, q),
     requests: tab === 'pendientes' ? pendingStores() : [], approvalOn: approvalRequired(), back: req.originalUrl,
-    generalRate: commissionRate(),
+    generalRate: commissionRate(), limit: storeLimit(), approved: approvedCount(),
   });
 });
 

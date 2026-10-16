@@ -3,12 +3,17 @@
 <section class="auth auth-wide">
   <% if (status === 'pendiente') { %>
     <h1>Tu tienda está en revisión</h1>
+    <% if (waitlist) { %>
+      <p>Recibimos tu solicitud para vender en <%= siteName %>. <strong>Por ahora estamos abriendo con un grupo pequeño de tiendas</strong>, así que quedas en la lista de espera: te avisamos por correo a <strong><%= user.email %></strong> apenas se abra un cupo.</p>
+    <% } else { %>
     <p>Recibimos tu solicitud para vender en <%= siteName %>. La revisamos en 1 día hábil como máximo y te avisamos por correo a <strong><%= user.email %></strong>.</p>
+    <% } %>
     <p class="muted">Mientras tanto puedes ir subiendo tus artículos: quedan como <strong>borradores</strong> y los publicas apenas aprobemos tu tienda.</p>
     <a class="btn btn-block" href="/vendedor/productos/nuevo">Subir un artículo como borrador</a>
     <a class="btn btn-ghost btn-block" href="/vendedor">Ir a Mi cuenta</a>
   <% } else { %>
     <h1>Vende en <%= siteName %></h1>
+    <% if (waitlist) { %><div class="notice">Por ahora estamos abriendo <%= siteName %> con un grupo pequeño de tiendas. Puedes enviar tu solicitud igual: quedas en la <strong>lista de espera</strong> y te avisamos cuando haya cupo.</div><% } %>
     <% if (status === 'rechazado') { %>
       <div class="notice">
         <strong>No pudimos aprobar tu solicitud anterior.</strong>

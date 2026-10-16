@@ -264,3 +264,7 @@ a.kpi:hover { border-color: var(--ink); text-decoration: none; }
   .admin-search input[type="search"] { grid-column: 1 / -1; }
 }
 .inline-form input[name="percent"] { width: 4.5rem; padding: .4rem; }
+.store-quota { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; padding: .8rem 1rem; margin-bottom: 1rem; border: 1px solid var(--line); border-left: 4px solid var(--ok); border-radius: 8px; }
+.store-quota > div { display: flex; flex-direction: column; }
+.store-quota.is-full { border-left-color: var(--warn); background: var(--warn-soft); }
+.store-quota input[name="limit"] { width: 5rem; padding: .4rem; }
