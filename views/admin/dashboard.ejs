@@ -353,6 +353,36 @@
   <% } %>
 </section>
 
+<section id="espacio">
+  <h2>Espacio</h2>
+  <% if (!disk) { %>
+    <p class="muted">Calculando cuánto espacio se usa… recarga en un momento.</p>
+  <% } else { %>
+    <% const level = disk.percent == null ? '' : disk.percent >= 90 ? 'is-danger' : disk.percent >= 80 ? 'is-warn' : ''; %>
+    <% if (disk.percent != null) { %>
+      <p><strong><%= formatBytes(disk.used) %></strong> usados de <strong><%= formatBytes(disk.total) %></strong> (<%= disk.percent %> %). Quedan <strong><%= formatBytes(disk.free) %></strong><% if (disk.productsLeft != null) { %>, para unos <strong><%= disk.productsLeft.toLocaleString('es-CR') %> artículos</strong> más<% } %>.</p>
+      <div class="disk-bar <%= level %>"><span data-width="<%= disk.percent %>"></span></div>
+      <% if (disk.percent >= 80) { %><div class="notice"><strong>El volumen se está llenando.</strong> Agrándalo en Railway → cowface-volume → Settings → Volume Size, y luego pon el tamaño nuevo aquí abajo. Si se llena, las tiendas no van a poder subir fotos.</div><% } %>
+    <% } %>
+    <div class="table-wrap">
+      <table>
+        <tbody>
+          <tr><td>Fotos de artículos</td><td><%= formatBytes(disk.parts.photos) %></td><td class="muted small"><%= disk.photoFiles.toLocaleString('es-CR') %> archivos · <%= disk.products.toLocaleString('es-CR') %> artículos<% if (disk.perProduct) { %> · unos <%= formatBytes(disk.perProduct) %> por artículo<% } %></td></tr>
+          <tr><td>Comprobantes y adjuntos del chat</td><td><%= formatBytes(disk.parts.attachments) %></td><td></td></tr>
+          <tr><td>Base de datos</td><td><%= formatBytes(disk.parts.database) %></td><td></td></tr>
+          <tr><td>Respaldos (últimos 7)</td><td><%= formatBytes(disk.parts.backups) %></td><td></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="hint">Se actualiza cada 10 minutos. Te llega un correo cuando pase del 80 %, 90 % y 95 %.</p>
+  <% } %>
+  <form action="/admin/espacio" method="post" class="inline-form">
+    <label>Tamaño del volumen en Railway (GB) <input name="volume_gb" type="number" min="0" max="10000" step="0.1" value="<%= volumeGb || '' %>" placeholder="5"></label>
+    <button class="btn btn-small btn-ghost">Guardar</button>
+  </form>
+  <p class="hint">Ponlo igual al "Volume Size" de Railway para que el porcentaje sea exacto. Vacío: se usa lo que reporta el disco.</p>
+</section>
+
 <section id="respaldos">
   <h2>Respaldos</h2>
   <% const b = backups; const kb = (n) => n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`; %>

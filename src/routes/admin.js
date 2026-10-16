@@ -21,6 +21,7 @@ import { openReports, resolveReport } from '../reports.js';
 import { UserError } from '../messages.js';
 import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
 import { adminBack } from '../admin-panel.js';
+import { diskStatus, formatBytes, refreshDisk, setVolumeGb, volumeGbSetting } from '../disk.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -67,8 +68,20 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS: DELIVERY_LABELS,
+    disk: diskStatus(), formatBytes, volumeGb: volumeGbSetting(),
     notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(), helpRequests: openHelpRequests(), reports: openReports(),
   });
+});
+
+// Tamaño del volumen que se eligió en Railway (vacío = el que reporta el disco).
+router.post('/espacio', async (req, res) => {
+  const raw = String(req.body.volume_gb ?? '').trim().replace(',', '.');
+  const n = raw === '' ? 0 : Number(raw);
+  if (!Number.isFinite(n) || n < 0 || n > 10_000) { flash(res, 'Escribe el tamaño en GB (por ejemplo 5).'); return res.redirect('/admin#espacio'); }
+  setVolumeGb(n);
+  await refreshDisk().catch(() => {});
+  flash(res, n ? `Tamaño del volumen: ${n} GB.` : 'Se usa el tamaño que reporta el disco.');
+  res.redirect('/admin#espacio');
 });
 
 // Acciones sobre pedidos: confirmar/rechazar pago, resolver reclamos, registrar reembolsos y pagos a vendedores.

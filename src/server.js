@@ -11,6 +11,7 @@ import { sendPaymentReminders } from './payment-reminders.js';
 import { siteBaseUrl } from './urls.js';
 import { encryptExisting } from './crypto-box.js';
 import { ATTACH_DIR } from './storage.js';
+import { checkDiskAlert } from './disk.js';
 
 // La cuenta admin sale de ADMIN_EMAIL / ADMIN_PASSWORD (en Railway: pestaña Variables).
 const admin = adminFromEnv();
@@ -51,6 +52,11 @@ const backup = () => runDailyBackup()
   .catch((err) => console.error('Error en el respaldo diario:', err));
 setTimeout(backup, 2 * 60 * 1000).unref();
 setInterval(backup, 60 * 60 * 1000).unref();
+
+// Espacio del volumen: se calcula al arrancar y cada 10 minutos; avisa al admin si se está llenando.
+const disk = () => checkDiskAlert().catch((err) => console.error('Error revisando el espacio:', err));
+setTimeout(disk, 30 * 1000).unref();
+setInterval(disk, 10 * 60 * 1000).unref();
 
 const port = Number(process.env.PORT) || 3100;
 createApp().listen(port, () => {

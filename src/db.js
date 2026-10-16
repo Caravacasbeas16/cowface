@@ -7,7 +7,8 @@ const VOLUME = process.env.RAILWAY_VOLUME_MOUNT_PATH;
 const DATA_DIR = path.resolve(process.env.DATA_DIR || (VOLUME ? path.join(VOLUME, 'db') : 'data'));
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
-export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'cowface.db'));
+export const DB_FILE = process.env.DB_PATH || path.join(DATA_DIR, 'cowface.db');
+export const db = new DatabaseSync(DB_FILE);
 
 // Versiones del esquema. Desde la 3 (la primera publicada) los cambios son migraciones que
 // conservan los datos: solo se agregan tablas o columnas, nunca se borra nada.

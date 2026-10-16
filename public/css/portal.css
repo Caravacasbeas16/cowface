@@ -268,3 +268,9 @@ a.kpi:hover { border-color: var(--ink); text-decoration: none; }
 .store-quota > div { display: flex; flex-direction: column; }
 .store-quota.is-full { border-left-color: var(--warn); background: var(--warn-soft); }
 .store-quota input[name="limit"] { width: 5rem; padding: .4rem; }
+
+/* Espacio del volumen en /admin */
+.disk-bar { height: 12px; border-radius: 6px; background: var(--soft); overflow: hidden; margin: .4rem 0 1rem; max-width: 520px; }
+.disk-bar > span { display: block; height: 100%; width: 0; background: var(--ok); }
+.disk-bar.is-warn > span { background: var(--warn); }
+.disk-bar.is-danger > span { background: var(--danger); }
