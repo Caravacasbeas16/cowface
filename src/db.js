@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 26;
+const SCHEMA_VERSION = 27;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -332,6 +332,7 @@ addColumn('orders', 'delivery_lat', 'REAL');
 addColumn('orders', 'delivery_lng', 'REAL');
 addColumn('orders', 'track_url', 'TEXT');
 addColumn('products', 'likers_offer_at', 'TEXT'); // última "oferta a quienes lo guardaron" (una cada 24 h)
+addColumn('users', 'payout_changed_at', 'TEXT');                  // último cambio del SINPE para cobrar (aviso al admin)
 addColumn('users', 'priority', 'INTEGER NOT NULL DEFAULT 0');      // prioridad que da el admin: 0 normal, 1 alta, 2 máxima
 
 // Reportes de artículos, personas y conversaciones (requisito de Google Play / App Store).

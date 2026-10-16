@@ -63,6 +63,9 @@
               <strong><%= g.store %></strong>
               <span class="pay-amount copy" data-copy="<%= g.total %>"><%= money(g.total) %></span>
             </div>
+            <% if (g.changedAt && Date.now() - Date.parse(g.changedAt) < 7 * 86400e3) { %>
+              <div class="pill pill-warn">⚠ Cambió su número para cobrar <%= timeAgo(g.changedAt) %>: confírmalo con la tienda</div>
+            <% } %>
             <div class="payout-to">
               <% if (g.phone) { %>SINPE <strong class="copy" data-copy="<%= g.phone %>"><%= g.phone %></strong> · <%= g.holder || '' %><% } else { %><span class="pill pill-danger">Sin número SINPE registrado</span><% } %>
             </div>

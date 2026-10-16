@@ -7,6 +7,7 @@ import {
 } from './helpers.js';
 
 const { loginWithProvider } = await import('../src/oauth.js');
+const { sessionHash } = await import('../src/auth.js');
 const { parseFilters, searchProducts } = await import('../src/products.js');
 
 before(startServer);
@@ -28,7 +29,7 @@ const lastOrder = () => db.prepare('SELECT * FROM orders ORDER BY id DESC LIMIT 
 // Sesión directa para un usuario (como si hubiera entrado con Google).
 function sessionFor(id) {
   const token = crypto.randomBytes(32).toString('hex');
-  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(token, id, new Date(Date.now() + 86400e3).toISOString());
+  db.prepare('INSERT INTO sessions (token, user_id, expires_at) VALUES (?, ?, ?)').run(sessionHash(token), id, new Date(Date.now() + 86400e3).toISOString());
   return `sid=${token}`;
 }
 

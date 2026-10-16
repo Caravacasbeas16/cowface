@@ -14,7 +14,7 @@ import { paymentConfig, paymentsReady } from '../orders.js';
 import { enabledProviders } from '../oauth.js';
 import { ratingSummary, reviewsAbout, salesSummary } from '../reviews.js';
 import { safeNext, validateSignup } from '../validate.js';
-import { rateLimit } from '../rate-limit.js';
+import { clientKey, rateLimit } from '../rate-limit.js';
 import { adminEmail } from '../admin-account.js';
 import { mailProvider } from '../mailer.js';
 import { notifyAdmin } from '../admin-notify.js';
@@ -39,9 +39,14 @@ const brandPhotos = (() => {
 
 const MIN = 60 * 1000;
 const loginLimit = rateLimit({ windowMs: 15 * MIN, max: 10, message: 'Demasiados intentos de entrar. Espera 15 minutos.' });
-// Además del límite por conexión: 10 contraseñas fallidas por hora para un mismo correo,
-// así no se puede adivinar la del admin (u otra) repartiendo intentos entre muchas IP.
+// Además del límite por conexión: 10 contraseñas fallidas por hora para un mismo correo desde la misma
+// conexión (bloqueo). Por correo en total no se bloquea —así nadie puede dejar al admin sin poder
+// entrar a propósito—, pero después de 20 fallos en una hora cada intento espera unos segundos, para
+// que adivinar la contraseña repartiendo intentos entre muchas IP sea lentísimo.
 const loginPerEmail = rateLimit({ windowMs: 60 * MIN, max: 10, message: 'Demasiados intentos para esta cuenta. Espera una hora o recupera tu contraseña.', key: () => null });
+const loginPerEmailAll = rateLimit({ windowMs: 60 * MIN, max: 20, message: '', key: () => null });
+const LOGIN_SLOWDOWN_MS = 3000;
+const sleep = (ms) => new Promise((r) => { setTimeout(r, ms); });
 // Hash de relleno: si el correo no existe se verifica igual, para que el tiempo de respuesta no lo delate.
 const DUMMY_HASH = hashPassword('contraseña-de-relleno');
 const signupLimit = rateLimit({ windowMs: 60 * MIN, max: 5, message: 'Demasiados registros desde esta conexión. Intenta en una hora.' });
@@ -84,7 +89,7 @@ const suggestLimit = rateLimit({ windowMs: MIN, max: 120, message: 'Demasiadas b
 // Reportar un artículo, una cuenta o una conversación (hay que tener sesión).
 const reportLimit = rateLimit({ windowMs: 60 * MIN, max: 20, message: 'Enviaste muchos reportes seguidos. Intenta más tarde.' });
 router.post('/reportar', reportLimit, (req, res, next) => {
-  const back = String(req.body.back || '/').startsWith('/') && !String(req.body.back).startsWith('//') ? String(req.body.back) : '/';
+  const back = safeNext(req.body.back, '/');
   if (!req.user || req.user.role !== 'usuario') return res.redirect(`/entrar?next=${encodeURIComponent(back)}`);
   try {
     const id = createReport(req.user, req.body.type, req.body.id, req.body.reason, req.body.details);
@@ -216,17 +221,20 @@ router.get('/entrar', (req, res) => {
   res.render('login', { title: 'Entrar', error: null, email: '', next: safeNext(req.query.next, '') });
 });
 
-router.post('/entrar', loginLimit, (req, res) => {
+router.post('/entrar', loginLimit, async (req, res) => {
   const email = String(req.body.email ?? '').trim().toLowerCase().slice(0, 120);
   const password = String(req.body.password ?? '').slice(0, 200);
   const fail = (status, error) => res.status(status).render('login', { title: 'Entrar', error, email, next: safeNext(req.body.next, '') });
-  if (loginPerEmail.blocked(email)) {
+  const fromHere = `${email}|${clientKey(req.ip)}`;
+  if (loginPerEmail.blocked(fromHere)) {
     return fail(429, 'Demasiados intentos para esta cuenta. Espera una hora o usa “¿Olvidaste tu contraseña?”.');
   }
+  if (loginPerEmailAll.blocked(email)) await sleep(LOGIN_SLOWDOWN_MS);
   const user = db.prepare('SELECT id, role, password_hash, active FROM users WHERE email = ?').get(email);
   const passwordOk = verifyPassword(password, user ? user.password_hash : DUMMY_HASH);
   if (!user || !user.active || !passwordOk) {
-    loginPerEmail.hit(email);
+    loginPerEmail.hit(fromHere);
+    loginPerEmailAll.hit(email);
     return fail(401, 'Correo o contraseña incorrectos.');
   }
   startSession(res, user.id);

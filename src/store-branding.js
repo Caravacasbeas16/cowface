@@ -8,6 +8,7 @@ import sharp from 'sharp';
 import { db } from './db.js';
 import { HEIC_HELP, PHOTO_TYPES, headerMatches } from './uploads.js';
 import { TMP_DIR, UPLOAD_DIR, removeFrom } from './storage.js';
+import { MAX_INPUT_PIXELS } from './images.js';
 
 export const BRAND_MAX_MB = 10;
 const SHAPES = {
@@ -30,11 +31,12 @@ const upload = multer({
 class BrandError extends Error {}
 
 async function crop(tmpPath, { width, height }) {
-  const meta = await sharp(tmpPath, { failOn: 'error' }).metadata().catch(() => null);
+  // Mismo tope de píxeles que las fotos de artículos: frena imágenes "bomba" que agotan la memoria.
+  const meta = await sharp(tmpPath, { failOn: 'error', limitInputPixels: MAX_INPUT_PIXELS }).metadata().catch(() => null);
   if (!meta?.width) throw new BrandError('La imagen no se pudo leer. Prueba con JPG o PNG.');
   if (Math.min(meta.width, meta.height) < 200) throw new BrandError('La imagen es muy pequeña: usa una de al menos 200 píxeles.');
   const name = `${crypto.randomBytes(12).toString('hex')}_marca.jpg`;
-  await sharp(tmpPath).rotate().flatten({ background: '#ffffff' })
+  await sharp(tmpPath, { limitInputPixels: MAX_INPUT_PIXELS }).rotate().flatten({ background: '#ffffff' })
     .resize({ width, height, fit: 'cover', position: 'attention', withoutEnlargement: false })
     .jpeg({ quality: 86, mozjpeg: true }).toFile(path.join(UPLOAD_DIR, name));
   return name;

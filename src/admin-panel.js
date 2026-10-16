@@ -74,6 +74,7 @@ export function payoutBoard(nowMs = Date.now()) {
   for (const o of all.filter((x) => x.payout_day <= today)) {
     const g = groups.get(o.seller_id) || {
       sellerId: o.seller_id, store: o.store_name, phone: o.payout_phone, holder: o.payout_name, total: 0, orders: [],
+      changedAt: db.prepare('SELECT payout_changed_at FROM users WHERE id = ?').get(o.seller_id)?.payout_changed_at || null,
     };
     g.total += o.payout_amount;
     g.orders.push(o);
@@ -107,7 +108,7 @@ export function payoutHistory(limit = 60) {
 
 const cell = (v) => {
   const s = String(v ?? '');
-  const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   return /[",;\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 

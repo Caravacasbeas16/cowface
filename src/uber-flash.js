@@ -35,6 +35,6 @@ export function trackUrlFor(order, track) {
   return url || null;
 }
 
-export const uberShippedNote = (order, trackUrl) => `🚗 La tienda envió el pedido ${order.code} por Uber Flash.`
+export const uberShippedNote = (order, trackUrl, releaseDays) => `🚗 La tienda envió el pedido ${order.code} por Uber Flash.`
   + `${trackUrl ? ' Puedes seguir el viaje en vivo desde el pedido.' : ''}`
-  + ' Cuando te llegue, confirma que lo recibiste; si no hay reclamo, se da por recibido al final del día.';
+  + ` Cuando te llegue, confirma que lo recibiste; si no hay reclamo, se da por recibido ${trackUrl ? 'al final del día' : `en ${releaseDays} días`}.`;

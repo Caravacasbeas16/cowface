@@ -15,7 +15,7 @@ import path from 'node:path';
 
 export const DISPLAY_PX = 2048;
 export const THUMB_PX = 800;
-const MAX_INPUT_PIXELS = 120_000_000; // ~120 MP: más que cualquier celular; frena "bombas" de imagen
+export const MAX_INPUT_PIXELS = 120_000_000; // ~120 MP: más que cualquier celular; frena "bombas" de imagen
 
 sharp.cache(false);
 

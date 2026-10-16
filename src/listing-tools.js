@@ -72,7 +72,7 @@ export function duplicateProduct(productId) {
 const cell = (v) => {
   const s = String(v ?? '');
   // Evita que Excel interprete fórmulas ("=", "+", "-", "@") y escapa comillas.
-  const safe = /^[=+\-@]/.test(s) ? `'${s}` : s;
+  const safe = /^[=+\-@\t\r]/.test(s) ? `'${s}` : s;
   return /[",;\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
 };
 

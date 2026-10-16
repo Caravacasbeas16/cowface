@@ -49,15 +49,22 @@ test('cambiar la contraseña del admin cierra sus sesiones', async () => {
   assert.equal((await get('/admin', cookie)).status, 302, 'contraseña nueva: sesión cerrada');
 });
 
-test('10 contraseñas fallidas bloquean la cuenta aunque cambien de IP', async () => {
+test('10 contraseñas fallidas bloquean esa cuenta desde esa conexión, pero nadie puede dejar fuera al dueño', async () => {
   const attempt = (ip, password) => fetch(`${ctx.base}/entrar`, {
     method: 'POST', redirect: 'manual', body: new URLSearchParams({ email: 'compra@test.cr', password }),
     headers: { 'X-Forwarded-For': ip },
   });
-  for (let i = 0; i < 10; i++) assert.equal((await attempt(`10.0.0.${i}`, 'mala')).status, 401);
-  const locked = await attempt('10.0.1.1', 'clave-segura-1');
-  assert.equal(locked.status, 429, 'ni con la contraseña correcta desde otra IP');
-  assert.match(await locked.text(), /para esta cuenta/);
+  for (let i = 0; i < 10; i++) assert.equal((await attempt('10.0.0.1', 'mala')).status, 401);
+  const locked = await attempt('10.0.0.1', 'clave-segura-1');
+  assert.equal(locked.status, 429, 'desde esa conexión, ni con la contraseña correcta');
+  assert.match(await locked.text(), /Demasiados intentos/);
+  assert.equal((await attempt('10.0.9.9', 'clave-segura-1')).status, 302, 'el dueño entra desde su conexión');
+  // Repartiendo intentos entre muchas IP: después de 20 fallos cada intento tarda unos segundos.
+  for (let i = 2; i < 13; i++) await attempt(`10.0.${i}.1`, 'mala');
+  const t = Date.now();
+  assert.equal((await attempt('10.0.50.1', 'mala')).status, 401);
+  assert.ok(Date.now() - t >= 2900, 'intento lento');
+  assert.equal((await attempt('10.0.51.1', 'clave-segura-1')).status, 302, 'la contraseña correcta sigue funcionando');
 });
 
 test('un comprobante de SINPE no sirve para dos pedidos', async () => {

@@ -44,7 +44,8 @@ router.post('/olvide', ipLimit, async (req, res, next) => {
     if (user && !allowed) console.log('Recuperación: límite de 3 correos por hora para esa cuenta; no se envía.');
     if (allowed) {
       const link = `${publicBaseUrl(req)}/restablecer/${createResetToken(user.id)}`;
-      await sendMail({
+      // Sin esperar el envío: la respuesta tarda lo mismo exista o no la cuenta.
+      sendMail({
         to: email,
         subject: `Restablece tu contraseña de ${SITE_NAME}`,
         text: `Hola ${user.name}:\n\nPara crear una contraseña nueva abre este enlace (vence en ${EMAIL_LINK_MINUTES} minutos y sirve una sola vez):\n${link}\n\nSi no lo pediste, ignora este correo: tu contraseña no cambia.\n\n${SITE_NAME}`,

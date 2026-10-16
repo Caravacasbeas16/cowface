@@ -114,7 +114,16 @@
           <label>Captura del comprobante <span class="muted">(recomendado: acelera la verificación)</span>
             <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf">
           </label>
-          <% if (!pickUp) { %>
+          <% const asked = o.delivery_requested === o.delivery_method; %>
+          <% if (!asked) { %>
+            <label class="check accept-method">
+              <input type="checkbox" name="accept_method" value="1" required>
+              <span>La tienda me cotizó <strong><%= labels[o.delivery_method] %></strong><%= o.delivery_requested ? ` (yo había pedido ${labels[o.delivery_requested]})` : '' %> y lo acepto.</span>
+            </label>
+          <% } %>
+          <% if (!pickUp && asked && o.delivery_address) { %>
+            <p class="small"><strong>Se envía a:</strong> <%= o.delivery_address %> <span class="muted">(para cambiarla, pide otra cotización arriba)</span></p>
+          <% } else if (!pickUp) { %>
             <label>Dirección de entrega
               <textarea name="address" rows="2" required maxlength="500"><%= o.delivery_address || '' %></textarea>
             </label>
@@ -137,7 +146,7 @@
       <% } else if (o.delivery_method === 'uber_flash') { %>
         <p>🚗 <strong>Tu pedido va en Uber Flash.</strong> <%- fileLink(o.shipping_proof, 'Ver la captura del viaje') %></p>
         <% if (o.track_url) { %><p><a class="btn btn-small" href="<%= o.track_url %>" target="_blank" rel="noopener nofollow">📍 Seguir el viaje en vivo</a></p><% } %>
-        <p class="hint">Cuando te llegue, revisa el artículo y confirma abajo. Si no reportas un problema, se da por recibido al final del día (<%= when(o.auto_release_at, true) %>).</p>
+        <p class="hint">Cuando te llegue, revisa el artículo y confirma abajo. Si no reportas un problema, se da por recibido <%= o.track_url ? 'al final del día' : 'automáticamente' %> (<%= when(o.auto_release_at, true) %>).</p>
       <% } else { %>
         <p>📦 La tienda lo marcó como <%= pickUp ? 'entregado' : 'enviado' %><%= o.shipping_note ? `: «${o.shipping_note}»` : '' %>. <%- fileLink(o.shipping_proof, 'Ver comprobante de envío') %></p>
         <p class="hint">Revisa el artículo al recibirlo. Si no reportas un problema, el pago se libera a la tienda automáticamente (<%= when(o.auto_release_at, true) %>).</p>
@@ -222,10 +231,10 @@
             <input type="file" name="comprobante" accept="image/jpeg,image/png,image/webp,application/pdf" required>
           </label>
           <% if (o.delivery_method === 'uber_flash') { %>
-            <label>Link para seguir el viaje (recomendado)
+            <label>Link para seguir el viaje (en Uber: Compartir viaje)
               <input name="track" type="url" inputmode="url" maxlength="500" placeholder="En Uber: Compartir viaje → copiar enlace">
             </label>
-            <p class="hint"><strong>El pago se te hace al final del día</strong>, después de que subas la captura del viaje y el comprador lo reciba (o si no hay reclamo ese día). La captura también es tu prueba si hay un reclamo.</p>
+            <p class="hint"><strong>Con el link del viaje, el pago se te hace hoy al final del día</strong> (cuando el comprador confirma, o si no hay reclamo ese día). Sin el link, se espera el plazo normal de <%= pay.releaseDays %> días. La captura también es tu prueba si hay un reclamo.</p>
           <% } else { %>
           <label>Número de guía o seguimiento (opcional)
             <input name="note" maxlength="300" placeholder="Ej. Correos CR: RR123456789CR">

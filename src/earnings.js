@@ -106,7 +106,7 @@ export function earningsCsv(rawYear) {
   const head = ['Pedido', 'Completado', 'Artículo', 'Tienda', 'Comprador', 'Precio', 'Envío', 'Pagó el comprador', 'Comisión %', 'Comisión', 'Al vendedor', 'Pago al vendedor'];
   const cell = (v) => {
     let t = String(v ?? '');
-    if (/^[=+\-@]/.test(t)) t = `'${t}`; // evita fórmulas al abrirlo en Excel
+    if (/^[=+\-@\t\r]/.test(t)) t = `'${t}`; // evita fórmulas al abrirlo en Excel
     return /[";\n]/.test(t) ? `"${t.replace(/"/g, '""')}"` : t;
   };
   const lines = rows.map((r) => [

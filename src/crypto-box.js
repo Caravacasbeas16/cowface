@@ -40,7 +40,12 @@ function open(buf, k) {
 export function sealText(text) {
   const k = key();
   const s = String(text ?? '');
-  if (!k || !s || isSealedText(s)) return s;
+  if (!k || !s) return s;
+  // Ya cifrado (y se abre con esta clave): se deja igual. Un texto que alguien escribió empezando
+  // con "enc1:" no se abre, así que se cifra como cualquier otro.
+  if (isSealedText(s)) {
+    try { open(Buffer.from(s.slice(TEXT_PREFIX.length), 'base64'), k); return s; } catch { /* no es nuestro: se cifra */ }
+  }
   return TEXT_PREFIX + seal(Buffer.from(s, 'utf8'), k).toString('base64');
 }
 

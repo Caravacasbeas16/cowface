@@ -264,8 +264,15 @@ export function reportPayment(orderId, buyerId, body, proof = null) {
     if (!order.delivery_quote_at || !order.delivery_method) {
       throw new UserError('Primero elijan la forma de entrega: la tienda te cotiza el envío y ahí ves el total exacto.');
     }
+    // Si la tienda cotizó otra forma de entrega que la que pidió el comprador, él tiene que aceptarla.
+    const asked = order.delivery_requested === order.delivery_method;
+    if (!asked && body.accept_method !== '1') {
+      throw new UserError(`La tienda te cotizó ${DELIVERY_METHODS[order.delivery_method]}, no lo que pediste. Marca que lo aceptas para pagar, o pídele otra cotización por el chat.`);
+    }
     const reference = String(body.reference ?? '').replace(/\s/g, '').slice(0, 40);
-    const address = String(body.address ?? order.delivery_address ?? '').trim().slice(0, 500);
+    // La dirección con la que se cotizó el envío ya no cambia al pagar (cambiarla sería otro envío).
+    const locked = asked && !isPickUp(order.delivery_method) && order.delivery_address;
+    const address = locked ? order.delivery_address : String(body.address ?? order.delivery_address ?? '').trim().slice(0, 500);
     const phone = normalizePhone(body.phone);
     if (!/^[\w-]{4,40}$/.test(reference)) throw new UserError('Escribe el número de comprobante del SINPE.');
     // Un comprobante solo puede respaldar un pedido (evita pagar una vez y reportarlo en varios).
@@ -313,9 +320,10 @@ export function markShipped(orderId, sellerId, note, proof = null, track = '') {
     const { releaseDays } = paymentConfig();
     const uber = order.delivery_method === 'uber_flash';
     const trackUrl = trackUrlFor(order, track);
-    const release = uber ? sameDayRelease(Date.now(), savedCutoff()) : addHours(releaseDays * 24);
+    // Uber Flash con el link del viaje: se da por recibido al final del día. Sin link, el plazo normal.
+    const release = uber && trackUrl ? sameDayRelease(Date.now(), savedCutoff()) : addHours(releaseDays * 24);
     update(order, { status: 'enviado', shipped_at: now(), shipping_note: text, shipping_proof: proof, track_url: trackUrl, auto_release_at: release });
-    systemNote(order.conversation_id, uber ? uberShippedNote(order, trackUrl)
+    systemNote(order.conversation_id, uber ? uberShippedNote(order, trackUrl, releaseDays)
       : `📦 El vendedor marcó el pedido ${order.code} como enviado/entregado. Si no hay reclamo, el pago se libera en ${releaseDays} días.`);
     return order;
   });

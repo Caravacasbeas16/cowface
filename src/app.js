@@ -66,7 +66,7 @@ export function createApp() {
       'X-Frame-Options': 'DENY',
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Permissions-Policy': 'camera=(), microphone=(), geolocation=(self), payment=()',
-      ...(production ? { 'Strict-Transport-Security': 'max-age=31536000' } : {}),
+      ...(production ? { 'Strict-Transport-Security': 'max-age=31536000; includeSubDomains' } : {}),
     });
     next();
   });
@@ -106,7 +106,13 @@ export function createApp() {
   }));
   // Fotos de artículos: nombres aleatorios que nunca cambian, así que se guardan en caché un año.
   // La carpeta temporal de subidas no se sirve.
-  app.use('/fotos/tmp', (req, res) => res.status(404).end());
+  // (Se revisa la ruta ya decodificada: "/fotos/%74mp/…" también es la carpeta temporal.)
+  app.use('/fotos', (req, res, next) => {
+    let p = req.path;
+    try { p = decodeURIComponent(p); } catch { return res.status(400).end(); }
+    if (/^[\\/]+tmp([\\/]|$)/i.test(p) || p.includes('..')) return res.status(404).end();
+    next();
+  });
   app.use('/fotos', express.static(UPLOAD_DIR, { maxAge: '365d', immutable: true, index: false }));
   // pdf.js (para importar fotos desde un PDF) servido desde el propio sitio: solo las carpetas que usa.
   const PDFJS = path.join(ROOT, 'node_modules', 'pdfjs-dist');

@@ -25,6 +25,7 @@ import { notifyFollowers, offerToLikers } from '../social.js';
 import { bump, bumpState, duplicateProduct } from '../listing-tools.js';
 import { publicBaseUrl } from '../urls.js';
 import { notifyAdmin } from '../admin-notify.js';
+import { sendMail } from '../mailer.js';
 import { approvalRequired, canPublish, sellerStatus, submitRequest } from '../approval.js';
 import { MAX_POINTS, pickupPointsOf, saveStoreLocation, validateStoreLocation } from '../pickup.js';
 import { parseHours, saveHours } from '../store-hours.js';
@@ -197,7 +198,21 @@ router.post('/pagos', (req, res) => {
       title: 'Datos para recibir pagos', commissionRateNow: commissionRate(), error: 'Escribe un número SINPE Móvil de 8 dígitos y el nombre del titular.', form: req.body, next: req.body.next,
     });
   }
+  const before = req.user.payout_phone;
   db.prepare('UPDATE users SET payout_phone = ?, payout_name = ? WHERE id = ?').run(phone, name, req.user.id);
+  // Cambiar el número donde se cobra es delicado (si alguien entrara a la cuenta, se llevaría los pagos):
+  // se le avisa por correo a la tienda y el admin lo ve marcado al pagar.
+  if (before && before !== phone) {
+    db.prepare('UPDATE users SET payout_changed_at = ? WHERE id = ?').run(new Date().toISOString(), req.user.id);
+    sendMail({
+      to: req.user.email,
+      subject: 'Cambiaste el número donde recibes tus pagos de CowFace',
+      text: `Hola ${req.user.name}:\n\nEl número SINPE donde recibes tus pagos cambió a ${phone} (${name}).\n`
+        + 'Si no fuiste tú, escríbenos de inmediato y cambia tu contraseña.\n\nCowFace',
+    }).catch(() => {});
+    notifyAdmin('vendedor', `Cambio de SINPE: ${req.user.store_name || req.user.name}`,
+      `${req.user.store_name || req.user.name} cambió su número para cobrar de ${before} a ${phone} (${name}). Revisa antes de pagarle.`, '/admin/pagos');
+  }
   res.redirect(req.body.next === 'publicar' ? '/vendedor/productos/nuevo' : '/vendedor');
 });
 
