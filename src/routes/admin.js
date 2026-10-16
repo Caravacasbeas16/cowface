@@ -156,7 +156,7 @@ router.post('/vendedores/:id/enlace-contrasena', (req, res, next) => {
   const target = db.prepare("SELECT id, name, email FROM users WHERE id = ? AND role = 'usuario' AND active = 1").get(Number(req.params.id));
   if (!target) return next();
   const link = `${publicBaseUrl(req)}/restablecer/${createResetToken(target.id, ADMIN_LINK_HOURS * 60)}`;
-  res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+  res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'same-origin' });
   res.render('admin/reset-link', { title: 'Enlace de contraseña', target, link, hours: ADMIN_LINK_HOURS });
 });
 

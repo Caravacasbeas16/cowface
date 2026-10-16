@@ -34,6 +34,14 @@ import { cutoffLabel, payoutDayLabel, todayCR } from './payout-schedule.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
+// Página cuando se bloquea un formulario que parece venir de otro sitio (protección CSRF).
+const BLOCKED_PAGE = `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>No se pudo enviar · CowFace</title><link rel="stylesheet" href="/css/base.css"></head>
+<body><main class="wrap"><section class="auth"><h1>No se pudo enviar</h1>
+<p>Por seguridad bloqueamos este formulario porque el navegador no confirmó que viene de cowfacecr.com.</p>
+<p class="muted">Vuelve atrás, recarga la página e intenta de nuevo. Si sigue pasando, ábrelo directo en el navegador (no desde otra app) o escríbenos.</p>
+<p><a class="btn btn-block" href="/">Ir a CowFace</a></p></section></main></body></html>`;
+
 export function createApp() {
   const app = express();
   app.set('view engine', 'ejs');
@@ -96,7 +104,8 @@ export function createApp() {
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
     const source = req.get('origin') || req.get('referer');
     if (source && !ownHosts(req).has(hostOf(source))) {
-      return res.status(403).type('text').send('Solicitud bloqueada: viene de otro sitio.');
+      console.warn(`Formulario bloqueado (otro origen): ${req.method} ${req.path} desde ${String(source).slice(0, 80)}`);
+      return res.status(403).type('html').send(BLOCKED_PAGE);
     }
     next();
   });

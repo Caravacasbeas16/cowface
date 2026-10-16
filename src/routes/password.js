@@ -25,8 +25,10 @@ function emailAllowed(email) {
 const escapeHtml = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 // Los enlaces llevan un token secreto: que no se filtre a otros sitios por el encabezado Referer.
+// "same-origin" y no "no-referrer": con no-referrer el iPhone manda "Origin: null" al guardar la
+// contraseña nueva y la protección contra formularios de otros sitios lo bloqueaba.
 function noReferrer(req, res, next) {
-  res.set('Referrer-Policy', 'no-referrer');
+  res.set('Referrer-Policy', 'same-origin');
   next();
 }
 

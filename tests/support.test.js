@@ -84,6 +84,17 @@ test('la tienda lo lee y responde; el admin ve la respuesta y el "leído"', asyn
 test('otra persona no ve el chat de la tienda (cada quien el suyo)', async () => {
   const page = await (await get('/mensajes/cowface', other)).text();
   assert.doesNotMatch(page, /Tengo 40 prendas/);
-  assert.doesNotMatch(await (await get('/mensajes', other)).text(), /inbox-official/, 'sin chat con CowFace no aparece');
+  assert.match(await (await get('/mensajes', other)).text(), /inbox-official[\s\S]*Escríbenos aquí/, 'siempre aparece, para escribir primero');
   assert.equal((await post('/mensajes/cowface', seller, { body: '   ' })).status, 302);
+});
+
+test('una tienda o persona puede escribirle primero a CowFace; le llega al admin', async () => {
+  const otherId = db.prepare("SELECT id FROM users WHERE email = 'otra@test.cr'").get().id;
+  await post('/mensajes/cowface', other, { body: 'Hola, quiero abrir una tienda. ¿Cómo hago?' });
+  const inbox = await (await get('/admin/mensajes', admin)).text();
+  assert.match(inbox, new RegExp(`href="/admin/mensajes/${otherId}"`));
+  assert.match(inbox, /quiero abrir una tienda/);
+  await post(`/admin/mensajes/${otherId}`, admin, { body: 'Claro, entra a Vender en CowFace.' });
+  assert.match(await (await get('/mensajes/cowface', other)).text(), /entra a Vender en CowFace/);
+  assert.match(await (await get('/vendedor', seller)).text(), /href="\/mensajes\/cowface"/, 'en el panel de la tienda');
 });

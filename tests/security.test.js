@@ -33,7 +33,7 @@ test('el enlace cambia la contraseña una sola vez y cierra las sesiones abierta
 
   const token = linkIn(outbox.at(-1))[1];
   assert.equal((await get(`/restablecer/${token}`)).status, 200);
-  assert.equal((await get(`/restablecer/${token}`)).headers.get('referrer-policy'), 'no-referrer');
+  assert.equal((await get(`/restablecer/${token}`)).headers.get('referrer-policy'), 'same-origin');
   assert.equal((await post(`/restablecer/${token}`, '', { password: 'nueva-clave-123', confirm: 'otra' })).status, 400);
   assert.equal((await post(`/restablecer/${token}`, '', { password: 'corta', confirm: 'corta' })).status, 400);
 

@@ -71,7 +71,7 @@ router.post('/tiendas/nueva', async (req, res, next) => {
           + `<p style="color:#666">Después entra con ${esc(data.email)} y tu contraseña.</p>`,
       });
     }
-    res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' });
+    res.set({ 'Cache-Control': 'no-store', 'Referrer-Policy': 'same-origin' });
     res.render('admin/store-created', { title: 'Tienda creada', store: { id, ...data }, link, hours: INVITE_HOURS, emailed });
   } catch (err) { next(err); }
 });
