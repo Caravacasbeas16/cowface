@@ -4,6 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadUser } from './auth.js';
 import * as catalog from './catalog.js';
+import seoRoutes from './routes/seo.js';
 import publicRoutes from './routes/public.js';
 import socialRoutes from './routes/social.js';
 import supportRoutes from './routes/support.js';
@@ -219,6 +220,7 @@ export function createApp() {
     next();
   });
 
+  app.use('/', seoRoutes);
   app.use('/', publicRoutes);
   app.use('/auth', oauthRoutes);
   app.use('/', profileRoutes);
