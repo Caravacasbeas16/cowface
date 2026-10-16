@@ -60,6 +60,6 @@
 <script src="/js/push.js?v=<%= assetVersion %>" defer></script>
 <script src="/js/install.js?v=<%= assetVersion %>" defer></script>
 <script src="/js/chat.js?v=<%= assetVersion %>" defer></script>
-<% if (locals.portal) { %><script src="/js/portal.js?v=<%= assetVersion %>" defer></script><% } %>
+<% if (locals.portal || locals.adminArea) { %><script src="/js/portal.js?v=<%= assetVersion %>" defer></script><% } %>
 </body>
 </html>

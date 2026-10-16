@@ -38,7 +38,7 @@
   <link rel="stylesheet" href="/css/base.css?v=<%= assetVersion %>">
   <link rel="stylesheet" href="/css/app.css?v=<%= assetVersion %>">
   <link rel="stylesheet" href="/css/store.css?v=<%= assetVersion %>">
-  <% if (locals.portal) { %><link rel="stylesheet" href="/css/portal.css?v=<%= assetVersion %>"><% } %>
+  <% if (locals.portal || locals.adminArea) { %><link rel="stylesheet" href="/css/portal.css?v=<%= assetVersion %>"><% } %>
 </head>
 <body<% if (user && user.role === 'usuario') { %> data-live<% } %><% if (locals.tabbar) { %> class="has-tabbar"<% } %>>
 <header class="topbar">

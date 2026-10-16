@@ -17,6 +17,7 @@ import { UPLOAD_DIR } from './storage.js';
 import { publicBaseUrl } from './urls.js';
 import adminRoutes from './routes/admin.js';
 import adminStoreRoutes from './routes/admin-stores.js';
+import adminPanelRoutes from './routes/admin-panel.js';
 import chatRoutes from './routes/chat.js';
 import orderRoutes from './routes/orders.js';
 import oauthRoutes from './routes/oauth.js';
@@ -213,6 +214,7 @@ export function createApp() {
   app.use('/push', pushRoutes);
   app.use('/vendedor', portalRoutes);
   app.use('/vendedor', sellerRoutes);
+  app.use('/admin', adminPanelRoutes);
   app.use('/admin', adminStoreRoutes);
   app.use('/admin', adminRoutes);
 

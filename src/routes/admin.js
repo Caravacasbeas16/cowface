@@ -20,6 +20,7 @@ import { adminSay, openHelpRequests, resolveHelp } from '../help.js';
 import { openReports, resolveReport } from '../reports.js';
 import { UserError } from '../messages.js';
 import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
+import { adminBack } from '../admin-panel.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -117,7 +118,7 @@ router.post('/pedidos/:id/:action', (req, res, next) => {
   } catch (err) {
     flash(res, err.message);
   }
-  res.redirect('/admin#pagos');
+  res.redirect(adminBack(req, '/admin#pagos'));
 });
 
 router.post('/pagos-config', (req, res) => {
@@ -130,7 +131,7 @@ router.post('/vendedores/:id/activo', (req, res) => {
   db.prepare("UPDATE users SET active = ? WHERE id = ? AND role = 'usuario'").run(req.body.active === '1' ? 1 : 0, Number(req.params.id));
   // Al suspender, se cierran sus sesiones abiertas.
   if (req.body.active !== '1') db.prepare('DELETE FROM sessions WHERE user_id = ?').run(Number(req.params.id));
-  res.redirect('/admin#usuarios');
+  res.redirect(adminBack(req, '/admin#usuarios'));
 });
 
 // Lectura de una conversación para resolver un reclamo (solo lectura; el admin no escribe en ella).
@@ -176,7 +177,7 @@ router.post('/tiendas/:id/destacar', (req, res) => {
   const until = days ? new Date(Date.now() + days * 86400e3).toISOString() : null;
   const r = db.prepare("UPDATE users SET featured_until = ? WHERE id = ? AND role = 'usuario'").run(until, Number(req.params.id));
   if (r.changes) flash(res, until ? (req.body.days === 'siempre' ? 'Tienda destacada sin fecha de fin.' : `Tienda destacada por ${days} días.`) : 'La tienda ya no está destacada.');
-  res.redirect('/admin#usuarios');
+  res.redirect(adminBack(req, '/admin#usuarios'));
 });
 
 // ---------- Respaldos ----------

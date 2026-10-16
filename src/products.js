@@ -10,6 +10,11 @@ const normalizeQuery = (q) => normalizeText(q).split(' ').filter(Boolean).slice(
 export const PAGE_SIZE = 24;
 
 // Tienda destacada por el admin (vigente): sus artículos van primero en "Más recientes" y en la portada.
+// Prioridad que da el admin a una tienda (Alta / Máxima): sus artículos cuentan como 3 o 7 días más
+// nuevos en "Más recientes" y en la portada. Las tiendas destacadas siguen yendo primero.
+export const PRIORITY_DAYS = { 0: 0, 1: 3, 2: 7 };
+const RECENT_SQL = '(julianday(COALESCE(p.bumped_at, p.created_at)) + (CASE u.priority WHEN 2 THEN 7 WHEN 1 THEN 3 ELSE 0 END))';
+
 // Tienda activa y sin pausa: sus artículos salen en la búsqueda, la portada y las sugerencias.
 export const LIVE_SELLER = "u.active = 1 AND u.store_paused = ''";
 
@@ -109,7 +114,7 @@ export function searchProducts(f) {
   if (f.max) { where.push('p.price <= ?'); params.push(f.max); }
   if (f.onSale) where.push('p.compare_at_price > p.price');
 
-  const order = { recientes: `${FEATURED_SQL} DESC, COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC',
+  const order = { recientes: `${FEATURED_SQL} DESC, ${RECENT_SQL} DESC, p.id DESC`, precio_asc: 'p.price ASC, p.id DESC', precio_desc: 'p.price DESC, p.id DESC',
     // Populares (como StockX): cada ♥ pesa como 5 visitas.
     populares: '(SELECT COUNT(*) FROM favorites fv WHERE fv.product_id = p.id) * 5 + p.views DESC, p.id DESC' }[f.sort];
   const from = `FROM products p JOIN users u ON u.id = p.seller_id WHERE ${where.join(' AND ')}`;
@@ -128,7 +133,7 @@ export function latestProducts(limit = 12, viewerId = null) {
   const hide = viewerId ? `AND ${notBlockedSql('p.seller_id')}` : '';
   return db.prepare(`
     SELECT ${CARD_COLUMNS} FROM products p JOIN users u ON u.id = p.seller_id
-    WHERE p.status = 'disponible' AND ${LIVE_SELLER} ${hide} ORDER BY ${FEATURED_SQL} DESC, COALESCE(p.bumped_at, p.created_at) DESC, p.id DESC LIMIT ?
+    WHERE p.status = 'disponible' AND ${LIVE_SELLER} ${hide} ORDER BY ${FEATURED_SQL} DESC, ${RECENT_SQL} DESC, p.id DESC LIMIT ?
   `).all(...(viewerId ? [viewerId, viewerId] : []), limit);
 }
 

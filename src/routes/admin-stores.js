@@ -15,6 +15,7 @@ import { COLUMNS, MAX_ROWS, importRows, templateCsv } from '../bulk.js';
 import { notifyMatches } from '../alerts.js';
 import { ImageError } from '../images.js';
 import { approve, reject, revoke, setApprovalRequired } from '../approval.js';
+import { adminBack } from '../admin-panel.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -148,16 +149,16 @@ router.post('/tiendas/:id/historial', (req, res, next) => {
 });
 
 // ---------- Aprobación de tiendas ----------
-const flashTo = (res, message, anchor) => {
+const flashTo = (res, message, anchor, req = null) => {
   res.cookie('flash', message, { httpOnly: true, sameSite: 'lax', maxAge: 60_000 });
-  res.redirect(`/admin#${anchor}`);
+  res.redirect(req ? adminBack(req, `/admin#${anchor}`) : `/admin#${anchor}`);
 };
 
 router.post('/tiendas/:id/aprobar', async (req, res, next) => {
   try {
     const u = await approve(Number(req.params.id));
     if (!u) return next();
-    flashTo(res, `${u.store_name} aprobada: ya puede publicar (le avisamos por correo).`, 'tiendas-por-aprobar');
+    flashTo(res, `${u.store_name} aprobada: ya puede publicar (le avisamos por correo).`, 'tiendas-por-aprobar', req);
   } catch (err) { next(err); }
 });
 
@@ -165,14 +166,14 @@ router.post('/tiendas/:id/rechazar', async (req, res, next) => {
   try {
     const u = await reject(Number(req.params.id), req.body.reason);
     if (!u) return next();
-    flashTo(res, `Solicitud de ${u.store_name} rechazada (le avisamos por correo).`, 'tiendas-por-aprobar');
+    flashTo(res, `Solicitud de ${u.store_name} rechazada (le avisamos por correo).`, 'tiendas-por-aprobar', req);
   } catch (err) { next(err); }
 });
 
 router.post('/tiendas/:id/quitar-aprobacion', (req, res, next) => {
   const u = revoke(Number(req.params.id), req.body.reason);
   if (!u) return next();
-  flashTo(res, `${u.store_name} ya no puede publicar; sus artículos a la venta quedaron pausados.`, 'usuarios');
+  flashTo(res, `${u.store_name} ya no puede publicar; sus artículos a la venta quedaron pausados.`, 'usuarios', req);
 });
 
 router.post('/aprobacion', (req, res) => {

@@ -39,7 +39,7 @@ router.get('/tiendas', (req, res) => {
   const viewer = req.user?.role === 'usuario' ? req.user.id : null;
   const hide = viewer ? `AND ${notBlockedSql('u.id')}` : '';
   const stores = db.prepare(`
-    SELECT u.id, COALESCE(u.store_name, u.name) AS store_name, u.province, u.store_logo, u.store_banner, ${FEATURED_SQL} AS featured,
+    SELECT u.id, COALESCE(u.store_name, u.name) AS store_name, u.province, u.store_logo, u.store_banner, u.priority, ${FEATURED_SQL} AS featured,
       (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible') AS listings,
       (SELECT COALESCE(i.thumb, i.filename) FROM products p JOIN product_images i ON i.product_id = p.id
         WHERE p.seller_id = u.id AND p.status = 'disponible' ORDER BY p.created_at DESC, i.position LIMIT 1) AS cover
@@ -49,7 +49,7 @@ router.get('/tiendas', (req, res) => {
            OR u.sales_base > 0 OR EXISTS (SELECT 1 FROM orders o WHERE o.seller_id = u.id AND o.status = 'completado'))
   `).all(...(viewer ? [viewer, viewer] : []))
     .map((s) => ({ ...s, sales: salesSummary(s.id), rating: ratingSummary(s.id), presence: presenceOf(s.id), hoursStatus: storeHoursInfo(s.id).status, promo: storePromoOf(s.id) }))
-    .sort((a, b) => b.featured - a.featured || b.sales.total - a.sales.total || b.listings - a.listings);
+    .sort((a, b) => b.featured - a.featured || b.priority - a.priority || b.sales.total - a.sales.total || b.listings - a.listings);
   res.render('stores', {
     title: 'Tiendas', stores,
     og: { title: 'Tiendas en CowFace', description: `${stores.length} tiendas de ropa, zapatos y bolsos en Costa Rica, con sus ventas y reseñas. Compra protegida.` },

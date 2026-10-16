@@ -1,0 +1,121 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'pagos' }) %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Pagos</h1>
+      <p class="muted">Verifica los SINPE que entran y págale a cada tienda de una sola vez al final del día.</p>
+    </div>
+    <a class="btn btn-small btn-ghost" href="/admin/pagos.csv" download>Descargar pagos (Excel)</a>
+  </div>
+
+  <% if (!pay.phone || !pay.holder) { %>
+    <div class="notice"><strong>Falta configurar el cobro.</strong> Mientras no pongas tu número SINPE Móvil, nadie puede comprar. <a href="/admin#config">Configurar</a></div>
+  <% } %>
+
+  <div class="kpis">
+    <div class="kpi <%= toVerify.length ? 'kpi-warn' : '' %>"><span class="kpi-label">SINPE por verificar</span><span class="kpi-n"><%= toVerify.length %></span><span class="muted small"><%= money(toVerify.reduce((a, o) => a + (o.total || o.price), 0)) %></span></div>
+    <div class="kpi <%= board.due.length ? 'kpi-warn' : 'kpi-accent' %>"><span class="kpi-label">Pagar hoy a tiendas</span><span class="kpi-n"><%= money(board.dueTotal) %></span><span class="muted small"><%= board.due.length %> tienda<%= board.due.length === 1 ? '' : 's' %></span></div>
+    <div class="kpi"><span class="kpi-label">Próximos días</span><span class="kpi-n"><%= money(board.upcomingTotal) %></span><span class="muted small"><%= board.upcoming.length %> pedido<%= board.upcoming.length === 1 ? '' : 's' %></span></div>
+    <div class="kpi <%= refunds.length ? 'kpi-warn' : '' %>"><span class="kpi-label">Reembolsos</span><span class="kpi-n"><%= refunds.length %></span><span class="muted small">por devolver</span></div>
+  </div>
+
+  <section class="panel" id="verificar">
+    <div class="panel-head"><h2>1. SINPE por verificar</h2></div>
+    <% if (!toVerify.length) { %>
+      <p class="muted">No hay pagos por verificar. 🎉</p>
+    <% } else { %>
+      <p class="hint">Busca en tu app del banco un SINPE por el monto exacto con ese número de comprobante. Si está, confírmalo: la tienda recibe aviso para enviar.</p>
+      <div class="todo-list">
+        <% for (const o of toVerify) { %>
+          <div class="pay-row">
+            <div class="pay-row-main">
+              <span class="pay-amount copy" data-copy="<%= o.total || o.price %>"><%= money(o.total || o.price) %></span>
+              <span>Comprobante <strong class="copy" data-copy="<%= o.payment_reference %>"><%= o.payment_reference %></strong> · <%= o.code %></span>
+              <span class="muted small"><%= o.buyer_name %> → <%= o.store_name %> · «<%= o.product_title %>» · <%= DELIVERY_LABELS[o.delivery_method] || '' %><%= o.shipping_cost ? ` (envío ${money(o.shipping_cost)})` : '' %> · avisó <%= when(o.payment_reported_at, true) %></span>
+              <% if (o.payment_proof) { %><a class="file-link small" href="/adjuntos/<%= o.payment_proof %>" target="_blank" rel="noopener">📷 Ver captura del SINPE</a><% } %>
+            </div>
+            <div class="pay-row-actions">
+              <form action="/admin/pedidos/<%= o.id %>/confirmar-pago" method="post" data-confirm="¿Confirmas que recibiste <%= money(o.total || o.price) %> con el comprobante <%= o.payment_reference %>?">
+                <input type="hidden" name="back" value="/admin/pagos"><button class="btn btn-small">✓ Pago recibido</button>
+              </form>
+              <form action="/admin/pedidos/<%= o.id %>/rechazar-pago" method="post" data-confirm="¿Avisar al comprador que no encontraste el pago?">
+                <input type="hidden" name="back" value="/admin/pagos"><button class="btn btn-small btn-ghost">No lo encuentro</button>
+              </form>
+            </div>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+  </section>
+
+  <section class="panel" id="tiendas">
+    <div class="panel-head"><h2>2. Pagar a tiendas</h2><span class="muted small">Se paga <%= payoutRule() %></span></div>
+    <% if (!board.due.length) { %>
+      <p class="muted">Hoy no hay que pagarle a ninguna tienda.</p>
+    <% } else { %>
+      <p class="hint">Un SINPE por tienda con el total. La comisión ya está rebajada y el envío ya está sumado. Toca el número o el monto para copiarlo.</p>
+      <div class="payout-cards">
+        <% for (const g of board.due) { %>
+          <article class="payout-card">
+            <div class="payout-card-head">
+              <strong><%= g.store %></strong>
+              <span class="pay-amount copy" data-copy="<%= g.total %>"><%= money(g.total) %></span>
+            </div>
+            <div class="payout-to">
+              <% if (g.phone) { %>SINPE <strong class="copy" data-copy="<%= g.phone %>"><%= g.phone %></strong> · <%= g.holder || '' %><% } else { %><span class="pill pill-danger">Sin número SINPE registrado</span><% } %>
+            </div>
+            <ul class="payout-orders">
+              <% for (const o of g.orders) { %>
+                <li><span><%= o.code %> · <%= o.product_title %></span><span><%= money(o.payout_amount) %></span></li>
+              <% } %>
+            </ul>
+            <form action="/admin/pagos/tienda/<%= g.sellerId %>" method="post" data-confirm="¿Ya le transferiste <%= money(g.total) %> a <%= g.holder || g.store %>?">
+              <button class="btn btn-small btn-block" <%= g.phone ? '' : 'disabled' %>>Ya le pagué <%= money(g.total) %></button>
+            </form>
+          </article>
+        <% } %>
+      </div>
+    <% } %>
+    <% if (board.upcoming.length) { %>
+      <details class="upcoming">
+        <summary class="small">Próximos días: <%= board.upcoming.length %> pago<%= board.upcoming.length === 1 ? '' : 's' %> por <%= money(board.upcomingTotal) %></summary>
+        <ul class="payout-orders">
+          <% for (const o of board.upcoming) { %><li><span><%= o.store_name %> · <%= o.code %> · <%= payoutWhen(o) %></span><span><%= money(o.payout_amount) %></span></li><% } %>
+        </ul>
+      </details>
+    <% } %>
+  </section>
+
+  <% if (refunds.length) { %>
+    <section class="panel" id="reembolsos">
+      <div class="panel-head"><h2>3. Reembolsos por devolver</h2></div>
+      <p class="hint">Devuelve el monto por SINPE al número desde el que pagó el comprador (lo ves en tu banco con el comprobante) y márcalo.</p>
+      <% for (const o of refunds) { %>
+        <div class="pay-row">
+          <div class="pay-row-main"><span class="pay-amount"><%= money(o.total || o.price) %></span><span><%= o.code %> · a <%= o.buyer_name %> · comprobante original <%= o.payment_reference %></span></div>
+          <form action="/admin/pedidos/<%= o.id %>/reembolsado" method="post" data-confirm="¿Ya devolviste <%= money(o.total || o.price) %>?"><input type="hidden" name="back" value="/admin/pagos"><button class="btn btn-small">Ya lo devolví</button></form>
+        </div>
+      <% } %>
+    </section>
+  <% } %>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Últimos pagos a tiendas</h2></div>
+    <% if (!history.length) { %>
+      <p class="muted">Todavía no hay pagos a tiendas.</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Fecha</th><th>Tienda</th><th>Pedido</th><th>Monto</th></tr></thead>
+          <tbody>
+            <% for (const h of history) { %><tr><td><%= when(h.payout_paid_at, true) %></td><td><%= h.store_name %><div class="muted small"><%= h.payout_phone || '' %></div></td><td><%= h.code %><div class="muted small"><%= h.product_title %></div></td><td><%= money(h.payout_amount) %></td></tr><% } %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+</div>
+<%- include('../partials/footer') %>

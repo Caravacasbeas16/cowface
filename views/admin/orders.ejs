@@ -1,0 +1,43 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'pedidos' }) %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Pedidos</h1>
+      <p class="muted">Busca cualquier pedido por código, comprador, tienda, comprobante del SINPE o teléfono.</p>
+    </div>
+  </div>
+
+  <form class="inv-toolbar admin-search" action="/admin/pedidos" method="get" role="search">
+    <input type="search" name="q" value="<%= q %>" placeholder="Ej. CF-1A2B3C, Sofía, 88881234" aria-label="Buscar pedidos">
+    <select name="estado" aria-label="Estado">
+      <option value="">Todos los estados</option>
+      <% for (const [k, label] of Object.entries(ORDER_STATUS)) { %><option value="<%= k %>" <%= estado === k ? 'selected' : '' %>><%= label %></option><% } %>
+    </select>
+    <button class="btn btn-small btn-ghost">Buscar</button>
+  </form>
+
+  <p class="muted small"><%= orders.length %> pedido<%= orders.length === 1 ? '' : 's' %><%= orders.length === 150 ? ' (los 150 más recientes)' : '' %></p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Pedido</th><th>Artículo</th><th>Tienda → comprador</th><th>Total</th><th>Entrega</th><th>Estado</th><th></th></tr></thead>
+      <tbody>
+        <% for (const o of orders) { %>
+          <tr>
+            <td><strong><%= o.code %></strong><div class="muted small"><%= when(o.created_at, true) %></div></td>
+            <td><%= o.product_title %><% if (o.price !== o.list_price) { %><div class="muted small">oferta · publicado <%= money(o.list_price) %></div><% } %></td>
+            <td><%= o.store_name %> → <%= o.buyer_name %><div class="muted small"><%= o.buyer_email %></div></td>
+            <td><%= money(o.total || o.price) %><div class="muted small">comisión <%= money(o.commission_amount) %></div></td>
+            <td><%= DELIVERY_LABELS[o.delivery_method] || (o.delivery_requested ? `${DELIVERY_LABELS[o.delivery_requested]} (por cotizar)` : '—') %><% if (o.payment_reference) { %><div class="muted small">SINPE <%= o.payment_reference %></div><% } %></td>
+            <td><span class="status status-<%= o.status %>"><%= ORDER_STATUS[o.status] %></span><% if (o.status === 'completado') { %><div class="muted small">tienda <%= o.payout_status === 'pagado' ? 'pagada' : 'por pagar' %></div><% } %></td>
+            <td><% if (o.conversation_id) { %><a class="btn btn-small btn-ghost" href="/admin/conversaciones/<%= o.conversation_id %>">Ver chat</a><% } %></td>
+          </tr>
+        <% } %>
+        <% if (!orders.length) { %><tr><td colspan="7" class="muted">No hay pedidos<%= q || estado ? ' con esa búsqueda' : ' todavía' %>.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+</div>
+<%- include('../partials/footer') %>

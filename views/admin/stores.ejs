@@ -1,0 +1,115 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'tiendas' }) %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Tiendas</h1>
+      <p class="muted">Aprueba tiendas nuevas, dales prioridad o destácalas, y suspende las que den problemas.<%= approvalOn ? '' : ' (La aprobación está apagada: cualquiera puede publicar.)' %></p>
+    </div>
+    <a class="btn btn-small" href="/admin/tiendas/nueva">+ Crear tienda</a>
+  </div>
+
+  <nav class="tabs" aria-label="Tiendas por estado">
+    <% for (const [key, label] of Object.entries(STORE_TABS)) { %>
+      <a href="/admin/tiendas?tab=<%= key %>" class="<%= tab === key ? 'is-active' : '' %>"><%= label %> <span class="tab-n"><%= counts[key] %></span></a>
+    <% } %>
+  </nav>
+
+  <form class="inv-toolbar admin-search" action="/admin/tiendas" method="get" role="search">
+    <input type="hidden" name="tab" value="<%= tab %>">
+    <input type="search" name="q" value="<%= q %>" placeholder="Buscar por tienda, nombre, correo o teléfono" aria-label="Buscar tiendas">
+    <button class="btn btn-small btn-ghost">Buscar</button>
+  </form>
+
+  <% if (tab === 'pendientes') { %>
+    <% if (!requests.length) { %>
+      <div class="empty"><p>No hay solicitudes por revisar. 🎉</p></div>
+    <% } else { %>
+      <p class="hint">Revisa su Instagram y las fotos de productos y envíos. Mientras esperan pueden ir guardando borradores.</p>
+      <div class="task-list"><% for (const t of requests) { %><%- include('request-card', { t, back }) %><% } %></div>
+    <% } %>
+  <% } else if (!stores.length) { %>
+    <div class="empty"><p>No hay nada en esta lista<%= q ? ' con esa búsqueda' : '' %>.</p></div>
+  <% } else { %>
+    <div class="admin-stores">
+      <% for (const s of stores) { %>
+        <article class="admin-store <%= s.active ? '' : 'is-off' %>">
+          <div class="admin-store-head">
+            <%- include('../partials/store-logo', { name: s.store_name, logo: s.store_logo, size: 'md' }) %>
+            <div class="admin-store-id">
+              <a href="/u/<%= s.id %>" class="admin-store-name"><%= s.store_name %></a>
+              <div class="muted small"><%= s.name %> · <%= s.province %> · <%= s.email %> · <%= s.phone %></div>
+              <div class="inv-badges">
+                <% const st = { aprobado: ['vendido', 'Aprobada'], pendiente: ['por_pagar', 'Por aprobar'], rechazado: ['en_disputa', 'No aprobada'] }[s.seller_status]; %>
+                <% if (st) { %><span class="status status-<%= st[0] %>"><%= st[1] %></span><% } %>
+                <% if (!s.active) { %><span class="pill pill-danger">Suspendida</span><% } %>
+                <% if (s.featured) { %><span class="featured-pill">★ Destacada <%= s.featured_until > '2100' ? '' : `hasta ${when(s.featured_until, true).replace(/,.*$/, '')}` %></span><% } %>
+                <% if (s.priority) { %><span class="pill pill-warn">Prioridad <%= PRIORITIES[s.priority] %></span><% } %>
+                <% if (s.store_paused) { %><span class="pill">En pausa</span><% } %>
+              </div>
+            </div>
+          </div>
+          <dl class="admin-store-stats">
+            <div><dt>Calificación</dt><dd><%= s.rating.count ? `${s.rating.avg.toFixed(1)} ★ (${s.rating.count})` : '—' %></dd></div>
+            <div><dt>Ventas</dt><dd><%= s.sales %></dd></div>
+            <div><dt>A la venta</dt><dd><%= s.listings %><%= s.drafts ? ` · ${s.drafts} borr.` : '' %></dd></div>
+            <div><dt>Seguidores · ♥</dt><dd><%= s.followers %> · <%= s.favs %></dd></div>
+            <div><dt>Problemas</dt><dd class="<%= s.problems || s.reports || s.flagged ? 'warn' : '' %>"><%= s.problems %> reclamos · <%= s.reports %> reportes · <%= s.flagged %> bloqueos</dd></div>
+            <div><dt>Recibe pagos en</dt><dd><%= s.payout_phone || '—' %><%= s.payout_name ? ` (${s.payout_name})` : '' %></dd></div>
+          </dl>
+          <div class="admin-store-actions">
+            <form action="/admin/tiendas/<%= s.id %>/prioridad" method="post" class="inline-form">
+              <input type="hidden" name="back" value="<%= back %>">
+              <label>Prioridad
+                <select name="priority" aria-label="Prioridad de <%= s.store_name %>">
+                  <% for (const [k, label] of Object.entries(PRIORITIES)) { %><option value="<%= k %>" <%= Number(k) === s.priority ? 'selected' : '' %>><%= label %></option><% } %>
+                </select>
+              </label>
+              <button class="btn btn-small btn-ghost">Guardar</button>
+            </form>
+            <% if (s.featured) { %>
+              <form action="/admin/tiendas/<%= s.id %>/destacar" method="post" class="inline-form">
+                <input type="hidden" name="back" value="<%= back %>">
+                <button class="btn btn-small btn-ghost" name="days" value="quitar">Quitar destacada</button>
+              </form>
+            <% } else if (s.active) { %>
+              <form action="/admin/tiendas/<%= s.id %>/destacar" method="post" class="inline-form">
+                <input type="hidden" name="back" value="<%= back %>">
+                <select name="days" aria-label="Destacar por cuánto tiempo">
+                  <option value="7">7 días</option><option value="30" selected>30 días</option><option value="90">90 días</option><option value="siempre">Sin fecha de fin</option>
+                </select>
+                <button class="btn btn-small btn-ghost">★ Destacar</button>
+              </form>
+            <% } %>
+            <details class="more">
+              <summary aria-label="Más acciones">⋯</summary>
+              <div class="more-menu">
+                <a href="/u/<%= s.id %>">Ver la tienda</a>
+                <% if (s.active) { %><a href="/admin/tiendas/<%= s.id %>/carga">Cargar artículos (Excel + fotos)</a><% } %>
+                <a href="/admin/tiendas/<%= s.id %>/historial">Ventas y reseñas previas</a>
+                <a href="/admin/pedidos?q=<%= encodeURIComponent(s.store_name) %>">Ver sus pedidos</a>
+                <% if (s.seller_status === 'aprobado') { %>
+                  <form action="/admin/tiendas/<%= s.id %>/quitar-aprobacion" method="post" data-confirm="¿Quitarle a <%= s.store_name %> el permiso de vender? Sus artículos a la venta quedan pausados."><input type="hidden" name="back" value="<%= back %>"><button>Quitar aprobación</button></form>
+                <% } else { %>
+                  <form action="/admin/tiendas/<%= s.id %>/aprobar" method="post"><input type="hidden" name="back" value="<%= back %>"><button>Aprobar para vender</button></form>
+                <% } %>
+                <% if (s.active) { %>
+                  <form action="/admin/vendedores/<%= s.id %>/enlace-contrasena" method="post" data-confirm="¿Generar un enlace para que <%= s.store_name %> cambie su contraseña? Mándalo solo a <%= s.email %>."><button>Enlace para cambiar contraseña</button></form>
+                <% } %>
+                <form action="/admin/vendedores/<%= s.id %>/activo" method="post" <% if (s.active) { %>data-confirm="¿Suspender a <%= s.store_name %>? No podrá entrar y sus sesiones se cierran."<% } %>>
+                  <input type="hidden" name="back" value="<%= back %>">
+                  <input type="hidden" name="active" value="<%= s.active ? '0' : '1' %>">
+                  <button class="<%= s.active ? 'danger' : '' %>"><%= s.active ? 'Suspender cuenta' : 'Reactivar cuenta' %></button>
+                </form>
+              </div>
+            </details>
+          </div>
+        </article>
+      <% } %>
+    </div>
+    <p class="hint"><strong>Prioridad</strong>: Alta hace que sus artículos cuenten como 3 días más nuevos en "Más recientes" y en la portada; Máxima, 7 días. <strong>Destacada</strong> va siempre primero, con la marca "★ Destacada".</p>
+  <% } %>
+</div>
+</div>
+<%- include('../partials/footer') %>

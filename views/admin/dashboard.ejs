@@ -1,15 +1,17 @@
 <%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'inicio' }) %>
+<div class="portal-main">
 <div class="page-head">
   <div>
     <h1>Administración</h1>
-    <p class="muted">Pagos, comisiones, usuarios y el filtro del chat.</p>
+    <p class="muted">Lo que hay que hacer hoy, pedidos, usuarios y la configuración.</p>
   </div>
   <nav class="admin-links">
-    <a class="btn" href="/admin/ganancias">Ganancias</a>
-    <a class="btn btn-ghost" href="#usuarios">Tiendas</a>
-    <a class="btn btn-ghost" href="/admin/tiendas/nueva">+ Crear tienda</a>
-    <a class="btn btn-ghost" href="#notificaciones">Notificaciones</a>
-    <a class="btn btn-ghost" href="#respaldos">Respaldos</a>
+    <a class="btn btn-small" href="/admin/pagos">Pagos de hoy</a>
+    <a class="btn btn-small btn-ghost" href="/admin/tiendas">Tiendas</a>
+    <a class="btn btn-small btn-ghost" href="#notificaciones">Notificaciones</a>
+    <a class="btn btn-small btn-ghost" href="#respaldos">Respaldos</a>
   </nav>
 </div>
 
@@ -79,33 +81,7 @@
     <p class="hint">Pidieron permiso para vender. Revisa su Instagram y lo que van a vender; mientras esperan pueden ir guardando borradores.</p>
     <div class="task-list">
       <% for (const t of storesToApprove) { %>
-        <div class="task task-ship">
-          <div class="task-main">
-            <strong><%= t.store_name %></strong> · <%= t.name %> · <%= t.province %>
-            <div class="muted small"><%= t.email %> · <%= t.phone %> · pidió <%= when(t.request.requested_at || t.created_at, true) %><%= t.drafts ? ` · ${t.drafts} borrador${t.drafts === 1 ? '' : 'es'} listos` : '' %></div>
-            <% if (t.request.instagram) { %><div class="small">Instagram: <a href="https://www.instagram.com/<%= encodeURIComponent(t.request.instagram) %>/" target="_blank" rel="noopener noreferrer">@<%= t.request.instagram %></a></div><% } %>
-            <div class="flag-body">«<%= t.request.about %>»</div>
-            <div class="small"><strong>Dirección:</strong> <%= t.store_address || '—' %></div>
-            <div class="small"><strong>Pick up:</strong> <%= t.points.length ? t.points.join(' · ') : '—' %></div>
-            <% for (const [label, list] of [['Productos', t.request.product_photos || []], ['Envíos', t.request.shipment_photos || []]]) { %>
-              <div class="ref-label"><%= label %> (<%= list.length %>)</div>
-              <% if (list.length) { %>
-                <div class="ref-photos">
-                  <% for (const n of list) { %><a href="/adjuntos/<%= n %>" target="_blank" rel="noopener"><img src="/adjuntos/<%= n %>" alt="<%= label %> de <%= t.store_name %>" loading="lazy"></a><% } %>
-                </div>
-              <% } else { %>
-                <div class="muted small"><%= label === 'Envíos' && t.request.no_shipments ? 'Dice que todavía no ha hecho envíos.' : 'Sin fotos.' %></div>
-              <% } %>
-            <% } %>
-          </div>
-          <div class="ship-actions">
-            <form action="/admin/tiendas/<%= t.id %>/aprobar" method="post"><button class="btn btn-small">Aprobar</button></form>
-            <form action="/admin/tiendas/<%= t.id %>/rechazar" method="post" class="reject-form">
-              <input name="reason" maxlength="300" placeholder="Motivo (opcional, se lo enviamos)" aria-label="Motivo del rechazo">
-              <button class="btn btn-small btn-ghost" data-confirm-click="¿Rechazar la solicitud de <%= t.store_name %>?">Rechazar</button>
-            </form>
-          </div>
-        </div>
+        <%- include('request-card', { t }) %>
       <% } %>
     </div>
   <% } %>
@@ -451,4 +427,6 @@
     </div>
   <% } %>
 </section>
+</div>
+</div>
 <%- include('../partials/footer') %>
