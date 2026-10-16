@@ -263,3 +263,4 @@ a.kpi:hover { border-color: var(--ink); text-decoration: none; }
   .admin-search { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
   .admin-search input[type="search"] { grid-column: 1 / -1; }
 }
+.inline-form input[name="percent"] { width: 4.5rem; padding: .4rem; }

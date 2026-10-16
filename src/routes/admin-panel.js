@@ -5,12 +5,12 @@ import { requireRole } from '../auth.js';
 import { ORDER_STATUS } from '../catalog.js';
 import { DELIVERY_LABELS, adminQueues, paymentConfig } from '../orders.js';
 import { pendingStores, approvalRequired } from '../approval.js';
-import { db } from '../db.js';
+import { commissionRate, db } from '../db.js';
 import { UserError } from '../messages.js';
 import { publicBaseUrl } from '../urls.js';
 import { MAX_SUPPORT_TEXT, adminWrites, markSupportRead, supportInbox, supportThread } from '../support.js';
 import {
-  PRIORITIES, STORE_TABS, adminBack, adminLocals, orderSearch, payAllDue, payoutBoard, payoutHistory, payoutsCsv, setPriority,
+  PRIORITIES, STORE_TABS, adminBack, adminLocals, orderSearch, setCommission, payAllDue, payoutBoard, payoutHistory, payoutsCsv, setPriority,
   storeList, storeTabCounts,
 } from '../admin-panel.js';
 
@@ -28,7 +28,14 @@ router.get('/tiendas', (req, res) => {
   res.render('admin/stores', {
     title: 'Tiendas', adminActive: 'tiendas', tab, q, counts, STORE_TABS, PRIORITIES, stores: storeList(tab, q),
     requests: tab === 'pendientes' ? pendingStores() : [], approvalOn: approvalRequired(), back: req.originalUrl,
+    generalRate: commissionRate(),
   });
+});
+
+router.post('/tiendas/:id/comision', (req, res) => {
+  const r = setCommission(Number(req.params.id), req.body.percent);
+  flash(res, r.error || (r.rate === null ? `Comisión: la general (${+(commissionRate() * 100).toFixed(2)} %).` : `Comisión de esta tienda: ${+(r.rate * 100).toFixed(2)} % (en los pedidos nuevos).`));
+  res.redirect(adminBack(req, '/admin/tiendas'));
 });
 
 router.post('/tiendas/:id/prioridad', (req, res) => {

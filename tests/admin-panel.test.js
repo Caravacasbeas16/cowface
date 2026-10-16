@@ -121,3 +121,25 @@ test('pagos: verificar el SINPE desde Pagos y pagarle a la tienda todo de una ve
   assert.ok(search.includes(a.code) && !search.includes(b.code));
   assert.match(await (await get('/admin/pedidos?estado=completado', admin)).text(), new RegExp(b.code));
 });
+
+test('comisión por tienda: el admin la cambia, aplica a los pedidos nuevos y vacío vuelve a la general', async () => {
+  let res = await post(`/admin/tiendas/${otherId}/comision`, admin, { percent: '3.5', back: '/admin/tiendas?tab=aprobadas' });
+  assert.match(flashOf(res), /Comisión de esta tienda: 3\.5 %/);
+  assert.equal(res.headers.get('location'), '/admin/tiendas?tab=aprobadas');
+  assert.match(await (await get('/admin/tiendas?tab=aprobadas', admin)).text(), /name="percent"[^>]*value="3\.5"/);
+  assert.match(flashOf(await post(`/admin/tiendas/${otherId}/comision`, admin, { percent: '80' })), /de 0 % a 50 %/);
+  assert.equal((await post(`/admin/tiendas/${otherId}/comision`, other, { percent: '0' })).status, 403, 'solo el admin');
+
+  // El formulario de publicar le muestra su comisión, y el pedido nuevo la usa.
+  assert.match(await (await get('/vendedor/productos/nuevo', other)).text(), /Comisión CowFace \(3\.5 %\)/);
+  const id = await publishPolo(other, { title: 'Gorra con comisión propia', price: '₡20.000' });
+  await post(`/p/${id}/comprar`, buyer);
+  const o = db.prepare('SELECT * FROM orders WHERE product_id = ?').get(id);
+  assert.equal(o.commission_rate, 0.035);
+  assert.equal(o.commission_amount, 700);
+
+  // Vacío: vuelve a la general (2 % en las pruebas).
+  res = await post(`/admin/tiendas/${otherId}/comision`, admin, { percent: '' });
+  assert.match(flashOf(res), /la general \(2 %\)/);
+  assert.equal(db.prepare('SELECT commission_rate FROM users WHERE id = ?').get(otherId).commission_rate, null);
+});

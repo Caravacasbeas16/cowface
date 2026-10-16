@@ -43,7 +43,7 @@ export function storeList(tab, q = '') {
   }
   return db.prepare(`
     SELECT u.id, u.name, COALESCE(u.store_name, u.name) AS store_name, u.email, u.phone, u.province, u.active, u.created_at,
-      u.seller_status, u.priority, u.featured_until, ${FEATURED_SQL} AS featured, u.store_logo, u.store_paused, u.last_seen_at,
+      u.seller_status, u.priority, u.commission_rate, u.featured_until, ${FEATURED_SQL} AS featured, u.store_logo, u.store_paused, u.last_seen_at,
       u.payout_phone, u.payout_name,
       (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'disponible') AS listings,
       (SELECT COUNT(*) FROM products p WHERE p.seller_id = u.id AND p.status = 'borrador') AS drafts,
@@ -56,6 +56,20 @@ export function storeList(tab, q = '') {
     FROM users u WHERE ${where.join(' AND ')}
     ORDER BY featured DESC, u.priority DESC, listings DESC, u.created_at DESC LIMIT 300
   `).all(...params).map((s) => ({ ...s, sales: salesSummary(s.id).total, rating: ratingSummary(s.id).asSeller }));
+}
+
+// Comisión acordada con una tienda, en %. Vacío = vuelve a la comisión general. Solo afecta pedidos nuevos.
+export const MAX_COMMISSION_PCT = 50;
+export function setCommission(userId, percent) {
+  const raw = String(percent ?? '').trim().replace(',', '.');
+  let rate = null;
+  if (raw !== '') {
+    const pct = Number(raw);
+    if (!Number.isFinite(pct) || pct < 0 || pct > MAX_COMMISSION_PCT) return { error: `La comisión debe ser de 0 % a ${MAX_COMMISSION_PCT} %.` };
+    rate = Math.round(pct * 100) / 10000;
+  }
+  const r = db.prepare("UPDATE users SET commission_rate = ? WHERE id = ? AND role = 'usuario'").run(rate, userId);
+  return r.changes ? { rate } : { error: 'Esa tienda no existe.' };
 }
 
 export function setPriority(userId, level) {

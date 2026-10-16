@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { requireRole } from '../auth.js';
-import { db, commissionRate } from '../db.js';
+import { db, commissionRateFor } from '../db.js';
 import {
   createProduct, deleteImage, deleteProduct, getProduct, imageCount, quickUpdate, setCoverImage,
   markSoldElsewhere, refreshProductSearch, setProductStatus, updateProduct,
@@ -81,7 +81,7 @@ function savedFields(p) {
 }
 
 const formView = (title, product, form, errors, user = null) => ({
-  title, product, form, errors, welcome: false, commissionRateNow: commissionRate(), releaseDays: paymentConfig().releaseDays,
+  title, product, form, errors, welcome: false, commissionRateNow: commissionRateFor(user?.id), releaseDays: paymentConfig().releaseDays,
   canPublish: user ? canPublish(user) : true, sellerState: user ? sellerStatus(user) : 'aprobado',
 });
 
@@ -156,7 +156,7 @@ router.post('/borrar-cuenta', deleteLimit, (req, res) => {
 
 // Datos para recibir los pagos de CowFace (SINPE Móvil). Se piden antes de publicar.
 router.get('/pagos', (req, res) => {
-  res.render('seller/payout', { title: 'Datos para recibir pagos', commissionRateNow: commissionRate(), error: null, form: req.user, next: req.query.next === 'publicar' ? 'publicar' : '' });
+  res.render('seller/payout', { title: 'Datos para recibir pagos', commissionRateNow: commissionRateFor(req.user.id), error: null, form: req.user, next: req.query.next === 'publicar' ? 'publicar' : '' });
 });
 
 // Dirección de la tienda y puntos de pick up (se piden en la solicitud y se pueden cambiar aquí).
@@ -195,7 +195,7 @@ router.post('/pagos', (req, res) => {
   const name = String(req.body.payout_name ?? '').trim().slice(0, 80);
   if (!phone || name.length < 3) {
     return res.status(400).render('seller/payout', {
-      title: 'Datos para recibir pagos', commissionRateNow: commissionRate(), error: 'Escribe un número SINPE Móvil de 8 dígitos y el nombre del titular.', form: req.body, next: req.body.next,
+      title: 'Datos para recibir pagos', commissionRateNow: commissionRateFor(req.user.id), error: 'Escribe un número SINPE Móvil de 8 dígitos y el nombre del titular.', form: req.body, next: req.body.next,
     });
   }
   const before = req.user.payout_phone;

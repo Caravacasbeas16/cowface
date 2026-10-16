@@ -16,7 +16,7 @@ export const db = new DatabaseSync(process.env.DB_PATH || path.join(DATA_DIR, 'c
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 30;
+const SCHEMA_VERSION = 31;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -348,6 +348,7 @@ addColumn('orders', 'payer_name', 'TEXT');                         // nombre de 
 addColumn('orders', 'payment_proof_hash', 'TEXT');                 // huella de la captura: no sirve para dos pedidos
 addColumn('orders', 'payment_reminded_at', 'TEXT');                // recordatorio de pago enviado (3 h antes de vencer)
 addColumn('users', 'payout_changed_at', 'TEXT');                  // último cambio del SINPE para cobrar (aviso al admin)
+addColumn('users', 'commission_rate', 'REAL');                    // comisión acordada con la tienda (NULL = la general)
 addColumn('users', 'priority', 'INTEGER NOT NULL DEFAULT 0');      // prioridad que da el admin: 0 normal, 1 alta, 2 máxima
 
 // Reportes de artículos, personas y conversaciones (requisito de Google Play / App Store).
@@ -427,6 +428,12 @@ export function setSetting(key, value) {
 export function commissionRate() {
   const rate = Number(getSetting('commission_rate'));
   return Number.isFinite(rate) ? rate : 0.05;
+}
+
+// Comisión de una tienda: la que el admin acordó con ella, o la general si no tiene una propia.
+export function commissionRateFor(sellerId) {
+  const own = sellerId ? db.prepare('SELECT commission_rate FROM users WHERE id = ?').get(sellerId)?.commission_rate : null;
+  return own === null || own === undefined ? commissionRate() : own;
 }
 
 let depth = 0;

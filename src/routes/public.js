@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { db, commissionRate } from '../db.js';
+import { db } from '../db.js';
 import { favoriteCount, isFavorite } from '../social.js';
 import { endSession, hashPassword, startSession, verifyPassword } from '../auth.js';
 import { CATEGORIES, CONDITIONS, DEPARTMENTS, formatColones } from '../catalog.js';
@@ -70,17 +70,16 @@ router.get('/salud', (req, res) => {
 });
 
 router.get('/terminos', (req, res) => res.render('terms', {
-  title: 'Términos de uso', ratePercent: +(commissionRate() * 100).toFixed(2), pay: paymentConfig(),
+  title: 'Términos de uso', pay: paymentConfig(),
 }));
 router.get('/privacidad', (req, res) => res.render('privacy', { title: 'Política de privacidad' }));
 router.get('/como-funciona', (req, res) => res.render('how-it-works', {
-  title: 'Cómo funciona la compra protegida', ratePercent: +(commissionRate() * 100).toFixed(2), pay: paymentConfig(),
+  title: 'Cómo funciona la compra protegida', pay: paymentConfig(),
 }));
 
 router.get('/', (req, res) => {
   res.render('home', {
     title: null, latest: latestProducts(15, req.user?.id), counts: countByCategory(), covers: categoryCovers(), brandPhotos,
-    commissionRateNow: commissionRate(),
   });
 });
 

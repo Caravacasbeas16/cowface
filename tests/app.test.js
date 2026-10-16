@@ -151,7 +151,10 @@ test('páginas de salud, términos y privacidad', async () => {
   assert.equal(await (await get('/salud')).text(), 'ok');
   const terms = await (await get('/terminos')).text();
   assert.match(terms, /WhatsApp, Facebook, Messenger/);
-  assert.match(terms, /<strong>2 %<\/strong>/);
+  assert.match(terms, /la comisión que acordó con nosotros/);
+  for (const page of [terms, await (await get('/')).text(), await (await get('/como-funciona')).text()]) {
+    assert.doesNotMatch(page, /\d\s?% de comisión|comisión de <strong>/, 'el porcentaje no se publica');
+  }
   assert.match(terms, /mailto:prueba123@gmail\.com/);
   assert.equal((await get('/privacidad')).status, 200);
   assert.equal(await (await get('/salud?detalle=1')).text(), 'ok', 'el diagnóstico no es público');

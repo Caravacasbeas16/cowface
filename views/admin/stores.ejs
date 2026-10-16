@@ -59,6 +59,13 @@
             <div><dt>Recibe pagos en</dt><dd><%= s.payout_phone || '—' %><%= s.payout_name ? ` (${s.payout_name})` : '' %></dd></div>
           </dl>
           <div class="admin-store-actions">
+            <form action="/admin/tiendas/<%= s.id %>/comision" method="post" class="inline-form">
+              <input type="hidden" name="back" value="<%= back %>">
+              <label>Comisión
+                <input name="percent" inputmode="decimal" size="4" value="<%= s.commission_rate === null ? '' : +(s.commission_rate * 100).toFixed(2) %>" placeholder="<%= +(generalRate * 100).toFixed(2) %>" aria-label="Comisión de <%= s.store_name %> en %"> %
+              </label>
+              <button class="btn btn-small btn-ghost">Guardar</button>
+            </form>
             <form action="/admin/tiendas/<%= s.id %>/prioridad" method="post" class="inline-form">
               <input type="hidden" name="back" value="<%= back %>">
               <label>Prioridad
@@ -109,6 +116,7 @@
         </article>
       <% } %>
     </div>
+    <p class="hint"><strong>Comisión</strong>: la que acordaste con cada tienda; vacío = la general (<%= +(generalRate * 100).toFixed(2) %> %, se cambia en Configuración). Solo cuenta para los pedidos nuevos y no se muestra en ninguna página pública.</p>
     <p class="hint"><strong>Prioridad</strong>: Alta hace que sus artículos cuenten como 3 días más nuevos en "Más recientes" y en la portada; Máxima, 7 días. <strong>Destacada</strong> va siempre primero, con la marca "★ Destacada".</p>
   <% } %>
 </div>

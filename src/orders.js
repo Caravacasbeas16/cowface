@@ -4,7 +4,7 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { ATTACH_DIR } from './storage.js';
-import { db, commissionRate, getSetting, setSetting, transaction } from './db.js';
+import { db, commissionRateFor, getSetting, setSetting, transaction } from './db.js';
 import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
 import { notifyAdmin } from './admin-notify.js';
@@ -129,7 +129,7 @@ export function createOrder(conv, price, source) {
 
   // La comisión se cobra sobre el precio de la prenda. El envío todavía no existe: el comprador elige
   // cómo recibirlo y la tienda lo cotiza; ese monto se suma al total y llega completo al vendedor.
-  const rate = commissionRate();
+  const rate = commissionRateFor(conv.seller_id); // la acordada con la tienda, o la general
   const commission = Math.round(price * rate);
   const code = newOrderCode();
   const { windowHours } = paymentConfig();
