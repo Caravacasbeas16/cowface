@@ -361,7 +361,9 @@
 
 <section id="cifrado">
   <h2>Cifrado de los chats</h2>
-  <% if (chatEncrypted) { %>
+  <% if (CHAT_KEY_PROBLEMS[chatKey]) { %>
+    <div class="notice"><strong>⚠️ <%= chatKey === 'apagado' ? 'Los chats todavía no se cifran.' : 'Problema con la clave del cifrado.' %></strong> <%= CHAT_KEY_PROBLEMS[chatKey] %><%= chatKey === 'apagado' ? '' : ' No la cambies por una nueva: solo la de antes abre lo que ya se cifró.' %> No la compartas con nadie.</div>
+  <% } else if (chatEncrypted) { %>
     <p class="hint">✓ Los mensajes, fotos y comprobantes del chat se guardan cifrados (AES-256): en la base de datos y en los respaldos son ilegibles sin la clave <code>CHAT_KEY</code>. <strong>Nunca la cambies ni la borres</strong>: lo cifrado con ella no se podría volver a leer.</p>
   <% } else { %>
     <div class="notice">

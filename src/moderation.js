@@ -2,6 +2,7 @@
 // antes de que la venta quede registrada en CowFace (así la comisión no se pierde).
 import { db, getSetting, setSetting } from './db.js';
 import { notifyAdmin } from './admin-notify.js';
+import { sealText } from './crypto-box.js';
 
 export const DEFAULT_BLOCKED_WORDS = [
   'whatsapp', 'whats', 'wasap', 'guasap', 'wsp', 'wpp', 'wa.me',
@@ -70,7 +71,7 @@ export function findBlocked(text, words = blockedWords()) {
 
 export function logFlagged({ userId, conversationId = null, context, body, matched }) {
   db.prepare('INSERT INTO flagged_messages (user_id, conversation_id, context, body, matched) VALUES (?, ?, ?, ?, ?)')
-    .run(userId, conversationId, context, String(body).slice(0, 1000), matched);
+    .run(userId, conversationId, context, sealText(String(body).slice(0, 1000)), matched);
   const who = db.prepare('SELECT COALESCE(store_name, name) AS name FROM users WHERE id = ?').get(userId)?.name || 'Alguien';
   notifyAdmin('bloqueado', `Intento bloqueado (${matched})`, `${who} intentó escribir en ${context}:\n«${String(body).slice(0, 300)}»`, '/admin#bloqueados');
 }

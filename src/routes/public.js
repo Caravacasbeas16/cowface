@@ -24,6 +24,7 @@ import { REPORT_REASONS, createReport } from '../reports.js';
 import { UserError } from '../messages.js';
 import { presenceOf, replyTime } from '../presence.js';
 import { storeHoursInfo } from '../store-hours.js';
+import { chatKeyStatus } from '../chat-key.js';
 
 const router = Router();
 
@@ -66,6 +67,7 @@ router.get('/salud', (req, res) => {
     accesoSocial: enabledProviders(),
     envioCorreo: mailProvider() || 'sin configurar',
     volumen: Boolean(process.env.RAILWAY_VOLUME_MOUNT_PATH),
+    cifradoChats: chatKeyStatus(),
   });
 });
 

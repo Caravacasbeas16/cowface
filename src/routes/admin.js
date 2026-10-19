@@ -25,6 +25,7 @@ import { diskStatus, formatBytes, refreshDisk, setVolumeGb, volumeGbSetting } fr
 import { setStoreSupport, storeSupport } from '../support.js';
 import { normalizePhone } from '../validate.js';
 import { setCourierOn } from '../courier.js';
+import { CHAT_KEY_PROBLEMS, chatKeyStatus } from '../chat-key.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -66,13 +67,13 @@ router.get('/', (req, res) => {
 
   const flagged = db.prepare(`
     SELECT f.*, u.name, u.email FROM flagged_messages f JOIN users u ON u.id = f.user_id ORDER BY f.id DESC LIMIT 50
-  `).all();
+  `).all().map((f) => ({ ...f, body: openText(f.body) }));
 
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS: DELIVERY_LABELS,
     disk: diskStatus(), formatBytes, volumeGb: volumeGbSetting(), support: storeSupport(),
-    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(), helpRequests: openHelpRequests(), reports: openReports(),
+    notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), chatKey: chatKeyStatus(), CHAT_KEY_PROBLEMS, storesToApprove: pendingStores(), approvalOn: approvalRequired(), helpRequests: openHelpRequests(), reports: openReports(),
   });
 });
 

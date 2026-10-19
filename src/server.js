@@ -10,6 +10,7 @@ import { notifyPriceDrops } from './social.js';
 import { sendPaymentReminders } from './payment-reminders.js';
 import { siteBaseUrl } from './urls.js';
 import { encryptExisting } from './crypto-box.js';
+import { checkChatKey, sealOldTexts } from './chat-key.js';
 import { ATTACH_DIR } from './storage.js';
 import { checkDiskAlert } from './disk.js';
 import { backfillHashes } from './photo-check.js';
@@ -25,6 +26,9 @@ db.prepare('DELETE FROM sessions WHERE expires_at < ?').run(new Date().toISOStri
 try {
   const sealed = encryptExisting(db, ATTACH_DIR);
   if (sealed.messages || sealed.files) console.log(`Cifrados: ${sealed.messages} mensajes y ${sealed.files} archivos.`);
+  const texts = sealOldTexts();
+  if (texts) console.log(`Cifrados: ${texts} textos de soporte, intentos bloqueados y pedidos de ayuda.`);
+  checkChatKey();
 } catch (err) { console.error('Error cifrando el historial del chat:', err); }
 
 // Cancela pedidos no pagados a tiempo y libera pagos de envíos sin reclamo.

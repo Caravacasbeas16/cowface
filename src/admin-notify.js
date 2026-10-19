@@ -19,6 +19,7 @@ export const NOTIFY_EVENTS = {
   registro: { label: 'Se registró una persona nueva', default: false },
   publicacion: { label: 'Se publicó un artículo nuevo', default: false },
   bloqueado: { label: 'Alguien intentó compartir su contacto', default: false },
+  seguridad: { label: 'Falta o cambió la clave del cifrado de los chats (CHAT_KEY)', default: true },
   espacio: { label: 'El espacio del volumen pasó el 80 %, 90 % o 95 % (hay que agrandarlo en Railway)', default: true },
 };
 

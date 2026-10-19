@@ -85,6 +85,7 @@
         <a class="clear-all" href="/buscar">Limpiar todo</a>
       </div>
     <% } %>
+    <h1 class="sr-only"><%= alertLabel === 'Todo lo nuevo' ? 'Explorar artículos' : alertLabel %></h1>
     <div class="results-head">
       <p><strong><%= total %></strong> <%= total === 1 ? 'artículo' : 'artículos' %></p>
       <div class="results-tools">

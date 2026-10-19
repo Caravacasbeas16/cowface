@@ -4,6 +4,7 @@
 import { db } from './db.js';
 import { UserError, systemNote } from './messages.js';
 import { notifyAdmin } from './admin-notify.js';
+import { openText, sealText } from './crypto-box.js';
 
 const MAX_OPEN_PER_USER = 5;
 
@@ -14,7 +15,7 @@ export function requestHelp(user, conv, text) {
   if (open >= MAX_OPEN_PER_USER) throw new UserError('Ya tienes varias solicitudes de ayuda abiertas; te respondemos pronto.');
   const order = db.prepare("SELECT id, code FROM orders WHERE conversation_id = ? AND status != 'cancelado' ORDER BY id DESC LIMIT 1").get(conv.id);
   const { lastInsertRowid } = db.prepare('INSERT INTO help_requests (user_id, conversation_id, order_id, body) VALUES (?, ?, ?, ?)')
-    .run(user.id, conv.id, order?.id || null, body);
+    .run(user.id, conv.id, order?.id || null, sealText(body));
   const who = user.store_name || user.name;
   systemNote(conv.id, `🛟 ${who} pidió ayuda a CowFace${order ? ` con el pedido ${order.code}` : ''}. Nos hacemos cargo: revisamos la conversación y les respondemos por aquí.`);
   notifyAdmin('ayuda', `Pidieron ayuda: ${conv.product_title || 'conversación'}${order ? ` (${order.code})` : ''}`,
@@ -28,7 +29,7 @@ export function openHelpRequests() {
     FROM help_requests h JOIN users u ON u.id = h.user_id
     LEFT JOIN conversations c ON c.id = h.conversation_id LEFT JOIN orders o ON o.id = h.order_id
     WHERE h.status = 'abierta' ORDER BY h.id
-  `).all();
+  `).all().map((h) => ({ ...h, body: openText(h.body) }));
 }
 
 export function resolveHelp(id, note) {
