@@ -37,4 +37,9 @@ export function deliveryLocation(method, body) {
   return { delivery_lat: ok ? lat : null, delivery_lng: ok ? lng : null };
 }
 
-export const mapsLink = (o) => (o.delivery_lat ? `https://maps.google.com/?q=${o.delivery_lat},${o.delivery_lng}` : null);
+// Link de Waze para el mensajero: al punto exacto si el comprador mandó su ubicación, o buscando la
+// dirección escrita si no la mandó.
+export function wazeLink(o) {
+  if (o.delivery_lat && o.delivery_lng) return `https://waze.com/ul?ll=${o.delivery_lat},${o.delivery_lng}&navigate=yes`;
+  return o.delivery_address ? `https://waze.com/ul?${new URLSearchParams({ q: o.delivery_address, navigate: 'yes' })}` : null;
+}

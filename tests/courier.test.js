@@ -81,8 +81,12 @@ test('pagado: la tienda ve los días y entrega al mensajero sin foto; el comprad
   reload();
   const text = orderDataText({ ...o, buyer_name: 'Compradora' });
   assert.match(text, new RegExp(`Puede recibir: ${d1.label}`));
-  assert.match(text, /maps\.google\.com\/\?q=9\.9331,-84\.0537/);
+  assert.ok(text.includes('Ubicación en Waze: https://waze.com/ul?ll=9.9331,-84.0537&navigate=yes'));
   assert.match(text, /pasamos a recoger el paquete/);
+  assert.match(await (await get('/admin', admin)).text(), /href="https:\/\/waze\.com\/ul\?ll=9\.9331,-84\.0537&amp;navigate=yes"[^>]*>🚗 Abrir en Waze/);
+  // Sin ubicación del celular: Waze busca la dirección escrita.
+  const noGps = orderDataText({ ...o, delivery_lat: null, delivery_lng: null, buyer_name: 'Compradora' });
+  assert.ok(noGps.includes('Ubicación en Waze (por la dirección): https://waze.com/ul?q=San+Pedro%2C+del+Mall+200+m+este&navigate=yes'));
   assert.doesNotMatch(text, /Envío pagado por el comprador/, 'a la tienda no se le dice que el envío es suyo');
 
   const sellerPage = await thread(seller);

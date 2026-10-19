@@ -10,7 +10,7 @@ import socialRoutes from './routes/social.js';
 import supportRoutes from './routes/support.js';
 import { favoriteIds } from './social.js';
 import { uberLink } from './uber-flash.js';
-import { TIME_SLOTS, isCourier, mapsLink, nextDays } from './courier.js';
+import { TIME_SLOTS, isCourier, wazeLink, nextDays } from './courier.js';
 import sellerRoutes from './routes/seller.js';
 import portalRoutes from './routes/portal.js';
 import attachmentRoutes from './routes/attachments.js';
@@ -157,7 +157,7 @@ export function createApp() {
   // Cuándo se le paga a la tienda ("hoy al final del día", "el lunes 20 oct al final del día") y la regla en palabras.
   app.locals.payoutWhen = (o) => payoutDayLabel(payoutDayOf(o));
   app.locals.uberLink = uberLink;
-  Object.assign(app.locals, { TIME_SLOTS, isCourier, mapsLink, nextDays });
+  Object.assign(app.locals, { TIME_SLOTS, isCourier, wazeLink, nextDays });
   app.locals.todayCR = () => todayCR();
   app.locals.payoutRule = () => `al final del día en que se completa la venta; si se completa después de las ${cutoffLabel(paymentConfig().cutoffHour)} o en fin de semana, el siguiente día hábil`;
   app.locals.OPEN_STATUSES = OPEN_STATUSES;

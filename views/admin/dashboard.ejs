@@ -119,6 +119,7 @@
           <div class="ship-actions">
             <form action="/admin/pedidos/<%= o.id %>/enviar-datos" method="post"><button class="btn btn-small"><%= o.data_sent_at ? 'Reenviar por correo' : 'Mandar por correo' %></button></form>
             <button class="btn btn-small btn-ghost" type="button" data-copy="<%= text %>">Copiar para WhatsApp</button>
+            <% if (isCourier(o.delivery_method) && wazeLink(o)) { %><a class="btn btn-small btn-ghost" href="<%= wazeLink(o) %>" target="_blank" rel="noopener">🚗 Abrir en Waze</a><% } %>
             <% if (!o.data_sent_at) { %><form action="/admin/pedidos/<%= o.id %>/datos-enviados" method="post"><button class="btn btn-small btn-ghost">Ya se los mandé</button></form><% } %>
           </div>
         </div>

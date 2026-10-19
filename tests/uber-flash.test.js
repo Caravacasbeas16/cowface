@@ -57,7 +57,7 @@ test('pagado: la tienda ve "Abrir Uber con el destino"; el comprador todavía no
   assert.doesNotMatch(buyerPage, /Lo recibí, todo bien/);
   assert.match(buyerPage, /pide el Uber Flash/);
   const text = orderDataText({ ...order, buyer_name: 'Compradora' });
-  assert.match(text, /maps\.google\.com\/\?q=9\.9331,-84\.0537/);
+  assert.ok(text.includes('https://waze.com/ul?ll=9.9331,-84.0537&navigate=yes'));
   assert.match(text, /m\.uber\.com\/ul/);
 });
 

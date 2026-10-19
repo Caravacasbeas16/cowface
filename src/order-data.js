@@ -5,7 +5,7 @@ import { now } from './messages.js';
 import { DELIVERY_LABELS, paymentConfig } from './orders.js';
 import { cutoffLabel } from './payout-schedule.js';
 import { uberLink } from './uber-flash.js';
-import { isCourier, mapsLink } from './courier.js';
+import { isCourier, wazeLink } from './courier.js';
 
 export function orderDataText(o, baseUrl = '') {
   const uber = o.delivery_method === 'uber_flash';
@@ -16,7 +16,7 @@ export function orderDataText(o, baseUrl = '') {
     `Entrega: ${DELIVERY_LABELS[o.delivery_method] || o.delivery_method}`,
     `Nombre: ${o.buyer_name}`,
     `Dirección / punto de entrega: ${o.delivery_address}`,
-    (uber || courier) && mapsLink(o) ? `Ubicación en el mapa: ${mapsLink(o)}` : null,
+    courier || (uber && o.delivery_lat) ? `Ubicación en Waze${o.delivery_lat ? '' : ' (por la dirección)'}: ${wazeLink(o)}` : null,
     courier && o.delivery_days ? `Puede recibir: ${o.delivery_days}` : null,
     `Teléfono: ${o.delivery_phone}`,
     o.shipping_cost && !courier ? `Envío pagado por el comprador: ${formatColones(o.shipping_cost)}` : null,
