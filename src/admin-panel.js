@@ -7,6 +7,7 @@ import { adminQueues, admin } from './orders.js';
 import { todayCR } from './payout-schedule.js';
 import { adminUnreadSupport } from './support.js';
 import { photoQueueCount } from './photo-check.js';
+import { unroutedCount } from './courier-runs.js';
 
 // ---------- Tiendas ----------
 
@@ -174,6 +175,7 @@ export function adminLocals(req, res, next) {
     pedidos: q.disputes.length + q.toShip.filter((o) => !o.data_sent_at).length,
     mensajes: adminUnreadSupport(),
     fotos: photoQueueCount(),
+    rutas: unroutedCount(),
     soporte: db.prepare("SELECT (SELECT COUNT(*) FROM reports WHERE status = 'abierto') + (SELECT COUNT(*) FROM help_requests WHERE status = 'abierta') AS n").get().n,
   };
   res.locals.adminArea = true;

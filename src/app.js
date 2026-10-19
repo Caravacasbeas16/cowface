@@ -9,6 +9,7 @@ import publicRoutes from './routes/public.js';
 import socialRoutes from './routes/social.js';
 import supportRoutes from './routes/support.js';
 import adminPhotoRoutes from './routes/admin-photos.js';
+import adminRouteRoutes from './routes/admin-routes.js';
 import { storeSupport } from './support.js';
 import { favoriteIds } from './social.js';
 import { uberLink } from './uber-flash.js';
@@ -239,6 +240,7 @@ export function createApp() {
   app.use('/vendedor', sellerRoutes);
   app.use('/admin', adminPanelRoutes);
   app.use('/admin', adminPhotoRoutes);
+  app.use('/admin', adminRouteRoutes);
   app.use('/admin', adminStoreRoutes);
   app.use('/admin', adminRoutes);
 

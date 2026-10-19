@@ -19,14 +19,16 @@ export function nextDays(from = Date.now(), n = 7) {
   });
 }
 
-// "lun 19 oct, mié 21 oct · en la tarde": los días que marcó el comprador (de los próximos 7) y la franja.
-export function availabilityText(body, from = Date.now()) {
+// Los días que marcó el comprador (de los próximos 7) y la franja: el texto para leer
+// ("lun 19 oct, mié 21 oct · en la tarde") y las fechas para armar las rutas ("2026-10-19,2026-10-21").
+export function availability(body, from = Date.now()) {
   const allowed = new Map(nextDays(from).map((d) => [d.value, d.label]));
   const days = [...new Set([body.days ?? []].flat().map(String))].filter((v) => allowed.has(v)).sort();
   if (!days.length) throw new UserError('Marca al menos un día en que puedas recibir el paquete.');
   const slot = TIME_SLOTS[body.slot] ? body.slot : 'cualquiera';
-  return `${days.map((d) => allowed.get(d)).join(', ')} · ${TIME_SLOTS[slot]}`;
+  return { text: `${days.map((d) => allowed.get(d)).join(', ')} · ${TIME_SLOTS[slot]}`, dates: days.join(','), slot };
 }
+export const availabilityText = (body, from) => availability(body, from).text;
 
 // Ubicación que mandó el comprador desde su celular (dentro de Costa Rica). También la tienen
 // los pedidos viejos de Uber Flash.

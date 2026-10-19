@@ -17,7 +17,7 @@ export const db = new DatabaseSync(DB_FILE);
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 33;
+const SCHEMA_VERSION = 34;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -337,7 +337,34 @@ addColumn('orders', 'delivery_days', 'TEXT');
 addColumn('product_images', 'phash', 'TEXT');
 addColumn('product_images', 'check_flags', 'TEXT');
 addColumn('product_images', 'reviewed_at', 'TEXT');
-addColumn('products', 'photo_hold', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el admin lo pausó por las fotos // Mensajería CowFace: días y franja en que el comprador puede recibir
+addColumn('products', 'photo_hold', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el admin lo pausó por las fotos
+// Rutas de la Mensajería CowFace (courier-runs.js): mensajeros, punto de recogida de cada tienda,
+// fechas en que el comprador puede recibir y a qué ruta (día y mensajero) quedó asignado cada pedido.
+db.exec(`
+CREATE TABLE IF NOT EXISTS couriers (
+  id         INTEGER PRIMARY KEY,
+  name       TEXT NOT NULL,
+  phone      TEXT NOT NULL,
+  start_lat  REAL,
+  start_lng  REAL,
+  active     INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE TABLE IF NOT EXISTS courier_routes (
+  id         INTEGER PRIMARY KEY,
+  route_date TEXT NOT NULL,
+  courier_id INTEGER NOT NULL REFERENCES couriers(id),
+  plan       TEXT NOT NULL,                 -- JSON: paradas en orden (tipo + pedidos), km y minutos
+  created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_courier_routes_date ON courier_routes (route_date);
+`);
+addColumn('users', 'pickup_lat', 'REAL');
+addColumn('users', 'pickup_lng', 'REAL');
+addColumn('orders', 'delivery_dates', 'TEXT');   // "2026-10-19,2026-10-21"
+addColumn('orders', 'courier_id', 'INTEGER');
+addColumn('orders', 'route_date', 'TEXT');
+addColumn('orders', 'courier_paid_at', 'TEXT'); // Mensajería CowFace: días y franja en que el comprador puede recibir
 addColumn('products', 'likers_offer_at', 'TEXT'); // última "oferta a quienes lo guardaron" (una cada 24 h)
 // Chat directo entre el admin (CowFace) y una tienda o persona: un hilo por usuario.
 db.exec(`

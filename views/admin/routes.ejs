@@ -1,0 +1,146 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'rutas' }) %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Rutas</h1>
+      <p class="muted">Pedidos pagados de la Mensajería CowFace, repartidos entre tus mensajeros en rutas ordenadas: primero recogen en las tiendas y después entregan, por el camino más corto.</p>
+    </div>
+  </div>
+
+  <nav class="tabs" aria-label="Día de la ruta">
+    <% for (const d of days) { %><a href="/admin/rutas?fecha=<%= d.value %>" class="<%= d.active ? 'is-active' : '' %>" <%- d.active ? 'aria-current="page"' : '' %>><%= d.label %></a><% } %>
+  </nav>
+
+  <% if (routes.length) { %>
+    <% for (const r of routes) { %>
+      <section class="panel route-card">
+        <div class="panel-head">
+          <h2>🛵 <%= r.courier_name %></h2>
+          <span class="muted small"><%= r.stops.length %> paradas · <%= r.km %> km · unas <%= Math.round(r.minutes / 60 * 10) / 10 %> h · <%= r.deliveries %> envío<%= r.deliveries === 1 ? '' : 's' %> = <strong><%= money(r.pay) %></strong></span>
+        </div>
+        <ol class="route-stops">
+          <% for (const s of r.stops) { %>
+            <li class="route-stop route-<%= s.kind %>">
+              <div>
+                <span class="route-kind"><%= s.kind === 'recoger' ? 'Recoger' : 'Entregar' %></span>
+                <strong><%= s.who %></strong> · <span class="muted small"><%= s.orders.map((o) => o.code).join(', ') %></span>
+                <% if (s.address) { %><div class="small"><%= s.address %></div><% } %>
+                <div class="muted small"><%= s.phone ? `Tel ${s.phone}` : '' %><%= s.days ? ` · Puede recibir: ${s.days}` : '' %></div>
+              </div>
+              <% if (s.waze) { %><a class="btn btn-small btn-ghost" href="<%= s.waze %>" target="_blank" rel="noopener">Waze</a><% } %>
+            </li>
+          <% } %>
+        </ol>
+        <div class="push-actions">
+          <a class="btn btn-small" href="https://wa.me/506<%= r.courier_phone %>?text=<%= encodeURIComponent(r.text) %>" target="_blank" rel="noopener">Mandar a <%= r.courier_name %> por WhatsApp</a>
+          <button class="btn btn-small btn-ghost" type="button" data-copy="<%= r.text %>">Copiar la ruta</button>
+          <% if (r.mapsLink) { %><a class="btn btn-small btn-ghost" href="<%= r.mapsLink %>" target="_blank" rel="noopener">Ver la ruta en Google Maps</a><% } %>
+        </div>
+      </section>
+    <% } %>
+    <form action="/admin/rutas/deshacer" method="post" data-confirm="¿Deshacer las rutas de este día? Los pedidos que todavía no salen quedan libres para armarlas de nuevo.">
+      <input type="hidden" name="fecha" value="<%= date %>">
+      <button class="linklike small">Deshacer las rutas de este día</button>
+    </form>
+  <% } %>
+
+  <section class="panel" id="pedidos">
+    <div class="panel-head"><h2>Pedidos para este día</h2><span class="muted small"><%= day.length %> pagado<%= day.length === 1 ? '' : 's' %>, sin salir</span></div>
+    <% if (!day.length) { %>
+      <p class="muted">No hay pedidos de la Mensajería CowFace para este día.</p>
+    <% } else { %>
+      <% if (missing.length) { %>
+        <div class="notice"><strong>Falta la ubicación de <%= missing.length %> pedido<%= missing.length === 1 ? '' : 's' %>:</strong> sin el punto exacto no entran en la ruta. Pega las coordenadas (en Google Maps: mantén presionado el lugar y copia los números) o un link de Maps o Waze que las tenga.</div>
+        <% for (const o of missing) { %>
+          <div class="route-missing">
+            <strong><%= o.code %></strong> · <%= o.store_name %> → <%= o.buyer_name %>
+            <% if (!o.delivery_lat) { %>
+              <form action="/admin/rutas/ubicacion/pedido/<%= o.id %>" method="post" class="inline-form">
+                <input type="hidden" name="fecha" value="<%= date %>"><input type="hidden" name="hash" value="#pedidos">
+                <label>Comprador: <span class="muted small"><%= o.delivery_address %></span><input name="coords" required placeholder="9.9335, -84.0510"></label>
+                <button class="btn btn-small btn-ghost">Guardar</button>
+              </form>
+            <% } %>
+            <% if (!o.pickup_lat) { %>
+              <form action="/admin/rutas/ubicacion/tienda/<%= o.store_id %>" method="post" class="inline-form">
+                <input type="hidden" name="fecha" value="<%= date %>"><input type="hidden" name="hash" value="#pedidos">
+                <label>Tienda <%= o.store_name %>: <span class="muted small"><%= o.store_address || 'sin dirección' %></span><input name="coords" required placeholder="9.9981, -84.1166"></label>
+                <button class="btn btn-small btn-ghost">Guardar</button>
+              </form>
+            <% } %>
+          </div>
+        <% } %>
+      <% } %>
+      <% const active = couriers.filter((c) => c.active); %>
+      <% if (!active.length) { %>
+        <p>Primero agrega a tus mensajeros abajo.</p>
+      <% } else if (ready.length) { %>
+        <form action="/admin/rutas/armar" method="post" class="stack compact">
+          <input type="hidden" name="fecha" value="<%= date %>">
+          <p><strong><%= ready.length %> pedido<%= ready.length === 1 ? '' : 's' %> listo<%= ready.length === 1 ? '' : 's' %> para rutear.</strong> ¿Quiénes salen este día?</p>
+          <div class="day-options">
+            <% for (const c of active) { %><label class="day-option"><input type="checkbox" name="couriers" value="<%= c.id %>" checked> <span><%= c.name %></span></label><% } %>
+          </div>
+          <button class="btn"><%= routes.length ? 'Volver a armar las rutas' : 'Armar las rutas' %></button>
+        </form>
+      <% } %>
+    <% } %>
+    <% if (otherDays.length) { %>
+      <details class="route-others">
+        <summary class="small"><%= otherDays.length %> pedido<%= otherDays.length === 1 ? '' : 's' %> para otros días</summary>
+        <ul class="small">
+          <% for (const o of otherDays) { %><li><strong><%= o.code %></strong> · <%= o.store_name %> → <%= o.buyer_name %> · <%= o.route_date ? `en la ruta del ${o.route_date}` : (o.delivery_days || 'sin días') %></li><% } %>
+        </ul>
+      </details>
+    <% } %>
+  </section>
+
+  <section class="panel" id="mensajeros">
+    <div class="panel-head"><h2>Mensajeros</h2></div>
+    <% if (balances.length) { %>
+      <h3>Por pagarles</h3>
+      <div class="todo-list">
+        <% for (const b of balances) { %>
+          <div class="todo">
+            <span class="todo-main"><strong><%= b.name %></strong><span class="muted small"><%= b.trips %> envío<%= b.trips === 1 ? '' : 's' %> × <%= money(pay) %></span></span>
+            <form action="/admin/mensajeros/<%= b.id %>/pagado" method="post" data-confirm="¿Ya le pagaste <%= money(b.amount) %> a <%= b.name %>?">
+              <input type="hidden" name="fecha" value="<%= date %>"><input type="hidden" name="hash" value="#mensajeros">
+              <button class="btn btn-small">Ya le pagué <%= money(b.amount) %></button>
+            </form>
+          </div>
+        <% } %>
+      </div>
+    <% } %>
+    <% if (couriers.length) { %>
+      <ul class="courier-list">
+        <% for (const c of couriers) { %>
+          <li class="<%= c.active ? '' : 'muted' %>">
+            <strong><%= c.name %></strong> · <%= c.phone %><%= c.start_lat ? ' · sale de su punto' : '' %>
+            <form action="/admin/mensajeros/<%= c.id %>/activo" method="post" class="inline">
+              <input type="hidden" name="fecha" value="<%= date %>"><input type="hidden" name="hash" value="#mensajeros"><input type="hidden" name="on" value="<%= c.active ? '0' : '1' %>">
+              <button class="linklike small"><%= c.active ? 'Desactivar' : 'Activar' %></button>
+            </form>
+          </li>
+        <% } %>
+      </ul>
+    <% } %>
+    <form action="/admin/mensajeros" method="post" class="stack compact">
+      <input type="hidden" name="fecha" value="<%= date %>"><input type="hidden" name="hash" value="#mensajeros">
+      <div class="row2">
+        <label>Nombre<input name="name" required maxlength="60"></label>
+        <label>WhatsApp<input name="phone" required inputmode="tel" placeholder="8888-8888"></label>
+      </div>
+      <label>Desde dónde sale <span class="muted">(opcional: coordenadas o link de Maps)</span><input name="start" placeholder="9.9335, -84.0510"></label>
+      <button class="btn btn-small btn-ghost">Agregar mensajero</button>
+    </form>
+    <form action="/admin/mensajeros/pago" method="post" class="inline-form">
+      <input type="hidden" name="fecha" value="<%= date %>"><input type="hidden" name="hash" value="#mensajeros">
+      <label>Les pagas por envío (₡)<input name="pay" inputmode="numeric" value="<%= pay %>"></label>
+      <button class="btn btn-small btn-ghost">Guardar</button>
+    </form>
+  </section>
+</div>
+</div>
+<%- include('../partials/footer') %>

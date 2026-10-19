@@ -15,7 +15,7 @@ import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 import { restockSize, takeSize } from './variants.js';
 import { trackUrlFor, uberShippedNote } from './uber-flash.js';
-import { availabilityText, deliveryLocation, isCourier } from './courier.js';
+import { availability, deliveryLocation, isCourier } from './courier.js';
 import { checkPaymentProof } from './payment-proof.js';
 
 export const MAX_UNPAID_PER_BUYER = 3;
@@ -163,9 +163,9 @@ export function requestDelivery(orderId, buyerId, body) {
     }
     const { windowHours, courierFee } = paymentConfig();
     if (isCourier(method)) {
-      const days = availabilityText(body);
+      const { text: days, dates } = availability(body);
       update(order, {
-        delivery_requested: method, delivery_method: method, delivery_address: address, delivery_note: '', delivery_days: days,
+        delivery_requested: method, delivery_method: method, delivery_address: address, delivery_note: '', delivery_days: days, delivery_dates: dates,
         delivery_quote_at: now(), payment_due_at: laterOf(order.payment_due_at, addHours(windowHours)),
         ...withShipping(order, courierFee, false), ...deliveryLocation(method, body),
       });

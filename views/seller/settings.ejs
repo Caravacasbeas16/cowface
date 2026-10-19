@@ -71,6 +71,11 @@
       <label>Dirección de la tienda (privada)
         <textarea name="store_address" rows="2" maxlength="300" required><%= storeAddress %></textarea>
       </label>
+      <div class="geo-field" data-geo>
+        <input type="hidden" name="lat" value=""><input type="hidden" name="lng" value="">
+        <button type="button" class="btn btn-small btn-ghost" data-geo-btn>📍 Usar mi ubicación para la recogida</button>
+        <span class="hint" data-geo-msg><%= user.pickup_lat ? '✓ Ya tenemos tu ubicación de recogida. Tócalo de nuevo si cambió (estando en la tienda).' : 'Tócalo estando en tu tienda: así el mensajero de CowFace llega directo a recoger los paquetes.' %></span>
+      </div>
       <label>Puntos de pick up o entrega en persona (uno por línea, hasta <%= maxPoints %>)
         <textarea name="pickup_points" rows="3" maxlength="1000" required placeholder="Mall Oxígeno, Heredia — sábados 2 a 5 p. m."><%= pickupPoints.join('\n') %></textarea>
         <span class="hint">Se muestran en tus artículos y el comprador elige uno cuando pide pick up.</span>

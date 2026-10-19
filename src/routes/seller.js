@@ -29,6 +29,7 @@ import { sendMail } from '../mailer.js';
 import { approvalRequired, canPublish, sellerStatus, storesFull, submitRequest } from '../approval.js';
 import { MAX_POINTS, pickupPointsOf, saveStoreLocation, validateStoreLocation } from '../pickup.js';
 import { parseHours, saveHours } from '../store-hours.js';
+import { storePickupFromGps } from '../courier-runs.js';
 
 // Al publicar: avisos a quien guardó una búsqueda que coincide, y al admin si lo pidió.
 function announce(req, id, title) {
@@ -179,7 +180,8 @@ router.post('/tienda', (req, res) => {
     return res.redirect('/vendedor/configuracion#tienda');
   }
   saveStoreLocation(req.user.id, address, points);
-  flash(res, 'Dirección y puntos de entrega guardados.');
+  const gps = storePickupFromGps(req.user.id, req.body);
+  flash(res, gps ? 'Dirección, ubicación de recogida y puntos de entrega guardados.' : 'Dirección y puntos de entrega guardados.');
   res.redirect('/vendedor/configuracion#tienda');
 });
 
