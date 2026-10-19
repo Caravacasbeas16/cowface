@@ -15,7 +15,7 @@ import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 import { restockSize, takeSize } from './variants.js';
 import { trackUrlFor, uberShippedNote } from './uber-flash.js';
-import { availability, deliveryLocation, isCourier } from './courier.js';
+import { availability, courierOn, deliveryLocation, isCourier } from './courier.js';
 import { checkPaymentProof } from './payment-proof.js';
 
 export const MAX_UNPAID_PER_BUYER = 3;
@@ -27,6 +27,8 @@ export const DELIVERY_METHODS = {
   mensajeria: 'Mensajería CowFace (GAM)',
   pick_up: 'Pick up (recoger en persona)',
 };
+// Las que el comprador puede elegir hoy (sin la mensajería si está apagada).
+export const deliveryMethods = () => Object.fromEntries(Object.entries(DELIVERY_METHODS).filter(([k]) => !isCourier(k) || courierOn()));
 // Para mostrar pedidos viejos que usaban otras formas de entrega.
 export const DELIVERY_LABELS = { ...DELIVERY_METHODS, uber_flash: 'Uber Flash', mensajero: 'Mensajero', en_persona: 'Entrega en persona' };
 // Sin envío: no se cobra y no se exige foto del envío.
@@ -98,7 +100,7 @@ export function createOrder(conv, price, source) {
     rate, commission, price - commission, addHours(windowHours), price, size);
   addMessage(conv, null, 'sistema',
     `🛒 Pedido ${code} creado: ${formatColones(price)}. Comprador: elige cómo quieres recibirlo `
-    + `(Correos, Mensajería CowFace en el GAM${product.meetup ? ' o pick up' : ''}) y luego pagas a CowFace.`);
+    + `(${courierOn() ? 'Correos o Mensajería CowFace en el GAM' : 'Correos de Costa Rica'}${product.meetup ? ' o pick up' : ''}) y luego pagas a CowFace.`);
 
   // Si era la última unidad, las demás ofertas por este artículo quedan sin efecto.
   if (left === 0) {
@@ -157,7 +159,8 @@ export function requestDelivery(orderId, buyerId, body) {
     const method = DELIVERY_METHODS[body.method] ? body.method : null;
     const address = String(body.address ?? '').trim().slice(0, 500);
     if (!method) throw new UserError('Elige cómo quieres recibir el artículo.');
-    if (method === 'pick_up' && !productMeetup(order)) throw new UserError('Esta tienda no ofrece pick up: elige Correos o la Mensajería CowFace.');
+    if (isCourier(method) && !courierOn()) throw new UserError('La Mensajería CowFace no está disponible: elige Correos de Costa Rica o pick up.');
+    if (method === 'pick_up' && !productMeetup(order)) throw new UserError('Esta tienda no ofrece pick up: elige Correos de Costa Rica.');
     if (method !== 'pick_up' && address.length < 5) {
       throw new UserError(isCourier(method) ? 'Escribe la dirección exacta con señas (dentro del GAM).' : 'Escribe la dirección para el envío por Correos.');
     }

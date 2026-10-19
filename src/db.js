@@ -332,7 +332,7 @@ addColumn('products', 'bumped_at', 'TEXT');   // "Subir al inicio" (como Grailed
 addColumn('orders', 'delivery_lat', 'REAL');
 addColumn('orders', 'delivery_lng', 'REAL');
 addColumn('orders', 'track_url', 'TEXT');
-addColumn('orders', 'delivery_days', 'TEXT');
+addColumn('orders', 'delivery_days', 'TEXT'); // Mensajería CowFace: días y franja en que el comprador puede recibir
 // Filtro de fotos (photo-check.js): huella para detectar fotos de otra tienda, marcas y revisión del admin.
 addColumn('product_images', 'phash', 'TEXT');
 addColumn('product_images', 'check_flags', 'TEXT');
@@ -364,7 +364,7 @@ addColumn('users', 'pickup_lng', 'REAL');
 addColumn('orders', 'delivery_dates', 'TEXT');   // "2026-10-19,2026-10-21"
 addColumn('orders', 'courier_id', 'INTEGER');
 addColumn('orders', 'route_date', 'TEXT');
-addColumn('orders', 'courier_paid_at', 'TEXT'); // Mensajería CowFace: días y franja en que el comprador puede recibir
+addColumn('orders', 'courier_paid_at', 'TEXT'); // cuándo se le pagó ese envío al mensajero
 addColumn('products', 'likers_offer_at', 'TEXT'); // última "oferta a quienes lo guardaron" (una cada 24 h)
 // Chat directo entre el admin (CowFace) y una tienda o persona: un hilo por usuario.
 db.exec(`

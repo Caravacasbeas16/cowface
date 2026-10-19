@@ -2,8 +2,13 @@
 // paga una tarifa fija (Admin → Cobro) y CowFace coordina con la tienda cuándo recoger el paquete.
 // El envío queda para CowFace: no se le suma al pago de la tienda.
 import { UserError } from './messages.js';
+import { getSetting, setSetting } from './db.js';
 
 export const COURIER = 'mensajeria';
+// Se ofrece solo si el admin la enciende (Admin → Configuración). Apagada, el GAM va por Correos como
+// el resto del país; los pedidos que ya la tenían siguen su curso.
+export const courierOn = () => getSetting('courier_enabled') === '1';
+export const setCourierOn = (on) => setSetting('courier_enabled', on ? '1' : '0');
 export const isCourier = (method) => method === COURIER;
 export const DEFAULT_COURIER_FEE = 2000;
 

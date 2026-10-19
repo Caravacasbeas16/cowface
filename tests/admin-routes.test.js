@@ -29,6 +29,7 @@ test('coordenadas: a mano, de Google Maps o de Waze; fuera de Costa Rica no', ()
 
 test('preparación: dos tiendas y tres pedidos pagados por mensajería', async () => {
   admin = await adminLogin();
+  await post('/admin/mensajeria', admin, { on: '1' }); // apagada por defecto
   await post('/admin/pagos-config', admin, { phone: '6000-1111', holder: 'CowFace', window_hours: '24', release_days: '3' });
   storeA = await signupSeller('a@test.cr', 'Closet Heredia');
   storeB = await signupSeller('b@test.cr', 'Closet Cartago');

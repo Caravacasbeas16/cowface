@@ -24,6 +24,7 @@ import { adminBack } from '../admin-panel.js';
 import { diskStatus, formatBytes, refreshDisk, setVolumeGb, volumeGbSetting } from '../disk.js';
 import { setStoreSupport, storeSupport } from '../support.js';
 import { normalizePhone } from '../validate.js';
+import { setCourierOn } from '../courier.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -134,6 +135,13 @@ router.post('/pedidos/:id/:action', (req, res, next) => {
     flash(res, err.message);
   }
   res.redirect(adminBack(req, '/admin#pagos'));
+});
+
+// Mensajería CowFace dentro del GAM: encendida o apagada (apagada, el GAM va por Correos).
+router.post('/mensajeria', (req, res) => {
+  setCourierOn(req.body.on === '1');
+  flash(res, req.body.on === '1' ? 'Mensajería CowFace encendida: los compradores del GAM pueden elegirla.' : 'Mensajería CowFace apagada: el GAM va por Correos.');
+  res.redirect('/admin#config');
 });
 
 // WhatsApp de soporte para tiendas (vacío = no se muestra).

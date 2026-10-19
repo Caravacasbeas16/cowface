@@ -13,7 +13,7 @@ import adminRouteRoutes from './routes/admin-routes.js';
 import { storeSupport } from './support.js';
 import { favoriteIds } from './social.js';
 import { uberLink } from './uber-flash.js';
-import { TIME_SLOTS, isCourier, wazeLink, nextDays } from './courier.js';
+import { TIME_SLOTS, courierOn, isCourier, wazeLink, nextDays } from './courier.js';
 import sellerRoutes from './routes/seller.js';
 import portalRoutes from './routes/portal.js';
 import attachmentRoutes from './routes/attachments.js';
@@ -34,7 +34,7 @@ import { myReview, ratingSummary, reviewTarget } from './reviews.js';
 import { unreadCount } from './messages.js';
 import { touch } from './presence.js';
 import { REPORT_REASONS } from './reports.js';
-import { DELIVERY_LABELS, DELIVERY_METHODS, OPEN_STATUSES, adminPendingCount, isPickUp, paymentConfig, payoutDayOf } from './orders.js';
+import { DELIVERY_LABELS, DELIVERY_METHODS, OPEN_STATUSES, deliveryMethods, adminPendingCount, isPickUp, paymentConfig, payoutDayOf } from './orders.js';
 import { cutoffLabel, payoutDayLabel, todayCR } from './payout-schedule.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -160,7 +160,7 @@ export function createApp() {
   // Cuándo se le paga a la tienda ("hoy al final del día", "el lunes 20 oct al final del día") y la regla en palabras.
   app.locals.payoutWhen = (o) => payoutDayLabel(payoutDayOf(o));
   app.locals.uberLink = uberLink;
-  Object.assign(app.locals, { TIME_SLOTS, isCourier, wazeLink, nextDays, storeSupport });
+  Object.assign(app.locals, { TIME_SLOTS, courierOn, deliveryMethods, isCourier, wazeLink, nextDays, storeSupport });
   app.locals.todayCR = () => todayCR();
   app.locals.payoutRule = () => `al final del día en que se completa la venta; si se completa después de las ${cutoffLabel(paymentConfig().cutoffHour)} o en fin de semana, el siguiente día hábil`;
   app.locals.OPEN_STATUSES = OPEN_STATUSES;

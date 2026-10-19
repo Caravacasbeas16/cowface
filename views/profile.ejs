@@ -141,7 +141,7 @@
     <% } %>
     <div class="side-box">
       <h3>Entrega</h3>
-      <p class="small">🚚 Correos de Costa Rica o Mensajería CowFace dentro del GAM</p>
+      <p class="small">🚚 <%= courierOn() ? 'Correos de Costa Rica o Mensajería CowFace dentro del GAM' : 'Envío por Correos de Costa Rica a todo el país' %></p>
       <% if (pickupPoints.length) { %>
         <p class="small">📍 Pick up:</p>
         <ul class="small pickup-list"><% for (const pt of pickupPoints) { %><li><%= pt %></li><% } %></ul>

@@ -32,6 +32,7 @@ test('días: los próximos 7 desde mañana (hora de Costa Rica); solo se aceptan
 
 test('preparación', async () => {
   admin = await adminLogin();
+  await post('/admin/mensajeria', admin, { on: '1' }); // apagada por defecto
   await post('/admin/pagos-config', admin, { phone: '6000-1111', holder: 'CowFace', window_hours: '24', release_days: '3' });
   seller = await signupSeller('tienda@test.cr', 'Closet Vintage');
   buyer = await signup('compra@test.cr', 'Compradora');
@@ -116,4 +117,17 @@ test('el admin cambia la tarifa; aplica a los pedidos nuevos', async () => {
   const p = db.prepare('SELECT * FROM orders ORDER BY id DESC').get();
   await post(`/pedidos/${p.id}/entrega`, buyer, { method: 'mensajeria', address: 'Heredia centro, edificio Plaza', days: d2.value });
   assert.equal(db.prepare('SELECT total FROM orders WHERE id = ?').get(p.id).total, 12500);
+});
+
+test('el admin la apaga: deja de ofrecerse, y el GAM va por Correos', async () => {
+  assert.match(flashOf(await post('/admin/mensajeria', admin, { on: '0' })), /apagada/);
+  const id = await publishPolo(seller, { title: 'Bolso', price: '10000' });
+  await post(`/p/${id}/comprar`, buyer);
+  const p = db.prepare('SELECT * FROM orders ORDER BY id DESC').get();
+  const page = await (await get(`/mensajes/${p.conversation_id}`, buyer)).text();
+  assert.doesNotMatch(page, /Mensajería CowFace \(GAM\)/);
+  assert.match(flashOf(await post(`/pedidos/${p.id}/entrega`, buyer, { method: 'mensajeria', address: 'Heredia centro', days: d1.value })), /no está disponible/);
+  assert.doesNotMatch(await (await get('/como-funciona')).text(), /Mensajería/);
+  assert.doesNotMatch(await (await get('/admin', admin)).text(), /href="\/admin\/rutas"/, 'sin pedidos pendientes, Rutas no sale en el menú');
+  assert.equal((await post('/admin/mensajeria', buyer, { on: '1' })).status, 403);
 });

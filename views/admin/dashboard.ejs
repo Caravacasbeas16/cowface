@@ -320,6 +320,13 @@
       </div>
       <button class="btn">Guardar cobro</button>
     </form>
+    <form action="/admin/mensajeria" method="post" class="stack approval-form">
+      <label class="check">
+        <input type="checkbox" name="on" value="1" <%= courierOn() ? 'checked' : '' %> data-autosubmit>
+        <span><strong>Ofrecer la Mensajería CowFace dentro del GAM.</strong> Apagada, el GAM se envía por Correos como el resto del país (y no se muestra en la página).</span>
+      </label>
+      <noscript><button class="btn btn-small">Guardar</button></noscript>
+    </form>
     <form action="/admin/soporte-tiendas" method="post" class="stack">
       <label>WhatsApp de soporte para tiendas
         <input name="phone" inputmode="tel" value="<%= support ? support.phone : '' %>" placeholder="8888-8888">

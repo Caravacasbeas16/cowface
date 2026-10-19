@@ -1,5 +1,5 @@
-// Entrega: el comprador elige Correos, Mensajería CowFace (GAM) o pick up; en Correos la tienda cotiza el envío
-// (y lo puede cambiar mientras hablan); recién con la entrega definida se ve el total y se paga.
+// Entrega: el comprador elige Correos o pick up (y la Mensajería CowFace en el GAM, si el admin la enciende);
+// en Correos la tienda cotiza el envío (y lo puede cambiar); recién con la entrega definida se ve el total y se paga.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
@@ -32,8 +32,11 @@ test('al comprar no hay envío ni total con envío: primero se elige la entrega'
   const page = await thread(buyer);
   assert.match(page, /¿Cómo lo quieres recibir\?/);
   assert.match(page, /Correos de Costa Rica/);
-  assert.match(page, /Mensajería CowFace \(GAM\)/);
   assert.match(page, /Pick up/);
+  // La Mensajería CowFace está apagada por defecto: en el GAM también va por Correos.
+  assert.doesNotMatch(page, /Mensajería|name="days"/);
+  assert.match(flashOf(await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'mensajeria', address: 'San Pedro centro', days: '2030-01-01' })), /no está disponible/);
+  assert.equal(order(o.id).delivery_method, null);
   assert.doesNotMatch(page, /60001111/, 'todavía no se muestra a dónde pagar');
   // Pagar sin entrega definida no se puede.
   const early = await post(`/pedidos/${o.id}/pago`, buyer, { reference: '11112222', phone: '8777-0000' });

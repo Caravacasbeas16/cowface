@@ -58,7 +58,7 @@
         <form action="/pedidos/<%= o.id %>/entrega" method="post" class="pay-steps stack compact">
           <p><strong>1. ¿Cómo lo quieres recibir?</strong></p>
           <div class="method-options">
-            <% for (const [k, label] of Object.entries(DELIVERY_METHODS)) { %>
+            <% for (const [k, label] of Object.entries(deliveryMethods())) { %>
               <% if (k === 'pick_up' && !meetup) continue; %>
               <label class="method-option">
                 <input type="radio" name="method" value="<%= k %>" required <%= requested === k ? 'checked' : '' %>>
@@ -70,7 +70,7 @@
           <label>¿A dónde lo enviamos? <span class="muted">(no hace falta para pick up)</span>
             <textarea name="address" rows="2" maxlength="500" placeholder="Provincia, cantón, distrito y señas exactas."><%= o.delivery_address && o.delivery_address !== 'Pick up' ? o.delivery_address : '' %></textarea>
           </label>
-          <%- include('courier-fields', { o, fee: pay.courierFee }) %>
+          <% if (courierOn()) { %><%- include('courier-fields', { o, fee: pay.courierFee }) %><% } %>
           <button class="btn btn-block"><%= requested ? 'Actualizar' : 'Continuar' %></button>
           <% if (requested) { %><p class="hint">⏳ Le pedimos a la tienda la cotización de <%= labels[requested] %>. Te avisamos cuando responda; también pueden hablarlo por aquí.</p><% } %>
         </form>
@@ -84,14 +84,14 @@
             <summary class="linklike small">Cambiar la forma de entrega</summary>
             <form action="/pedidos/<%= o.id %>/entrega" method="post" class="stack compact">
               <div class="method-options">
-                <% for (const [k, label] of Object.entries(DELIVERY_METHODS)) { %>
+                <% for (const [k, label] of Object.entries(deliveryMethods())) { %>
                   <% if (k === 'pick_up' && !meetup) continue; %>
                   <label class="method-option"><input type="radio" name="method" value="<%= k %>" required> <span><strong><%= label %></strong></span></label>
                 <% } %>
               </div>
               <%- pointField() %>
               <textarea name="address" rows="2" maxlength="500" placeholder="Dirección (si es envío)"><%= o.delivery_address && o.delivery_address !== 'Pick up' ? o.delivery_address : '' %></textarea>
-              <%- include('courier-fields', { o, fee: pay.courierFee }) %>
+              <% if (courierOn()) { %><%- include('courier-fields', { o, fee: pay.courierFee }) %><% } %>
               <button class="btn btn-small btn-ghost">Cambiar la entrega</button>
             </form>
           </details>
@@ -199,7 +199,7 @@
         <div class="row2">
           <label>Forma de entrega
             <select name="method" required>
-              <% for (const [k, label] of Object.entries(DELIVERY_METHODS)) { %>
+              <% for (const [k, label] of Object.entries(deliveryMethods())) { %>
                 <% if ((k === 'pick_up' && !meetup) || isCourier(k)) continue; %>
                 <option value="<%= k %>" <%= (o.delivery_method || requested || 'correos') === k ? 'selected' : '' %>><%= label %></option>
               <% } %>
@@ -210,7 +210,7 @@
           </label>
         </div>
         <input name="note" maxlength="200" placeholder="Nota opcional (ej. sale mañana por Correos)" value="<%= o.delivery_note || '' %>">
-        <p class="hint">El envío por Correos lo paga el comprador y te llega completo con tu pago. Dentro del GAM, el comprador también puede elegir la Mensajería CowFace: ahí nosotros recogemos el paquete.</p>
+        <p class="hint">El envío por Correos lo paga el comprador y te llega completo con tu pago.<%= courierOn() ? ' Dentro del GAM, el comprador también puede elegir la Mensajería CowFace: ahí nosotros recogemos el paquete.' : '' %></p>
         <button class="btn btn-small"><%= quoted ? 'Actualizar cotización' : 'Enviar cotización' %></button>
       </form>
       <form action="/pedidos/<%= o.id %>/cancelar" method="post" data-confirm="¿Cancelar este pedido? El artículo vuelve a estar disponible.">

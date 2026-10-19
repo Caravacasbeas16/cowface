@@ -27,7 +27,7 @@
 
   <h2>4. Comprar y ofertar</h2>
   <ul>
-    <li>Después de comprar, el comprador elige cómo recibir el artículo: Correos de Costa Rica (la tienda le cotiza el envío en el pedido), la Mensajería CowFace dentro del Gran Área Metropolitana (tarifa fija que cobra CowFace; el comprador indica su ubicación y los días en que puede recibir, y CowFace coordina la recogida con la tienda) o pick up. <strong>El comprador ve el total exacto (prenda + envío) antes de pagar</strong>, puede pedir otra forma de entrega, y no paga comisiones ni cargos extra. El pick up no tiene costo de envío.</li>
+    <li>Después de comprar, el comprador elige cómo recibir el artículo: Correos de Costa Rica a todo el país (la tienda le cotiza el envío en el pedido)<% if (courierOn()) { %>, la Mensajería CowFace dentro del Gran Área Metropolitana (tarifa fija que cobra CowFace; el comprador indica su ubicación y los días en que puede recibir, y CowFace coordina la recogida con la tienda)<% } %> o pick up. <strong>El comprador ve el total exacto (prenda + envío) antes de pagar</strong>, puede pedir otra forma de entrega, y no paga comisiones ni cargos extra. El pick up no tiene costo de envío.</li>
     <li>Puedes comprar al precio publicado u ofertar (mínimo 50 % del precio). Una oferta vence a las 48 horas; una oferta nueva reemplaza la anterior. Una oferta aceptada o una compra directa es un compromiso de compra y reserva el artículo.</li>
     <li>Puedes tener como máximo 3 pedidos sin pagar a la vez.</li>
   </ul>
@@ -42,7 +42,7 @@
   <h2>6. Envío y entrega</h2>
   <ul>
     <li>El vendedor debe enviar o entregar en un máximo de <strong>3 días hábiles</strong> desde que <%= siteName %> confirma el pago.</li>
-    <li>En envíos por Correos de Costa Rica, el vendedor sube una foto de la guía, del recibo o del paquete enviado (y, si tiene, el número de guía): es su prueba de envío. <strong>El pago al vendedor se hace solo después de que sube la foto del envío</strong>. El costo de ese envío lo paga el comprador (incluido en el total) y se le entrega al vendedor junto con su pago. En la Mensajería CowFace, el vendedor le entrega el paquete al mensajero de CowFace y el costo del envío es de CowFace.</li>
+    <li>En envíos por Correos de Costa Rica, el vendedor sube una foto de la guía, del recibo o del paquete enviado (y, si tiene, el número de guía): es su prueba de envío. <strong>El pago al vendedor se hace solo después de que sube la foto del envío</strong>. El costo de ese envío lo paga el comprador (incluido en el total) y se le entrega al vendedor junto con su pago.<% if (courierOn()) { %> En la Mensajería CowFace, el vendedor le entrega el paquete al mensajero de CowFace y el costo del envío es de CowFace.<% } %></li>
     <li>En el pick up, tienda y comprador coordinan por el chat un lugar público y una hora. Revisa el artículo al recibirlo.</li>
     <li>Si el vendedor no puede entregar, lo indica en el pedido y <%= siteName %> devuelve al comprador el total pagado.</li>
   </ul>
