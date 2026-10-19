@@ -66,7 +66,7 @@ test('si la tienda cotiza otra entrega, el comprador tiene que aceptarla; la dir
   await post(`/p/${id}/comprar`, buyer);
   const o = db.prepare('SELECT * FROM orders ORDER BY id DESC').get();
   await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'correos', address: 'San José, Barrio Escalante, casa 12' });
-  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'uber_flash', cost: '0' });
+  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'pick_up' });
   const page = await (await get(`/mensajes/${o.conversation_id}`, buyer)).text();
   assert.match(page, /name="accept_method"/);
   assert.match(page, /yo había pedido Correos de Costa Rica/);
@@ -82,12 +82,13 @@ test('si la tienda cotiza otra entrega, el comprador tiene que aceptarla; la dir
   assert.equal(paid.delivery_address, 'San José, Barrio Escalante, casa 12');
 });
 
-test('Uber Flash sin link del viaje: plazo normal (no se libera el mismo día)', async () => {
+test('Uber Flash (pedido viejo) sin link del viaje: plazo normal (no se libera el mismo día)', async () => {
   const id = await publishPolo(seller, { title: 'Gorra' });
   await post(`/p/${id}/comprar`, buyer);
   const o = db.prepare('SELECT * FROM orders ORDER BY id DESC').get();
-  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'uber_flash', address: 'San Pedro, frente al Mall' });
-  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'uber_flash', cost: '2800' });
+  const { quoted } = await import('./helpers.js');
+  quoted(o.id, 'uber_flash', 2800);
+  db.prepare("UPDATE orders SET delivery_address = 'San Pedro, frente al Mall' WHERE id = ?").run(o.id);
   await post(`/pedidos/${o.id}/pago`, buyer, { reference: '87654321', phone: '8777-1234' });
   await post(`/admin/pedidos/${o.id}/confirmar-pago`, admin);
   const { shipWithPhoto } = await import('./helpers.js');

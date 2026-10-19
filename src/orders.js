@@ -4,79 +4,36 @@
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { ATTACH_DIR } from './storage.js';
-import { db, commissionRateFor, getSetting, setSetting, transaction } from './db.js';
+import { db, commissionRateFor, transaction } from './db.js';
 import { formatColones } from './catalog.js';
 import { UserError, addMessage, now, systemNote } from './messages.js';
 import { notifyAdmin } from './admin-notify.js';
 import { pickupPointsOf } from './pickup.js';
-import { DEFAULT_CUTOFF_HOUR, payoutDay, payoutDayLabel, sameDayRelease } from './payout-schedule.js';
+import { payoutDay, payoutDayLabel, sameDayRelease } from './payout-schedule.js';
+import { paymentConfig, paymentsReady, payoutDayOf, savedCutoff } from './payment-config.js';
 import { normalizePhone } from './validate.js';
 import { isBlockedEither } from './blocks.js';
 import { restockSize, takeSize } from './variants.js';
-import { deliveryLocation, trackUrlFor, uberShippedNote } from './uber-flash.js';
+import { trackUrlFor, uberShippedNote } from './uber-flash.js';
+import { availabilityText, deliveryLocation, isCourier } from './courier.js';
 import { checkPaymentProof } from './payment-proof.js';
 
 export const MAX_UNPAID_PER_BUYER = 3;
 export const OPEN_STATUSES =['por_pagar', 'pagado', 'enviado', 'en_disputa', 'reembolso_pendiente'];
-// Formas de entrega que se pueden elegir. El costo del envío no se fija al publicar: la tienda lo
-// cotiza en cada pedido, después de que el comprador dice cómo y dónde lo quiere.
+// Formas de entrega que se pueden elegir. Correos: la tienda cotiza el envío en cada pedido.
+// Mensajería CowFace (GAM): tarifa fija de CowFace, que coordina con la tienda (ver courier.js).
 export const DELIVERY_METHODS = {
   correos: 'Correos de Costa Rica',
-  uber_flash: 'Uber Flash',
+  mensajeria: 'Mensajería CowFace (GAM)',
   pick_up: 'Pick up (recoger en persona)',
 };
 // Para mostrar pedidos viejos que usaban otras formas de entrega.
-export const DELIVERY_LABELS = { ...DELIVERY_METHODS, mensajero: 'Mensajero', en_persona: 'Entrega en persona' };
+export const DELIVERY_LABELS = { ...DELIVERY_METHODS, uber_flash: 'Uber Flash', mensajero: 'Mensajero', en_persona: 'Entrega en persona' };
 // Sin envío: no se cobra y no se exige foto del envío.
 export const isPickUp = (method) => method === 'pick_up' || method === 'en_persona';
 
-// ---------- Configuración de pagos (la llena el admin en su panel) ----------
-
-export function paymentConfig() {
-  return {
-    phone: getSetting('payment_phone') || '',
-    holder: getSetting('payment_holder') || '',
-    windowHours: Number(getSetting('payment_window_hours')) || 24,
-    releaseDays: Number(getSetting('auto_release_days')) || 3,
-    // Hora (Costa Rica) desde la que una venta completada se paga el siguiente día hábil.
-    cutoffHour: savedCutoff(),
-  };
-}
-
-function savedCutoff() {
-  const h = Number.parseInt(getSetting('payout_cutoff_hour'), 10);
-  return h >= 12 && h <= 23 ? h : DEFAULT_CUTOFF_HOUR;
-}
-
-// Día en que toca pagarle a la tienda una venta completada (ver payout-schedule.js).
-export const payoutDayOf = (order) => payoutDay(order.completed_at, savedCutoff());
-
-export function paymentsReady() {
-  const c = paymentConfig();
-  return Boolean(c.phone && c.holder);
-}
-
-export function savePaymentConfig(body) {
-  const phone = normalizePhone(body.phone);
-  const holder = String(body.holder ?? '').trim().slice(0, 80);
-  const windowHours = Number.parseInt(body.window_hours, 10);
-  const releaseDays = Number.parseInt(body.release_days, 10);
-  const errors = [];
-  if (!phone) errors.push('Número SINPE Móvil de 8 dígitos.');
-  if (holder.length < 3) errors.push('Nombre del titular de la cuenta.');
-  if (!(windowHours >= 1 && windowHours <= 168)) errors.push('Plazo para pagar entre 1 y 168 horas.');
-  if (!(releaseDays >= 1 && releaseDays <= 30)) errors.push('Liberación automática entre 1 y 30 días.');
-  // La hora de corte es opcional en el formulario (si no viene, se deja la que estaba).
-  const cutoff = body.cutoff_hour === undefined || body.cutoff_hour === '' ? null : Number.parseInt(body.cutoff_hour, 10);
-  if (cutoff !== null && !(cutoff >= 12 && cutoff <= 23)) errors.push('Hora de corte de pagos entre 12 (mediodía) y 23.');
-  if (errors.length) return errors;
-  setSetting('payment_phone', phone);
-  setSetting('payment_holder', holder);
-  setSetting('payment_window_hours', windowHours);
-  setSetting('auto_release_days', releaseDays);
-  if (cutoff !== null) setSetting('payout_cutoff_hour', cutoff);
-  return [];
-}
+// Configuración de pagos (la llena el admin en su panel): ver payment-config.js.
+export { paymentConfig, paymentsReady, payoutDayOf, savePaymentConfig } from './payment-config.js';
 
 const addHours = (h) => new Date(Date.now() + h * 3600e3).toISOString();
 
@@ -141,7 +98,7 @@ export function createOrder(conv, price, source) {
     rate, commission, price - commission, addHours(windowHours), price, size);
   addMessage(conv, null, 'sistema',
     `🛒 Pedido ${code} creado: ${formatColones(price)}. Comprador: elige cómo quieres recibirlo `
-    + `(Correos, Uber Flash${product.meetup ? ' o pick up' : ''}); la tienda te cotiza el envío y luego pagas a CowFace.`);
+    + `(Correos, Mensajería CowFace en el GAM${product.meetup ? ' o pick up' : ''}) y luego pagas a CowFace.`);
 
   // Si era la última unidad, las demás ofertas por este artículo quedan sin efecto.
   if (left === 0) {
@@ -184,13 +141,14 @@ function complete(order, text) {
 const MAX_SHIPPING = 100_000;
 const productMeetup = (order) => (order.product_id ? db.prepare('SELECT meetup FROM products WHERE id = ?').get(order.product_id)?.meetup !== 0 : true);
 
-// Monto, total y pago al vendedor con un costo de envío dado (el envío llega completo al vendedor).
-const withShipping = (order, shipping) => ({
-  shipping_cost: shipping, total: order.price + shipping, payout_amount: order.price - order.commission_amount + shipping,
+// Monto, total y pago al vendedor con un costo de envío dado. El envío llega completo al vendedor,
+// salvo en la Mensajería CowFace, donde lo cobra CowFace (toStore = false).
+const withShipping = (order, shipping, toStore = true) => ({
+  shipping_cost: shipping, total: order.price + shipping, payout_amount: order.price - order.commission_amount + (toStore ? shipping : 0),
 });
 
-// Paso 1 (comprador): cómo y dónde lo quiere. Pick up no tiene costo: queda listo para pagar.
-// Correos y Uber Flash esperan la cotización de la tienda.
+// Paso 1 (comprador): cómo y dónde lo quiere. Pick up y Mensajería CowFace quedan listos para pagar
+// (sin costo / tarifa fija); Correos espera la cotización de la tienda.
 export function requestDelivery(orderId, buyerId, body) {
   return transaction(() => {
     const order = load(orderId, { buyerId, from: ['por_pagar'] });
@@ -199,18 +157,27 @@ export function requestDelivery(orderId, buyerId, body) {
     const method = DELIVERY_METHODS[body.method] ? body.method : null;
     const address = String(body.address ?? '').trim().slice(0, 500);
     if (!method) throw new UserError('Elige cómo quieres recibir el artículo.');
-    if (method === 'pick_up' && !productMeetup(order)) throw new UserError('Esta tienda no ofrece pick up: elige Correos o Uber Flash.');
+    if (method === 'pick_up' && !productMeetup(order)) throw new UserError('Esta tienda no ofrece pick up: elige Correos o la Mensajería CowFace.');
     if (method !== 'pick_up' && address.length < 5) {
-      throw new UserError(method === 'uber_flash' ? 'Escribe la dirección exacta para el Uber Flash (con señas).' : 'Escribe la dirección para el envío por Correos.');
+      throw new UserError(isCourier(method) ? 'Escribe la dirección exacta con señas (dentro del GAM).' : 'Escribe la dirección para el envío por Correos.');
     }
-    const { windowHours } = paymentConfig();
-    if (method === 'pick_up') {
+    const { windowHours, courierFee } = paymentConfig();
+    if (isCourier(method)) {
+      const days = availabilityText(body);
+      update(order, {
+        delivery_requested: method, delivery_method: method, delivery_address: address, delivery_note: '', delivery_days: days,
+        delivery_quote_at: now(), payment_due_at: laterOf(order.payment_due_at, addHours(windowHours)),
+        ...withShipping(order, courierFee, false), ...deliveryLocation(method, body),
+      });
+      systemNote(order.conversation_id, `🛵 El comprador eligió la Mensajería CowFace para el pedido ${order.code} (envío ${formatColones(courierFee)}). `
+        + `Puede recibir: ${days}. CowFace coordina con la tienda cuándo recoger el paquete. Total a pagar: ${formatColones(order.price + courierFee)}.`);
+    } else if (method === 'pick_up') {
       // Si la tienda tiene puntos de pick up, el comprador elige uno de ellos.
       const points = pickupPointsOf(order.seller_id);
       const point = String(body.point ?? '').trim();
       if (points.length && !points.includes(point)) throw new UserError('Elige en cuál punto vas a recoger el pedido.');
       update(order, {
-        delivery_requested: method, delivery_method: method, delivery_address: point || 'Pick up', delivery_note: '',
+        delivery_requested: method, delivery_method: method, delivery_address: point || 'Pick up', delivery_note: '', delivery_days: null,
         delivery_quote_at: now(), payment_due_at: laterOf(order.payment_due_at, addHours(windowHours)), ...withShipping(order, 0),
       });
       systemNote(order.conversation_id, `📍 El comprador va a recoger el pedido ${order.code} (pick up, sin costo de envío)`
@@ -218,7 +185,7 @@ export function requestDelivery(orderId, buyerId, body) {
     } else {
       update(order, {
         delivery_requested: method, delivery_address: address, delivery_method: null, delivery_quote_at: null, delivery_note: '',
-        ...withShipping(order, 0), ...deliveryLocation(method, body),
+        delivery_days: null, ...withShipping(order, 0), ...deliveryLocation(method, body),
       });
       systemNote(order.conversation_id, `📦 El comprador quiere recibir el pedido ${order.code} por ${DELIVERY_METHODS[method]} en: «${address}». Tienda: cotiza el envío aquí arriba.`);
     }
@@ -234,6 +201,7 @@ export function quoteDelivery(orderId, sellerId, body) {
     if (order.payment_reported_at) throw new UserError('El comprador ya avisó el pago: la cotización ya no se puede cambiar.');
     const method = DELIVERY_METHODS[body.method] ? body.method : null;
     if (!method) throw new UserError('Elige la forma de entrega.');
+    if (isCourier(method)) throw new UserError('La Mensajería CowFace la elige el comprador (con su ubicación y los días en que puede recibir); CowFace coordina contigo la recogida.');
     if (method === 'pick_up' && !productMeetup(order)) throw new UserError('Este artículo no tiene pick up activado.');
     const raw = String(body.cost ?? '').replace(/[₡,.\s]/g, '');
     const cost = method === 'pick_up' ? 0 : Number(raw);
@@ -312,7 +280,9 @@ export function markShipped(orderId, sellerId, note, proof = null, track = '') {
     const order = load(orderId, { sellerId, from: ['pagado'] });
     if (!order) return null;
     const text = String(note ?? '').trim().slice(0, 300);
-    if (!isPickUp(order.delivery_method) && !proof) {
+    // Mensajería CowFace: el paquete lo recoge nuestro mensajero, así que la foto es opcional.
+    const courier = isCourier(order.delivery_method);
+    if (!isPickUp(order.delivery_method) && !courier && !proof) {
       throw new UserError('Sube una foto de la guía, del recibo o del paquete enviado. Sin la foto del envío no podemos pagarte la venta.');
     }
     const { releaseDays } = paymentConfig();
@@ -322,7 +292,8 @@ export function markShipped(orderId, sellerId, note, proof = null, track = '') {
     const release = uber && trackUrl ? sameDayRelease(Date.now(), savedCutoff()) : addHours(releaseDays * 24);
     update(order, { status: 'enviado', shipped_at: now(), shipping_note: text, shipping_proof: proof, track_url: trackUrl, auto_release_at: release });
     systemNote(order.conversation_id, uber ? uberShippedNote(order, trackUrl, releaseDays)
-      : `📦 El vendedor marcó el pedido ${order.code} como enviado/entregado. Si no hay reclamo, el pago se libera en ${releaseDays} días.`);
+      : courier ? `🛵 La tienda le entregó el pedido ${order.code} al mensajero de CowFace: va en camino (${order.delivery_days || 'el día coordinado'}). Cuando te llegue, confirma que lo recibiste; si no hay reclamo, el pago se libera en ${releaseDays} días.`
+        : `📦 El vendedor marcó el pedido ${order.code} como enviado/entregado. Si no hay reclamo, el pago se libera en ${releaseDays} días.`);
     return order;
   });
 }

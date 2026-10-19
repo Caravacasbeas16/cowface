@@ -69,7 +69,7 @@ test('medidas y pick up se guardan; el artículo no muestra costo de envío ni t
   assert.equal(p.meetup, 0);
   const page = await (await get(`/p/${id}`, buyer)).text();
   assert.match(page, /58\.5 cm/);
-  assert.match(page, /Correos de Costa Rica o Uber Flash/);
+  assert.match(page, /Correos de Costa Rica o Mensajería CowFace/);
   assert.match(page, /la tienda te cotiza el envío/);
   assert.doesNotMatch(page, /Pick up en/, 'sin pick up activado');
   assert.doesNotMatch(page, /Total<\/span>/, 'no hay total antes de elegir la entrega');

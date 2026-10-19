@@ -1,4 +1,4 @@
-// Entrega: el comprador elige Correos, Uber Flash o pick up; la tienda cotiza el envío
+// Entrega: el comprador elige Correos, Mensajería CowFace (GAM) o pick up; en Correos la tienda cotiza el envío
 // (y lo puede cambiar mientras hablan); recién con la entrega definida se ve el total y se paga.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -32,7 +32,7 @@ test('al comprar no hay envío ni total con envío: primero se elige la entrega'
   const page = await thread(buyer);
   assert.match(page, /¿Cómo lo quieres recibir\?/);
   assert.match(page, /Correos de Costa Rica/);
-  assert.match(page, /Uber Flash/);
+  assert.match(page, /Mensajería CowFace \(GAM\)/);
   assert.match(page, /Pick up/);
   assert.doesNotMatch(page, /60001111/, 'todavía no se muestra a dónde pagar');
   // Pagar sin entrega definida no se puede.
@@ -40,29 +40,29 @@ test('al comprar no hay envío ni total con envío: primero se elige la entrega'
   assert.match(flashOf(early), /Primero elijan la forma de entrega/);
 });
 
-test('el comprador pide Uber Flash con dirección; a la tienda le aparece para cotizar', async () => {
-  assert.match(flashOf(await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'uber_flash', address: '' })), /dirección exacta/);
-  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'uber_flash', address: 'Heredia, San Pablo, de la iglesia 200 m norte' });
+test('el comprador pide Correos de Costa Rica con dirección; a la tienda le aparece para cotizar', async () => {
+  assert.match(flashOf(await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'correos', address: '' })), /dirección para el envío/);
+  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'correos', address: 'Heredia, San Pablo, de la iglesia 200 m norte' });
   o = order(o.id);
-  assert.deepEqual([o.delivery_requested, o.delivery_method, o.delivery_quote_at], ['uber_flash', null, null]);
+  assert.deepEqual([o.delivery_requested, o.delivery_method, o.delivery_quote_at], ['correos', null, null]);
   const sellerPage = await thread(seller);
-  assert.match(sellerPage, /El comprador lo quiere por <strong>Uber Flash<\/strong>/);
+  assert.match(sellerPage, /El comprador lo quiere por <strong>Correos de Costa Rica<\/strong>/);
   assert.match(sellerPage, /de la iglesia 200 m norte/);
   assert.match(sellerPage, /Enviar cotización/);
   assert.match(await thread(buyer), /esperando la cotización de la tienda/);
   // Solo la tienda cotiza.
-  assert.equal((await post(`/pedidos/${o.id}/cotizar`, buyer, { method: 'uber_flash', cost: '1' })).status, 404);
+  assert.equal((await post(`/pedidos/${o.id}/cotizar`, buyer, { method: 'correos', cost: '1' })).status, 404);
 });
 
 test('la tienda cotiza; el comprador ve el total exacto y el SINPE; la tienda puede ajustar', async () => {
-  assert.match(flashOf(await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'uber_flash', cost: '' })), /costo del envío/);
+  assert.match(flashOf(await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'correos', cost: '' })), /costo del envío/);
   const before = o.payment_due_at;
-  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'uber_flash', cost: '₡2.800', note: 'Sale hoy a las 4 p. m.' });
+  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'correos', cost: '₡2.800', note: 'Sale hoy a las 4 p. m.' });
   o = order(o.id);
-  assert.deepEqual([o.delivery_method, o.shipping_cost, o.total, o.payout_amount], ['uber_flash', 2800, 22800, 20000 - 400 + 2800]);
+  assert.deepEqual([o.delivery_method, o.shipping_cost, o.total, o.payout_amount], ['correos', 2800, 22800, 20000 - 400 + 2800]);
   assert.ok(o.payment_due_at >= before, 'el plazo para pagar corre desde la cotización');
   let page = await thread(buyer);
-  assert.match(page, /Entrega: Uber Flash · ₡2\s?800/);
+  assert.match(page, /Entrega: Correos de Costa Rica · ₡2\s?800/);
   assert.match(page, /Sale hoy a las 4 p\. m\./);
   assert.match(page, /Total a pagar<\/span><span>₡22\s?800/);
   assert.match(page, /60001111/);
@@ -75,25 +75,25 @@ test('la tienda cotiza; el comprador ve el total exacto y el SINPE; la tienda pu
 });
 
 test('el comprador puede cambiar de forma de entrega: se vuelve a cotizar', async () => {
-  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'uber_flash', address: 'Mejor a mi trabajo: Heredia centro, edificio Plaza' });
+  await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'correos', address: 'Mejor a mi trabajo: Heredia centro, edificio Plaza' });
   o = order(o.id);
-  assert.deepEqual([o.delivery_requested, o.delivery_method, o.shipping_cost, o.total], ['uber_flash', null, 0, 20000]);
+  assert.deepEqual([o.delivery_requested, o.delivery_method, o.shipping_cost, o.total], ['correos', null, 0, 20000]);
   assert.match(await thread(seller), /Mejor a mi trabajo/);
-  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'uber_flash', cost: '2500' });
+  await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'correos', cost: '2500' });
 });
 
-test('al pagar se cobra lo cotizado; después ya no se cambia; la tienda sube la captura del Uber Flash', async () => {
+test('al pagar se cobra lo cotizado; después ya no se cambia; la tienda sube la foto del envío', async () => {
   await post(`/pedidos/${o.id}/pago`, buyer, { reference: '55556666', phone: '8777-0000', address: 'Heredia centro, edificio Plaza' });
   o = order(o.id);
   assert.equal(o.total, 22500);
   assert.ok(o.payment_reported_at);
-  assert.match(flashOf(await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'uber_flash', cost: '9999' })), /ya avisó el pago/);
+  assert.match(flashOf(await post(`/pedidos/${o.id}/cotizar`, seller, { method: 'correos', cost: '9999' })), /ya avisó el pago/);
   assert.match(flashOf(await post(`/pedidos/${o.id}/entrega`, buyer, { method: 'correos', address: 'Otra dirección larga' })), /ya no se puede cambiar/);
   assert.equal(order(o.id).total, 22500);
 
   await post(`/admin/pedidos/${o.id}/confirmar-pago`, admin);
-  assert.match(await thread(seller), /Captura del viaje de Uber Flash/);
-  assert.match(await (await get('/admin', admin)).text(), /Entrega: Uber Flash/);
+  assert.match(await thread(seller), /Foto de la guía/);
+  assert.match(await (await get('/admin', admin)).text(), /Entrega: Correos de Costa Rica/);
   await shipWithPhoto(seller, o.id);
   assert.equal(order(o.id).status, 'enviado');
 });

@@ -272,6 +272,14 @@ label.check a { text-decoration: underline; }
 .method-option > span { display: flex; flex-direction: column; }
 .method-option input { width: auto; }
 
+/* Mensajería CowFace: días en que el comprador puede recibir */
+.courier-fields { border: 1px dashed var(--line); padding: .6rem .7rem; margin: 0; display: flex; flex-direction: column; gap: .5rem; min-width: 0; }
+.courier-fields legend { font-weight: 700; font-size: .85rem; padding: 0 .3rem; }
+.day-options { display: flex; flex-wrap: wrap; gap: .35rem; }
+.day-option { flex-direction: row; align-items: center; gap: .35rem; padding: .35rem .55rem; border: 1px solid var(--line); cursor: pointer; text-transform: none; letter-spacing: 0; font-weight: 500; font-size: .85rem; }
+.day-option:has(input:checked) { border-color: var(--ink); background: var(--soft); }
+.day-option input { width: auto; }
+
 /* Edición rápida en "Mi cuenta" */
 .quick-edit { display: flex; align-items: flex-end; gap: .4rem; margin-top: .45rem; flex-wrap: wrap; }
 .quick-edit label { flex-direction: row; align-items: center; gap: .3rem; font-size: .7rem; }

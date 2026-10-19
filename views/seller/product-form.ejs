@@ -233,7 +233,7 @@
           <input type="checkbox" name="meetup" value="1" <%= meetupOn ? 'checked' : '' %>>
           <span>Ofrezco <strong>pick up</strong>: el comprador lo puede recoger sin costo de envío (en <%= user.province %>, en un lugar público).</span>
         </label>
-        <p class="hint">🚚 El envío no se pone aquí: cuando alguien compra, elige Correos de Costa Rica, Uber Flash<%= ' ' %>o pick up, y tú le cotizas el envío en el pedido (como un Uber). Ese monto lo paga el comprador y te llega completo.</p>
+        <p class="hint">🚚 El envío no se pone aquí: cuando alguien compra, elige Correos de Costa Rica (tú le cotizas el envío en el pedido; lo paga el comprador y te llega completo), la Mensajería CowFace dentro del GAM (nosotros recogemos el paquete) o pick up.</p>
         <div class="earnings" data-earnings data-rate="<%= commissionRateNow %>">
           <div><span>Precio</span><strong data-e-price>—</strong></div>
           <div><span>Comisión <%= siteName %> (<%= ratePct %> %)</span><strong data-e-fee>—</strong></div>

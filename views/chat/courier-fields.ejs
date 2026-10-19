@@ -1,0 +1,23 @@
+<%#
+  Campos de la Mensajería CowFace (GAM): días en que el comprador puede recibir, franja y ubicación.
+  Variables: o (pedido), fee (tarifa fija).
+%>
+<fieldset class="courier-fields">
+  <legend>Si eliges Mensajería CowFace <span class="muted small">(solo dentro del GAM · <%= money(fee) %>)</span></legend>
+  <p class="hint">¿Qué días puedes recibir el paquete? Marca todos los que te sirvan; nosotros cuadramos con la tienda y te confirmamos por este chat.</p>
+  <div class="day-options">
+    <% for (const d of nextDays()) { %>
+      <label class="day-option"><input type="checkbox" name="days" value="<%= d.value %>"> <span><%= d.label %></span></label>
+    <% } %>
+  </div>
+  <label>Horario
+    <select name="slot">
+      <% for (const [k, label] of Object.entries(TIME_SLOTS)) { %><option value="<%= k %>"><%= label[0].toUpperCase() + label.slice(1) %></option><% } %>
+    </select>
+  </label>
+  <div class="geo-field" data-geo>
+    <input type="hidden" name="lat" value="<%= o.delivery_lat || '' %>"><input type="hidden" name="lng" value="<%= o.delivery_lng || '' %>">
+    <button type="button" class="btn btn-small btn-ghost" data-geo-btn>📍 Mandar mi ubicación</button>
+    <span class="hint" data-geo-msg><%= o.delivery_lat ? '✓ Ubicación guardada' : 'Así el mensajero llega directo, sin depender solo de las señas.' %></span>
+  </div>
+</fieldset>

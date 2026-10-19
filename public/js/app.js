@@ -388,7 +388,7 @@ document.addEventListener('submit', (e) => {
   section.querySelector('[data-recent-clear]').addEventListener('click', () => { write([]); section.hidden = true; });
 })();
 
-// "Mandar mi ubicación" para Uber Flash: el GPS del celular llena latitud y longitud del pedido.
+// "Mandar mi ubicación" para la Mensajería CowFace: el GPS del celular llena latitud y longitud del pedido.
 document.addEventListener('click', (e) => {
   const btn = e.target.closest('[data-geo-btn]');
   if (!btn) return;
@@ -400,11 +400,19 @@ document.addEventListener('click', (e) => {
     box.querySelector('[name="lat"]').value = pos.coords.latitude.toFixed(6);
     box.querySelector('[name="lng"]').value = pos.coords.longitude.toFixed(6);
     msg.textContent = '✓ Ubicación lista. Se guarda al tocar Continuar.';
-    const uber = box.closest('form')?.querySelector('input[name="method"][value="uber_flash"]');
-    if (uber && !box.closest('form').querySelector('input[name="method"]:checked')) uber.checked = true;
+    const courier = box.closest('form')?.querySelector('input[name="method"][value="mensajeria"]');
+    if (courier && !box.closest('form').querySelector('input[name="method"]:checked')) courier.checked = true;
   }, () => {
     msg.textContent = 'No se pudo obtener la ubicación (revisa el permiso en el navegador). Puedes escribir las señas.';
   }, { enableHighAccuracy: true, timeout: 15000 });
+});
+
+// Marcar un día de la Mensajería CowFace la elige como forma de entrega (si no eligió otra).
+document.addEventListener('change', (e) => {
+  if (!e.target.matches('.courier-fields input[name="days"]') || !e.target.checked) return;
+  const form = e.target.closest('form');
+  const courier = form?.querySelector('input[name="method"][value="mensajeria"]');
+  if (courier && !form.querySelector('input[name="method"]:checked')) courier.checked = true;
 });
 
 // Chat directo con CowFace: abre al final de la conversación.

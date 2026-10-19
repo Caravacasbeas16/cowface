@@ -1,9 +1,9 @@
-// Uber Flash: ubicación del comprador, botón para abrir Uber con el destino, captura y link del viaje,
+// Uber Flash (pedidos viejos, antes de la Mensajería CowFace): ubicación del comprador, botón para abrir Uber con el destino, captura y link del viaje,
 // y el pedido se da por recibido al final del día (para pagarle a la tienda ese mismo día).
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  PNG, adminLogin, ctx, db, flashOf, get, post, publishPolo, signup, signupSeller, startServer, stopServer,
+  PNG, adminLogin, ctx, db, flashOf, get, post, publishPolo, quoted, signup, signupSeller, startServer, stopServer,
 } from './helpers.js';
 
 const { sameDayRelease } = await import('../src/payout-schedule.js');
@@ -31,7 +31,7 @@ test('liberación al final del día (hora de Costa Rica), o al día siguiente si
   assert.equal(sameDayRelease(Date.parse('2026-10-14T22:00:00Z'), 18), '2026-10-15T23:59:00.000Z');
 });
 
-test('preparación: compra con Uber Flash y la ubicación del comprador', async () => {
+test('preparación: un pedido viejo de Uber Flash con la ubicación del comprador', async () => {
   admin = await adminLogin();
   await post('/admin/pagos-config', admin, { phone: '6000-1111', holder: 'CowFace', window_hours: '24', release_days: '3' });
   seller = await signupSeller('tienda@test.cr', 'Closet Vintage');
@@ -39,17 +39,9 @@ test('preparación: compra con Uber Flash y la ubicación del comprador', async 
   const id = await publishPolo(seller, { title: 'Camisa polo azul' });
   await post(`/p/${id}/comprar`, buyer);
   order = db.prepare('SELECT * FROM orders ORDER BY id DESC').get();
-  assert.match(await (await get(`/mensajes/${order.conversation_id}`, buyer)).text(), /Mandar mi ubicación/);
-  await post(`/pedidos/${order.id}/entrega`, buyer, { method: 'uber_flash', address: 'San Pedro, del Mall 200 m este', lat: '9.9331', lng: '-84.0537' });
-  reload();
-  assert.equal(order.delivery_lat, 9.9331);
-  assert.equal(order.delivery_lng, -84.0537);
-  // Fuera de Costa Rica no se guarda.
-  await post(`/pedidos/${order.id}/entrega`, buyer, { method: 'uber_flash', address: 'San Pedro, del Mall 200 m este', lat: '40.7', lng: '-74' });
-  reload();
-  assert.equal(order.delivery_lat, null);
-  await post(`/pedidos/${order.id}/entrega`, buyer, { method: 'uber_flash', address: 'San Pedro, del Mall 200 m este', lat: '9.9331', lng: '-84.0537' });
-  await post(`/pedidos/${order.id}/cotizar`, seller, { method: 'uber_flash', cost: '2800' });
+  // Ya no se puede elegir Uber Flash: queda como un pedido viejo, hecho antes del cambio a la Mensajería CowFace.
+  quoted(order.id, 'uber_flash', 2800);
+  db.prepare("UPDATE orders SET delivery_address = 'San Pedro, del Mall 200 m este', delivery_lat = 9.9331, delivery_lng = -84.0537 WHERE id = ?").run(order.id);
   await post(`/pedidos/${order.id}/pago`, buyer, { reference: '11223344', address: 'San Pedro, del Mall 200 m este', phone: '8777-1234' });
   await post(`/admin/pedidos/${order.id}/confirmar-pago`, admin);
   reload();

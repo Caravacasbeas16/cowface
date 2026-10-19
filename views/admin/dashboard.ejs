@@ -313,6 +313,9 @@
           </select>
           <span class="hint">Ventas completadas después de esta hora (o en fin de semana) se pagan el siguiente día hábil.</span>
         </label>
+        <label>Tarifa de Mensajería CowFace (GAM, ₡)<input name="courier_fee" inputmode="numeric" value="<%= pay.courierFee %>">
+          <span class="hint">Lo que paga el comprador por el envío con nuestro mensajero dentro del GAM. Ese monto es de CowFace, no de la tienda.</span>
+        </label>
       </div>
       <button class="btn">Guardar cobro</button>
     </form>

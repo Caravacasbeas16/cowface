@@ -9,7 +9,9 @@ const CR = "'-6 hours'";
 
 export function sellerEarnings(sellerId) {
   const done = db.prepare(`
-    SELECT id, code, product_title, price, shipping_cost, commission_rate, commission_amount, payout_amount, payout_status,
+    SELECT id, code, product_title, price,
+      -- Lo que le toca a la tienda del envío (en la Mensajería CowFace, el envío es de CowFace).
+      payout_amount - price + commission_amount AS shipping_cost, commission_rate, commission_amount, payout_amount, payout_status,
       completed_at, payout_paid_at, conversation_id
     FROM orders WHERE seller_id = ? AND status = 'completado' ORDER BY completed_at DESC, id DESC
   `).all(sellerId);
