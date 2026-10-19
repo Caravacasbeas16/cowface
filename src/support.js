@@ -1,7 +1,7 @@
 // Chat directo con CowFace: el admin le escribe a una tienda (o a cualquier persona) y ella le
 // responde. Un solo hilo por usuario, cifrado como el resto del chat. Del lado de la tienda aparece
 // fijo arriba en Mensajes como "CowFace · Equipo oficial".
-import { db } from './db.js';
+import { db, getSetting, setSetting } from './db.js';
 import { SITE_NAME } from './catalog.js';
 import { UserError, unreadCount } from './messages.js';
 import { openText, sealText } from './crypto-box.js';
@@ -83,3 +83,11 @@ export function userWrites(user, body) {
   notifyAdmin('soporte', `Mensaje de ${user.store_name || user.name}`, `${user.store_name || user.name} te escribió:\n«${text.slice(0, 500)}»`, `/admin/mensajes/${user.id}`);
 }
 
+
+// Número de WhatsApp de soporte para tiendas (Admin → Configuración). Solo lo ven las tiendas.
+export function storeSupport() {
+  const phone = getSetting('store_support_phone') || '';
+  if (!/^\d{8}$/.test(phone)) return null;
+  return { phone: `${phone.slice(0, 4)}-${phone.slice(4)}`, whatsapp: `https://wa.me/506${phone}` };
+}
+export const setStoreSupport = (phone) => setSetting('store_support_phone', phone || '');

@@ -22,6 +22,8 @@ import { UserError } from '../messages.js';
 import { BACKUP_DIR, BACKUP_NAME, backupStatus, runDailyBackup, streamFullBackup } from '../backup.js';
 import { adminBack } from '../admin-panel.js';
 import { diskStatus, formatBytes, refreshDisk, setVolumeGb, volumeGbSetting } from '../disk.js';
+import { setStoreSupport, storeSupport } from '../support.js';
+import { normalizePhone } from '../validate.js';
 
 const router = Router();
 router.use(requireRole('admin'));
@@ -68,7 +70,7 @@ router.get('/', (req, res) => {
   res.render('admin/dashboard', {
     title: 'Administración', totals, sellers, orders, flagged, queues: adminQueues(), pay: paymentConfig(), orderDataText, siteUrl: res.locals.siteUrl,
     rate: commissionRate(), words: blockedWords(), ORDER_STATUS, DELIVERY_METHODS: DELIVERY_LABELS,
-    disk: diskStatus(), formatBytes, volumeGb: volumeGbSetting(),
+    disk: diskStatus(), formatBytes, volumeGb: volumeGbSetting(), support: storeSupport(),
     notify: notifySettings(), NOTIFY_EVENTS, mailReady: mailConfigured(), backups: backupStatus(), chatEncrypted: encryptionEnabled(), storesToApprove: pendingStores(), approvalOn: approvalRequired(), helpRequests: openHelpRequests(), reports: openReports(),
   });
 });
@@ -132,6 +134,16 @@ router.post('/pedidos/:id/:action', (req, res, next) => {
     flash(res, err.message);
   }
   res.redirect(adminBack(req, '/admin#pagos'));
+});
+
+// WhatsApp de soporte para tiendas (vacío = no se muestra).
+router.post('/soporte-tiendas', (req, res) => {
+  const raw = String(req.body.phone ?? '').trim();
+  const phone = raw ? normalizePhone(raw) : '';
+  if (raw && !phone) { flash(res, 'Número de WhatsApp de 8 dígitos.'); return res.redirect('/admin#config'); }
+  setStoreSupport(phone);
+  flash(res, phone ? 'Número de soporte para tiendas guardado.' : 'Ya no se muestra un número de soporte a las tiendas.');
+  res.redirect('/admin#config');
 });
 
 router.post('/pagos-config', (req, res) => {

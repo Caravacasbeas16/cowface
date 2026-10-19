@@ -1,0 +1,61 @@
+<%- include('../partials/header') %>
+<div class="portal">
+<%- include('../partials/admin-nav', { adminActive: 'fotos' }) %>
+<div class="portal-main">
+  <div class="page-head">
+    <div>
+      <h1>Fotos</h1>
+      <p class="muted">Fotos nuevas de los artículos. El filtro automático ya rechazó las casi negras, y marca las borrosas, muy oscuras, de un solo color o iguales a las de otra tienda. Los artículos se ven mientras los revisas; si pausas uno, queda oculto hasta que la tienda cambie las fotos y tú lo apruebes.</p>
+    </div>
+    <% if (queue.some((p) => !p.photo_hold && !p.flagged)) { %>
+      <form action="/admin/fotos/sin-marcas" method="post"><button class="btn btn-small">Aprobar todos los que no tienen marcas</button></form>
+    <% } %>
+  </div>
+
+  <% if (!queue.length) { %>
+    <section class="panel"><p class="muted">✓ No hay fotos por revisar.</p></section>
+  <% } %>
+  <% for (const p of queue) { %>
+    <section class="panel photo-review <%= p.flagged ? 'is-flagged' : '' %>">
+      <div class="panel-head">
+        <h2><a href="/p/<%= p.id %>" target="_blank" rel="noopener"><%= p.title %></a></h2>
+        <span class="muted small"><%= p.store_name %> · <%= when(p.created_at, true) %></span>
+      </div>
+      <% if (p.photo_hold) { %>
+        <p class="small"><span class="status status-pausado">Pausado por las fotos</span> <%= p.pending ? 'La tienda subió fotos nuevas: revísalas.' : 'Esperando que la tienda cambie las fotos.' %></p>
+      <% } %>
+      <div class="photo-review-grid">
+        <% for (const i of p.images) { %>
+          <figure class="<%= i.reviewed_at ? 'is-reviewed' : '' %>">
+            <a href="/fotos/<%= i.filename %>" target="_blank" rel="noopener"><img src="/fotos/<%= i.thumb || i.filename %>" alt="Foto de <%= p.title %>" loading="lazy"></a>
+            <% if (!i.reviewed_at && i.flags.length) { %><figcaption><% for (const f of i.flags) { %><span class="photo-flag">⚠ <%= f %></span><% } %></figcaption><% } %>
+            <% if (i.reviewed_at) { %><figcaption class="muted small">ya revisada</figcaption><% } %>
+          </figure>
+        <% } %>
+      </div>
+      <div class="photo-review-actions">
+        <form action="/admin/fotos/<%= p.id %>/ok" method="post"><button class="btn btn-small"><%= p.photo_hold ? 'Se ven bien: volver a la venta' : 'Se ven bien' %></button></form>
+        <% if (!p.photo_hold || p.pending) { %>
+          <details>
+            <summary class="btn btn-small btn-ghost">Pausar y avisarle a la tienda</summary>
+            <form action="/admin/fotos/<%= p.id %>/pausar" method="post" class="stack compact">
+              <label>¿Por qué?
+                <select name="reason" required>
+                  <option value="">Elige…</option>
+                  <option value="ajenas">Fotos de otra tienda o de internet</option>
+                  <option value="calidad">Mala calidad (borrosas, oscuras)</option>
+                  <option value="contacto">Tienen datos de contacto</option>
+                  <option value="contenido">Contenido no permitido</option>
+                </select>
+              </label>
+              <textarea name="note" rows="2" maxlength="500" placeholder="Nota para la tienda (opcional)"></textarea>
+              <button class="btn btn-small btn-danger">Pausar y mandar mensaje</button>
+            </form>
+          </details>
+        <% } %>
+      </div>
+    </section>
+  <% } %>
+</div>
+</div>
+<%- include('../partials/footer') %>

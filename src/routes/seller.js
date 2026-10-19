@@ -349,7 +349,7 @@ router.post('/productos/:id/rapido', lockedWhileOrdered, (req, res) => {
   if (!['disponible', 'pausado', 'vendido'].includes(req.product.status)) {
     message = 'Este artículo no se puede editar desde aquí.';
   } else if (quantity > 0 && req.product.status === 'vendido' && (!canPublish(req.user) || req.product.admin_hidden)) {
-    message = req.product.admin_hidden ? 'CowFace ocultó este artículo por un reporte.' : 'Tu tienda no está aprobada para vender en este momento.';
+    message = req.product.admin_hidden ? 'CowFace ocultó este artículo: revisa el chat con CowFace.' : 'Tu tienda no está aprobada para vender en este momento.';
   } else if (!price || (!req.product.has_sizes && (!Number.isInteger(quantity) || quantity < 0 || quantity > 999))) {
     message = 'Revisa el precio (en colones) y las unidades (0 a 999).';
   } else {
@@ -428,7 +428,7 @@ router.post('/productos/:id/duplicar', listingLimit, (req, res) => {
 router.post('/productos/:id/estado', (req, res) => {
   const manual = ['disponible', 'pausado'];
   if (req.body.status === 'disponible' && req.product.admin_hidden) {
-    flash(res, 'CowFace ocultó este artículo por un reporte. Escríbenos si crees que es un error.');
+    flash(res, 'CowFace ocultó este artículo (por un reporte o por las fotos): revisa el chat con CowFace y escríbenos si crees que es un error.');
     return res.redirect(backTo(req));
   }
   if (req.body.status === 'disponible' && !canPublish(req.user)) {

@@ -12,6 +12,7 @@ import sharp from 'sharp';
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import { analyzePhoto, qualityFlags, rejectReason } from './photo-check.js';
 
 export const DISPLAY_PX = 2048;
 export const THUMB_PX = 800;
@@ -89,6 +90,10 @@ export async function processPhoto(tmpPath, outDir) {
     }
     if (!meta.width || !meta.height) throw new ImageError('Una de las fotos no es una imagen válida (JPG, PNG, WebP o AVIF).');
     if (Math.min(meta.width, meta.height) < 300) throw new ImageError('Una de las fotos es muy pequeña: usa fotos de al menos 300 píxeles de lado.');
+    // Filtro automático: fotos que no muestran nada se rechazan; las dudosas se marcan para el admin.
+    const check = await analyzePhoto(tmpPath);
+    const rejected = rejectReason(check);
+    if (rejected) throw new ImageError(rejected);
 
     const original = await saveOriginal(tmpPath, meta, outDir);
     created.push(original);
@@ -101,7 +106,7 @@ export async function processPhoto(tmpPath, outDir) {
     await base.clone().resize({ width: THUMB_PX, height: THUMB_PX, fit: 'inside', withoutEnlargement: true })
       .jpeg({ quality: 82, mozjpeg: true }).toFile(path.join(outDir, thumb));
     created.push(thumb);
-    return { filename: display, thumb, original };
+    return { filename: display, thumb, original, phash: check.hash, flags: qualityFlags(check) };
   } catch (err) {
     await Promise.all(created.map((f) => fs.rm(path.join(outDir, f), { force: true })));
     if (err instanceof ImageError) throw err;

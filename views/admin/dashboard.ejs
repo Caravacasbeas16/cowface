@@ -320,6 +320,13 @@
       </div>
       <button class="btn">Guardar cobro</button>
     </form>
+    <form action="/admin/soporte-tiendas" method="post" class="stack">
+      <label>WhatsApp de soporte para tiendas
+        <input name="phone" inputmode="tel" value="<%= support ? support.phone : '' %>" placeholder="8888-8888">
+        <span class="hint">Solo lo ven las tiendas (en su panel y en el chat con CowFace), aparte del chat. Vacío: no se muestra.</span>
+      </label>
+      <button class="btn btn-small btn-ghost">Guardar número</button>
+    </form>
     <form action="/admin/aprobacion" method="post" class="stack approval-form">
       <label class="check">
         <input type="checkbox" name="on" value="1" <%= approvalOn ? 'checked' : '' %> data-autosubmit>

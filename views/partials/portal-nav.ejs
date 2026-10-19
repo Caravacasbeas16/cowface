@@ -39,6 +39,12 @@
       <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M12 21a9 9 0 1 0-8-4.9L3 21l4.9-1A9 9 0 0 0 12 21zM9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5M12 16.5h.01" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>
       <span>Escribir a CowFace</span>
     </a>
+    <% const help = storeSupport(); if (help) { %>
+      <a href="<%= help.whatsapp %>" target="_blank" rel="noopener">
+        <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
+        <span>Soporte por WhatsApp · <%= help.phone %></span>
+      </a>
+    <% } %>
     <a href="/vendedor/compras" class="<%= active === 'compras' ? 'is-active' : '' %>">
       <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20"><path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>
       <span>Mis compras</span>

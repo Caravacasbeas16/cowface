@@ -4,6 +4,7 @@ import { parsePrice } from './validate.js';
 import { notBlockedSql } from './blocks.js';
 import { buildSearchText, normalize as normalizeText, queryPatterns } from './search-text.js';
 import { clearSizes, saveSizes, sizesOf, zeroSizes } from './variants.js';
+import { flagsFor } from './photo-check.js';
 
 const normalizeQuery = (q) => normalizeText(q).split(' ').filter(Boolean).slice(0, 4);
 
@@ -223,8 +224,9 @@ export function quickUpdate(id, price, quantity) {
 // photos: [{ filename, thumb }] ya procesadas por images.js (la primera es la portada).
 function addImages(productId, photos) {
   const start = db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS n FROM product_images WHERE product_id = ?').get(productId).n;
-  const insert = db.prepare('INSERT INTO product_images (product_id, filename, thumb, original, position) VALUES (?, ?, ?, ?, ?)');
-  photos.forEach((p, i) => insert.run(productId, p.filename, p.thumb || null, p.original || null, start + i));
+  const insert = db.prepare('INSERT INTO product_images (product_id, filename, thumb, original, position, phash, check_flags) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  const { seller_id: sellerId } = db.prepare('SELECT seller_id FROM products WHERE id = ?').get(productId);
+  photos.forEach((p, i) => insert.run(productId, p.filename, p.thumb || null, p.original || null, start + i, p.phash || null, flagsFor(p, sellerId)));
 }
 
 export function imageCount(productId) {

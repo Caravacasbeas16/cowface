@@ -38,11 +38,12 @@ function copyPhoto(name) {
 export function duplicateProduct(productId) {
   const p = db.prepare('SELECT * FROM products WHERE id = ?').get(productId);
   if (!p) return null;
-  const images = db.prepare('SELECT filename, thumb, original, position FROM product_images WHERE product_id = ? ORDER BY position, id').all(productId);
+  const images = db.prepare('SELECT filename, thumb, original, position, phash, check_flags, reviewed_at FROM product_images WHERE product_id = ? ORDER BY position, id').all(productId);
   const copies = [];
   try {
     for (const img of images) {
-      const c = { filename: copyPhoto(img.filename), thumb: copyPhoto(img.thumb), original: copyPhoto(img.original), position: img.position };
+      // La copia hereda la huella y la revisión de la foto (es la misma foto de la misma tienda).
+      const c = { ...img, filename: copyPhoto(img.filename), thumb: copyPhoto(img.thumb), original: copyPhoto(img.original) };
       copies.push(c);
     }
   } catch (err) {
@@ -58,8 +59,9 @@ export function duplicateProduct(productId) {
       p.color, p.condition, p.compare_at_price && p.compare_at_price > p.price ? p.compare_at_price : p.price, Math.max(1, p.quantity),
       p.measurements, p.shipping_cost, p.meetup, p.details, p.retail_price);
     const newId = Number(lastInsertRowid);
-    const insert = db.prepare('INSERT INTO product_images (product_id, filename, thumb, original, position) VALUES (?, ?, ?, ?, ?)');
-    for (const c of copies) insert.run(newId, c.filename, c.thumb, c.original, c.position);
+    const insert = db.prepare(`INSERT INTO product_images (product_id, filename, thumb, original, position, phash, check_flags, reviewed_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`);
+    for (const c of copies) insert.run(newId, c.filename, c.thumb, c.original, c.position, c.phash, c.check_flags, c.reviewed_at);
     if (p.has_sizes) saveSizes(newId, sizesOf(productId).map((s) => ({ ...s, quantity: s.quantity || 1 })));
     return newId;
   });

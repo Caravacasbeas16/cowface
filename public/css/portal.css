@@ -274,3 +274,14 @@ a.kpi:hover { border-color: var(--ink); text-decoration: none; }
 .disk-bar > span { display: block; height: 100%; width: 0; background: var(--ok); }
 .disk-bar.is-warn > span { background: var(--warn); }
 .disk-bar.is-danger > span { background: var(--danger); }
+
+/* Admin → Fotos */
+.photo-review.is-flagged { border-left: 4px solid var(--warn); }
+.photo-review-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: .6rem; margin: .6rem 0; }
+.photo-review-grid figure { margin: 0; display: flex; flex-direction: column; gap: .25rem; }
+.photo-review-grid img { width: 100%; aspect-ratio: 1; object-fit: cover; border: 1px solid var(--line); display: block; }
+.photo-review-grid figure.is-reviewed img { opacity: .55; }
+.photo-flag { display: block; font-size: .75rem; font-weight: 600; color: var(--warn); }
+.photo-review-actions { display: flex; flex-wrap: wrap; gap: .5rem; align-items: flex-start; }
+.photo-review-actions details { flex: 1 1 260px; }
+.photo-review-actions summary { list-style: none; display: inline-block; }

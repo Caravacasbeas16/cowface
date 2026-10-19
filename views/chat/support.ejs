@@ -9,7 +9,7 @@
       <span class="official-badge">✓ Equipo oficial</span>
     </div>
   </div>
-  <p class="support-note small">Este es el chat directo con la administración de <%= siteName %>. Solo lo ven ustedes y el equipo de CowFace. Nunca te vamos a pedir tu contraseña.</p>
+  <p class="support-note small">Este es el chat directo con la administración de <%= siteName %>. Solo lo ven ustedes y el equipo de CowFace. Nunca te vamos a pedir tu contraseña.<% const help = storeSupport(); if (help && ['aprobado', 'pendiente'].includes(user.seller_status)) { %> ¿Es urgente? Escríbenos por <a href="<%= help.whatsapp %>" target="_blank" rel="noopener">WhatsApp al <%= help.phone %></a>.<% } %></p>
   <div class="messages" data-messages>
     <% if (!messages.length) { %>
       <p class="msg-system">Escríbenos cualquier duda sobre tu tienda, un pedido o un pago.</p>

@@ -17,7 +17,7 @@ export const db = new DatabaseSync(DB_FILE);
 //   5 → 6: miniatura de cada foto (product_images.thumb).
 //   6 → 7: foto original, medidas y envío por artículo, adjuntos en el chat, envío y comprobantes
 //          en pedidos, búsquedas guardadas ("Avísame").
-const SCHEMA_VERSION = 32;
+const SCHEMA_VERSION = 33;
 const FIRST_MIGRATABLE = 3;
 const hasTables = db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE type = 'table' AND name = 'users'").get().n > 0;
 const version = db.prepare('PRAGMA user_version').get().user_version;
@@ -332,7 +332,12 @@ addColumn('products', 'bumped_at', 'TEXT');   // "Subir al inicio" (como Grailed
 addColumn('orders', 'delivery_lat', 'REAL');
 addColumn('orders', 'delivery_lng', 'REAL');
 addColumn('orders', 'track_url', 'TEXT');
-addColumn('orders', 'delivery_days', 'TEXT'); // Mensajería CowFace: días y franja en que el comprador puede recibir
+addColumn('orders', 'delivery_days', 'TEXT');
+// Filtro de fotos (photo-check.js): huella para detectar fotos de otra tienda, marcas y revisión del admin.
+addColumn('product_images', 'phash', 'TEXT');
+addColumn('product_images', 'check_flags', 'TEXT');
+addColumn('product_images', 'reviewed_at', 'TEXT');
+addColumn('products', 'photo_hold', 'INTEGER NOT NULL DEFAULT 0'); // 1 = el admin lo pausó por las fotos // Mensajería CowFace: días y franja en que el comprador puede recibir
 addColumn('products', 'likers_offer_at', 'TEXT'); // última "oferta a quienes lo guardaron" (una cada 24 h)
 // Chat directo entre el admin (CowFace) y una tienda o persona: un hilo por usuario.
 db.exec(`
